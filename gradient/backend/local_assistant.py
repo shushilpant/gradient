@@ -812,6 +812,7 @@ def model_json(model: str, messages: list[dict], output_type: type[BaseModel], t
         request["think"] = "low" if model.startswith("gpt-oss:") else False
     last_error = None
     content = ""
+    candidates = []
     for attempt in range(2):
         # Keep the first response warm briefly if a schema repair is needed;
         # the successful final call is unloaded explicitly below.
@@ -824,7 +825,12 @@ def model_json(model: str, messages: list[dict], output_type: type[BaseModel], t
         content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content)
         content = normalise_json_escapes(content)
         try:
-            output = output_type.model_validate_json(content)
+            # Decode complete JSON objects even if the model added a preamble or
+            # literal newlines inside Markdown strings. Core fields still validate.
+            start = content.find("{")
+            data, _ = json.JSONDecoder(strict=False).raw_decode(content[start:] if start >= 0 else content)
+            candidates.append(data)
+            output = output_type.model_validate(data)
             if isinstance(output, ModelStudyOutput) and re.search(r"[\x08\x0b\x0c]", output.markdown + output.sampleMarkdown):
                 raise ValueError("Unexpected control character in Markdown. Use plain Unicode mathematics without LaTeX backslash commands.")
             if keep_alive == "0s":
@@ -844,8 +850,23 @@ def model_json(model: str, messages: list[dict], output_type: type[BaseModel], t
         # Preserve a valid explanation if optional visuals remain malformed.
         # Never silently display invalid edges or non-finite numeric data.
         try:
-            data = json.loads(content)
+            data = candidates[0] if candidates else json.loads(content, strict=False)
+            # A bad optional visual must never invalidate an otherwise complete
+            # reference sample. Rendering validates source evidence separately.
+            from pydantic import TypeAdapter
             omitted = []
+            specs = data.get("visualSpecs", [])
+            valid_specs = []
+            if isinstance(specs, list):
+                for spec in specs[:4]:
+                    try:
+                        valid_specs.append(TypeAdapter(VisualSpec).validate_python(spec).model_dump(by_alias=True))
+                    except (ValidationError, ValueError, TypeError):
+                        omitted.append("visual requests")
+            else:
+                omitted.append("visual requests")
+            data = {**data, "visualSpecs": valid_specs}
+
             for field, visual_type in (("diagrams", Diagram), ("graphs", Graph)):
                 values = data.get(field, [])
                 valid = []

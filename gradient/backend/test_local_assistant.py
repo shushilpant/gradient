@@ -621,3 +621,22 @@ def test_requirement_parser_removes_no_missing_information_sentinels(monkeypatch
     payload=ai.StudyRequest.model_validate(study_request(assignment={'title':'Homework','description':'Solve x + 2 = 4.'}))
     monkeypatch.setattr(ai,'model_json',lambda *_a,**_k:ai.AssignmentBrief(summary='Solve',requirements=[ai.Requirement(id='R1',text='Solve',evidence='Solve x + 2 = 4.')],missingInformation=[sentinel,'The measured temperature was not supplied.']))
     assert ai.parse_homework(payload).missingInformation==['The measured temperature was not supplied.']
+
+
+def test_complete_sample_survives_invalid_optional_visual_specs(monkeypatch):
+    monkeypatch.setattr(ai, 'installed_model', lambda *_a, **_k: {'capabilities': []})
+    data = model_output(sampleMarkdown='A complete reference sample with calculations.', visualSpecs=[{'kind':'function','expression':'invented'}])
+    monkeypatch.setattr(ai, 'ollama_request', lambda *_a, **_k: {'message':{'content':json.dumps(data)}})
+    result = ai.model_json('gpt-oss:20b', [], ai.SampleStudyOutput, 2000)
+    assert result.sampleMarkdown == data['sampleMarkdown']
+    assert result.visualSpecs == []
+    assert result._validation_warnings
+
+
+def test_model_json_accepts_complete_object_with_preamble_and_literal_newlines(monkeypatch):
+    monkeypatch.setattr(ai, 'installed_model', lambda *_a, **_k: {'capabilities': []})
+    data = model_output(markdown='First line\nSecond line')
+    raw = 'Here is the packet:\n' + json.dumps(data).replace('First line\\nSecond line','First line\nSecond line') + '\nEnd.'
+    monkeypatch.setattr(ai, 'ollama_request', lambda *_a, **_k: {'message':{'content':raw}})
+    result = ai.model_json('gpt-oss:20b', [], ai.ModelStudyOutput, 2000)
+    assert result.markdown == 'First line\nSecond line'
