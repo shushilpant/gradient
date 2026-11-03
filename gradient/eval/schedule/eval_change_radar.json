@@ -1,0 +1,140 @@
+{
+  "change_cases": [
+    {
+      "id": "ann_01_hw2_moved",
+      "course_id": "99001",
+      "title": "Update regarding Homework 2 Deadline",
+      "message": "Hello class, due to the career fair on Thursday, the due date has been moved to Friday, Nov 14 at 11:59 PM. Please make sure your code passes all autograder tests.",
+      "expected_change": true,
+      "expected_assign_name": "HW 2: Divide & Conquer",
+      "expected_date_str": "2026-11-14T23:59:00Z"
+    },
+    {
+      "id": "ann_02_project_extension",
+      "course_id": "99001",
+      "title": "Final Project Milestone 1 Extension",
+      "message": "Several students requested extra time to benchmark their algorithms. We have extended the deadline to Monday, Nov 17 at 5:00 PM.",
+      "expected_change": true,
+      "expected_assign_name": "Final Project Implementation",
+      "expected_date_str": "2026-11-17T17:00:00Z"
+    },
+    {
+      "id": "ann_03_ps1_new_date",
+      "course_id": "99002",
+      "title": "Problem Set 1 Due Date Adjustment",
+      "message": "Notice: The new due date is Nov 20, 2026 at 11:59pm for Problem Set 1. Office hours tomorrow will cover induction proofs.",
+      "expected_change": true,
+      "expected_assign_name": "Problem Set 1: Induction",
+      "expected_date_str": "2026-11-20T23:59:00Z"
+    },
+    {
+      "id": "ann_04_hw3_submit_by",
+      "course_id": "99001",
+      "title": "Homework 3: Dynamic Programming Submission",
+      "message": "The Canvas upload portal had a brief outage today. You may submit it by Nov 22 at 11:59pm instead without any late penalty.",
+      "expected_change": true,
+      "expected_assign_name": "HW 3: Dynamic Programming",
+      "expected_date_str": "2026-11-22T23:59:00Z"
+    },
+    {
+      "id": "ann_05_ps2_postponed",
+      "course_id": "99002",
+      "title": "Problem Set 2 Postponed",
+      "message": "Good news everyone! The submission deadline is postponed until Wednesday, Nov 25 at 5:00 PM so you can enjoy Thanksgiving break.",
+      "expected_change": true,
+      "expected_assign_name": "Problem Set 2: Graph Theory",
+      "expected_date_str": "2026-11-25T17:00:00Z"
+    },
+    {
+      "id": "ann_06_hw1_delayed",
+      "course_id": "99001",
+      "title": "HW 1 Delay Notice",
+      "message": "Due to technical issues with Gradescope, the deadline has been delayed to Saturday, Nov 15 at 11:59 PM.",
+      "expected_change": true,
+      "expected_assign_name": "HW 1: Algorithm Complexity",
+      "expected_date_str": "2026-11-15T23:59:00Z"
+    },
+    {
+      "id": "ann_07_lab_report_extension",
+      "course_id": "99003",
+      "title": "Lab Report 1 Extension Granted",
+      "message": "We understand spectrometer data was delayed. We are granting an extension until Nov 18 at 11:59 PM for Lab Report 1.",
+      "expected_change": true,
+      "expected_assign_name": "Lab Report 1: Enzyme Kinetics",
+      "expected_date_str": "2026-11-18T23:59:00Z"
+    },
+    {
+      "id": "ann_08_ps3_deadline_now",
+      "course_id": "99002",
+      "title": "Update: Problem Set 3",
+      "message": "Please note that the deadline is now Nov 28 at 11:59 PM. Do not leave the matrix determinant problems to the last minute.",
+      "expected_change": true,
+      "expected_assign_name": "Problem Set 3: Linear Systems",
+      "expected_date_str": "2026-11-28T23:59:00Z"
+    },
+    {
+      "id": "ann_09_project_report_shifted",
+      "course_id": "99001",
+      "title": "Project Final Report Schedule",
+      "message": "The final project presentation deadline has been shifted to Dec 02 at 5:00 PM in the auditorium.",
+      "expected_change": true,
+      "expected_assign_name": "Final Project Implementation",
+      "expected_date_str": "2026-12-02T17:00:00Z"
+    },
+    {
+      "id": "ann_10_hw2_pushed_back",
+      "course_id": "99001",
+      "title": "Homework 2 Time Adjustment",
+      "message": "Due to server maintenance, the submission deadline is pushed back to Nov 16 at 11:59 PM.",
+      "expected_change": true,
+      "expected_assign_name": "HW 2: Divide & Conquer",
+      "expected_date_str": "2026-11-16T23:59:00Z"
+    },
+    {
+      "id": "ann_11_fp_office_hours",
+      "course_id": "99001",
+      "title": "Office Hours Rescheduled",
+      "message": "Instructor office hours moved to Friday at 2:00 PM in room 302. Please bring your algorithm questions.",
+      "expected_change": false,
+      "expected_assign_name": null,
+      "expected_date_str": null
+    },
+    {
+      "id": "ann_12_fp_lecture_room",
+      "course_id": "99001",
+      "title": "Classroom Change",
+      "message": "Reminder that our lecture room moved to Hall B starting next week. Attendance is mandatory as usual.",
+      "expected_change": false,
+      "expected_assign_name": null,
+      "expected_date_str": null
+    },
+    {
+      "id": "ann_13_fp_past_due",
+      "course_id": "99001",
+      "title": "Homework 1 Grades Posted",
+      "message": "Grades for HW 1: Algorithm Complexity are now published. Homework 1 was due yesterday and regrade requests close in 48 hours.",
+      "expected_change": false,
+      "expected_assign_name": null,
+      "expected_date_str": null
+    },
+    {
+      "id": "ann_14_fp_coffee_chat",
+      "course_id": "99002",
+      "title": "Department Social Coffee Chat",
+      "message": "The undergraduate math society coffee chat is postponed until Friday at 4pm in the student lounge.",
+      "expected_change": false,
+      "expected_assign_name": null,
+      "expected_date_str": null
+    },
+    {
+      "id": "ann_15_fp_exam_review",
+      "course_id": "99003",
+      "title": "Exam Review Session Details",
+      "message": "The midterm review session is shifted to Sunday at 6:00 PM on Zoom. Homework guidelines remain unchanged.",
+      "expected_change": false,
+      "expected_assign_name": null,
+      "expected_date_str": null
+    }
+  ]
+}
+

@@ -1,0 +1,9 @@
+type IconName = 'grid'|'book'|'folder'|'settings'|'arrow'|'refresh'|'close'|'expand'|'collapse'|'calendar'|'clock'|'check'|'shield'|'search'|'file'|'layers'|'bolt'|'chart'|'alert'|'download'|'chevron'|'external'|'spark'|'user';
+const paths:Record<IconName,string> = {
+ grid:'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z',
+ book:'M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-3H4z M20 4h-4a3 3 0 0 0-3 3 M20 4v14h-3a4 4 0 0 0-4 3',
+ folder:'M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+ settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z M9 3l-1 3-3 1-2 3 2 2v3l3 2 1 3h5l1-3 3-1 2-3-2-2v-3l-3-2-1-3z',
+ arrow:'M5 12h14 M13 6l6 6-6 6',refresh:'M20 7v5h-5 M4 17v-5h5 M6 6a8 8 0 0 1 13 2 M18 18a8 8 0 0 1-13-2',close:'M6 6l12 12 M18 6L6 18',expand:'M9 3H3v6 M3 3l7 7 M15 21h6v-6 M21 21l-7-7',collapse:'M5 12h14',calendar:'M5 4h14a2 2 0 0 1 2 2v14H3V6a2 2 0 0 1 2-2z M7 2v5 M17 2v5 M3 10h18 M7 14h2 M12 14h2 M7 17h2',clock:'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18 M12 7v5l3 2',check:'M5 12l4 4L19 6',shield:'M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6z M8 12l3 3 5-6',search:'M10.5 3a7.5 7.5 0 1 0 0 15 7.5 7.5 0 0 0 0-15 M16 16l5 5',file:'M5 3h9l5 5v13H5z M14 3v6h5 M9 13h6 M9 17h6',layers:'M12 3L2 8l10 5 10-5z M2 12l10 5 10-5 M2 16l10 5 10-5',bolt:'M13 2L4 14h7l-1 8 10-13h-8z',chart:'M4 20V4 M4 20h17 M8 15l4-5 4 2 5-7',alert:'M12 3L2 21h20z M12 9v5 M12 17v1',download:'M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5',chevron:'M9 5l7 7-7 7',external:'M14 3h7v7 M21 3L10 14 M10 3H3v18h18v-7',spark:'M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z',user:'M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8 M4 21v-3a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v3'
+};
+export function Icon({name,size=18,className=''}:{name:IconName;size?:number;className?:string}){return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class={className}><path d={paths[name]}/></svg>;}

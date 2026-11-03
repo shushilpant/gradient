@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GRADIENT Settings & Options</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 32px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    p.subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    h2 {
+      font-size: 16px;
+      margin: 0 0 8px 0;
+      font-weight: 600;
+    }
+    .desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      min-height: 80px;
+      resize: vertical;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      font-weight: 600;
+      color: var(--muted);
+      background: #f1f5f9;
+    }
+    input[type="number"], input[type="text"] {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      width: 80px;
+    }
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    button {
+      padding: 10px 18px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+    }
+    button.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    button.primary:hover {
+      background: #1d4ed8;
+    }
+    button.secondary {
+      background: #e2e8f0;
+      color: var(--text);
+    }
+    #status-msg {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #16a34a;
+      font-weight: 600;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>GRADIENT Configuration</h1>
+      <p class="subtitle">Customize Canvas hosts, credit hours, and GPA scale. All data is kept local to your browser.</p>
+    </header>
+
+    <!-- Canvas Hosts -->
+    <div class="card">
+      <h2>Canvas Host Domains</h2>
+      <div class="desc">Host patterns where GRADIENT side panel is allowed to activate (one per line).</div>
+      <textarea id="canvas-hosts"></textarea>
+    </div>
+
+    <!-- Course Credit Hours -->
+    <div class="card">
+      <h2>Course Credit Hours</h2>
+      <div class="desc">Canvas API does not track credit hours. Enter credit hours for each enrolled course for GPA modeling.</div>
+      <table id="credits-table">
+        <thead>
+          <tr>
+            <th>Course Code</th>
+            <th>Credit Hours</th>
+          </tr>
+        </thead>
+        <tbody id="credits-tbody">
+          <!-- Populated by options.ts -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Grade-Point Scale -->
+    <div class="card">
+      <h2>Grade-Point Scale (4.0 Scale)</h2>
+      <div class="desc">Define GPA points associated with each letter grade.</div>
+      <table id="scale-table">
+        <thead>
+          <tr>
+            <th>Letter Grade</th>
+            <th>GPA Points</th>
+          </tr>
+        </thead>
+        <tbody id="scale-tbody">
+          <!-- Populated by options.ts -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="secondary" id="reset-btn">Reset Defaults</button>
+      <button type="button" class="primary" id="save-btn">Save Settings</button>
+    </div>
+    <div id="status-msg"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,50 @@
+{
+  "manifest_version": 3,
+  "name": "GRADIENT: Canvas Academic Companion",
+  "version": "0.3.0",
+  "description": "Your live Canvas study workspace. Coursework, grade planning, and resources in the tab you already use.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://*.instructure.com/*",
+    "https://canvas.usm.edu/*"
+  ],
+  "action": {
+    "default_title": "GRADIENT",
+    "default_icon": {
+      "16": "extension/icons/icon16.png",
+      "32": "extension/icons/icon32.png",
+      "48": "extension/icons/icon48.png",
+      "128": "extension/icons/icon128.png"
+    }
+  },
+  "options_ui": {
+    "page": "extension/options/options.html",
+    "open_in_tab": true
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.instructure.com/*",
+        "https://canvas.usm.edu/*"
+      ],
+      "js": [
+        "extension/content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "background": {
+    "service_worker": "extension/background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "extension/icons/icon16.png",
+    "32": "extension/icons/icon32.png",
+    "48": "extension/icons/icon48.png",
+    "128": "extension/icons/icon128.png"
+  }
+}

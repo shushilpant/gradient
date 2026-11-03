@@ -1,0 +1,71 @@
+{
+  "id": 99001,
+  "name": "CS 101: Introduction to Algorithms & Systems (Synthetic)",
+  "course_code": "CS-101",
+  "apply_assignment_group_weights": true,
+  "syllabus_body": "<h1>CS 101: Introduction to Algorithms & Systems</h1><p><strong>Instructor:</strong> Prof. Ada Lovelace | <strong>Credits:</strong> 4.0</p><h2>Course AI Policy</h2><p>AI collaboration is permitted exclusively for conceptual understanding and hint exploration. All final submitted implementations and proof arguments must be written by the student. Direct code generation or automated synthesis is strictly prohibited.</p><h2>Grading Scheme</h2><p>Homework (40%), Midterm Exams (30%), Final Project (30%). Drop-lowest and drop-highest rules apply to homework.</p>",
+  "grading_standard": [
+    {
+      "name": "A",
+      "value": 0.93
+    },
+    {
+      "name": "A-",
+      "value": 0.9
+    },
+    {
+      "name": "B+",
+      "value": 0.87
+    },
+    {
+      "name": "B",
+      "value": 0.83
+    },
+    {
+      "name": "B-",
+      "value": 0.8
+    },
+    {
+      "name": "C+",
+      "value": 0.77
+    },
+    {
+      "name": "C",
+      "value": 0.73
+    },
+    {
+      "name": "C-",
+      "value": 0.7
+    },
+    {
+      "name": "D+",
+      "value": 0.67
+    },
+    {
+      "name": "D",
+      "value": 0.63
+    },
+    {
+      "name": "D-",
+      "value": 0.6
+    },
+    {
+      "name": "F",
+      "value": 0.0
+    }
+  ],
+  "workflow_state": "available",
+  "enrollments": [
+    {
+      "id": 8802,
+      "user_id": 9991,
+      "course_id": 99001,
+      "type": "StudentEnrollment",
+      "enrollment_state": "active",
+      "computed_current_score": 90.71,
+      "computed_final_score": 58.9,
+      "computed_current_grade": "A-",
+      "computed_final_grade": "F"
+    }
+  ]
+}

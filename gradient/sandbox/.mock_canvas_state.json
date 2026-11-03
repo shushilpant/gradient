@@ -1,0 +1,1317 @@
+{
+  "courses": {
+    "99001": {
+      "id": 99001,
+      "name": "CS 101: Introduction to Algorithms & Systems (Synthetic)",
+      "course_code": "CS-101",
+      "apply_assignment_group_weights": true,
+      "syllabus_body": "<h1>CS 101: Introduction to Algorithms & Systems</h1><p><strong>Instructor:</strong> Prof. Ada Lovelace | <strong>Credits:</strong> 4.0</p><h2>Course AI Policy</h2><p>AI collaboration is permitted exclusively for conceptual understanding and hint exploration. All final submitted implementations and proof arguments must be written by the student. Direct code generation or automated synthesis is strictly prohibited.</p><h2>Grading Scheme</h2><p>Homework (40%), Midterm Exams (30%), Final Project (30%). Drop-lowest and drop-highest rules apply to homework.</p>",
+      "grading_standard": [
+        {
+          "name": "A",
+          "value": 0.93
+        },
+        {
+          "name": "A-",
+          "value": 0.9
+        },
+        {
+          "name": "B+",
+          "value": 0.87
+        },
+        {
+          "name": "B",
+          "value": 0.83
+        },
+        {
+          "name": "B-",
+          "value": 0.8
+        },
+        {
+          "name": "C+",
+          "value": 0.77
+        },
+        {
+          "name": "C",
+          "value": 0.73
+        },
+        {
+          "name": "C-",
+          "value": 0.7
+        },
+        {
+          "name": "D+",
+          "value": 0.67
+        },
+        {
+          "name": "D",
+          "value": 0.63
+        },
+        {
+          "name": "D-",
+          "value": 0.6
+        },
+        {
+          "name": "F",
+          "value": 0.0
+        }
+      ],
+      "workflow_state": "available"
+    },
+    "99002": {
+      "id": 99002,
+      "name": "MATH 201: Discrete Mathematics & Probability (Synthetic)",
+      "course_code": "MATH-201",
+      "apply_assignment_group_weights": false,
+      "syllabus_body": "<h1>MATH 201: Discrete Mathematics</h1><p><strong>Credits:</strong> 3.0</p><h2>AI Policy</h2><p>Generative AI usage on proof writeups is strictly prohibited without prior written authorization.</p>",
+      "grading_standard": [
+        {
+          "name": "A",
+          "value": 0.93
+        },
+        {
+          "name": "A-",
+          "value": 0.9
+        },
+        {
+          "name": "B+",
+          "value": 0.87
+        },
+        {
+          "name": "B",
+          "value": 0.83
+        },
+        {
+          "name": "B-",
+          "value": 0.8
+        },
+        {
+          "name": "C+",
+          "value": 0.77
+        },
+        {
+          "name": "C",
+          "value": 0.73
+        },
+        {
+          "name": "C-",
+          "value": 0.7
+        },
+        {
+          "name": "D+",
+          "value": 0.67
+        },
+        {
+          "name": "D",
+          "value": 0.63
+        },
+        {
+          "name": "D-",
+          "value": 0.6
+        },
+        {
+          "name": "F",
+          "value": 0.0
+        }
+      ],
+      "workflow_state": "available"
+    },
+    "99003": {
+      "id": 99003,
+      "name": "BIO 110: Principles of Molecular Biology (Synthetic)",
+      "course_code": "BIO-110",
+      "apply_assignment_group_weights": true,
+      "syllabus_body": "<h1>BIO 110: Principles of Molecular Biology</h1><p><strong>Credits:</strong> 4.0</p><h2>Grading Scheme</h2><p>Lab Reports (35%), Lecture Exams (45%), Quizzes (20%).</p>",
+      "grading_standard": [
+        {
+          "name": "A",
+          "value": 0.93
+        },
+        {
+          "name": "A-",
+          "value": 0.9
+        },
+        {
+          "name": "B+",
+          "value": 0.87
+        },
+        {
+          "name": "B",
+          "value": 0.83
+        },
+        {
+          "name": "B-",
+          "value": 0.8
+        },
+        {
+          "name": "C+",
+          "value": 0.77
+        },
+        {
+          "name": "C",
+          "value": 0.73
+        },
+        {
+          "name": "C-",
+          "value": 0.7
+        },
+        {
+          "name": "D+",
+          "value": 0.67
+        },
+        {
+          "name": "D",
+          "value": 0.63
+        },
+        {
+          "name": "D-",
+          "value": 0.6
+        },
+        {
+          "name": "F",
+          "value": 0.0
+        }
+      ],
+      "workflow_state": "available"
+    }
+  },
+  "assignment_groups": {
+    "99001": {
+      "101": {
+        "id": 101,
+        "name": "Homework & Problem Sets",
+        "group_weight": 40.0,
+        "rules": {
+          "drop_lowest": 1,
+          "drop_highest": 1,
+          "never_drop": [
+            1001
+          ]
+        }
+      },
+      "102": {
+        "id": 102,
+        "name": "Midterm Exams",
+        "group_weight": 30.0,
+        "rules": {
+          "drop_lowest": 0,
+          "drop_highest": 0,
+          "never_drop": []
+        }
+      },
+      "103": {
+        "id": 103,
+        "name": "Final Project",
+        "group_weight": 30.0,
+        "rules": {
+          "drop_lowest": 0,
+          "drop_highest": 0,
+          "never_drop": []
+        }
+      }
+    },
+    "99002": {
+      "101": {
+        "id": 101,
+        "name": "All Coursework",
+        "group_weight": 0.0,
+        "rules": {
+          "drop_lowest": 0,
+          "drop_highest": 0,
+          "never_drop": []
+        }
+      }
+    },
+    "99003": {
+      "101": {
+        "id": 101,
+        "name": "Lab Reports",
+        "group_weight": 35.0,
+        "rules": {
+          "drop_lowest": 1
+        }
+      },
+      "102": {
+        "id": 102,
+        "name": "Lecture Exams",
+        "group_weight": 45.0,
+        "rules": {
+          "drop_lowest": 0,
+          "drop_highest": 0,
+          "never_drop": []
+        }
+      },
+      "103": {
+        "id": 103,
+        "name": "Quizzes",
+        "group_weight": 20.0,
+        "rules": {
+          "drop_lowest": 0,
+          "drop_highest": 0,
+          "never_drop": []
+        }
+      }
+    }
+  },
+  "assignments": {
+    "99001": {
+      "1001": {
+        "id": 1001,
+        "course_id": 99001,
+        "name": "HW 1: Algorithm Complexity & Big-O",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-09-15T23:59:00Z",
+        "submission_types": [
+          "online_upload",
+          "online_text_entry"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_4_0",
+            "description": "Asymptotic Correctness",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_0_0",
+                "description": "Full Marks: Rigorous Big-O derivation",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_0_1",
+                "description": "Minor algebra mistake",
+                "points": 35.0
+              },
+              {
+                "id": "rat_rubric_4_0_2",
+                "description": "Incorrect complexity class",
+                "points": 10.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_4_1",
+            "description": "Code Implementation",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_1_0",
+                "description": "Full Marks: Optimal solution with tests",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_1_1",
+                "description": "Suboptimal implementation",
+                "points": 30.0
+              }
+            ]
+          }
+        ]
+      },
+      "1002": {
+        "id": 1002,
+        "course_id": 99001,
+        "name": "HW 2: Sorting and Divide & Conquer",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-09-29T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1003": {
+        "id": 1003,
+        "course_id": 99001,
+        "name": "HW 3: Dynamic Programming",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-10-13T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_5_0",
+            "description": "Recurrence Relation",
+            "points": 60.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_0_0",
+                "description": "Exact recurrence and base cases",
+                "points": 60.0
+              },
+              {
+                "id": "rat_rubric_5_0_1",
+                "description": "Flawed transition formula",
+                "points": 25.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_5_1",
+            "description": "Memoization / Tabulation Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_1_0",
+                "description": "Optimal O(N*W) space/time",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_5_1_1",
+                "description": "Exponential recursion",
+                "points": 0.0
+              }
+            ]
+          }
+        ]
+      },
+      "1004": {
+        "id": 1004,
+        "course_id": 99001,
+        "name": "HW 4: Graph Traversals",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-10-27T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1005": {
+        "id": 1005,
+        "course_id": 99001,
+        "name": "HW 5: Greedy Algorithms",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-11-10T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1006": {
+        "id": 1006,
+        "course_id": 99001,
+        "name": "Midterm Exam 1",
+        "assignment_group_id": 102,
+        "points_possible": 100.0,
+        "due_at": "2026-10-18T20:00:00Z",
+        "submission_types": [
+          "on_paper",
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1007": {
+        "id": 1007,
+        "course_id": 99001,
+        "name": "Final Project Proposal & Draft",
+        "assignment_group_id": 103,
+        "points_possible": 50.0,
+        "due_at": "2026-11-01T23:59:00Z",
+        "submission_types": [
+          "online_text_entry"
+        ],
+        "omit_from_final_grade": true,
+        "published": true,
+        "has_rubric": false
+      },
+      "1008": {
+        "id": 1008,
+        "course_id": 99001,
+        "name": "Final Project Implementation & Report",
+        "assignment_group_id": 103,
+        "points_possible": 100.0,
+        "due_at": "2026-11-20T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_6_0",
+            "description": "Algorithmic Correctness & Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_0_0",
+                "description": "Exemplary complexity and edge handling",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_6_0_1",
+                "description": "Passes standard tests with minor inefficiency",
+                "points": 30.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_1",
+            "description": "Code Quality & Modularity",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_1_0",
+                "description": "Modular pure functions and high test coverage",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_1_1",
+                "description": "Monolithic architecture",
+                "points": 15.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_2",
+            "description": "Written Empirical Evaluation",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_2_0",
+                "description": "Clear benchmark charts and trade-off analysis",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_2_1",
+                "description": "Basic measurements without analysis",
+                "points": 15.0
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "99002": {
+      "1001": {
+        "id": 1001,
+        "course_id": 99002,
+        "name": "Homework 1: Logic & Sets",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1002": {
+        "id": 1002,
+        "course_id": 99002,
+        "name": "Quiz 1: Induction",
+        "assignment_group_id": 101,
+        "points_possible": 25.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1003": {
+        "id": 1003,
+        "course_id": 99002,
+        "name": "Quiz 2: Combinatorics",
+        "assignment_group_id": 101,
+        "points_possible": 25.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1004": {
+        "id": 1004,
+        "course_id": 99002,
+        "name": "Midterm Exam",
+        "assignment_group_id": 101,
+        "points_possible": 150.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1005": {
+        "id": 1005,
+        "course_id": 99002,
+        "name": "Final Exam",
+        "assignment_group_id": 101,
+        "points_possible": 150.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      }
+    },
+    "99003": {
+      "1001": {
+        "id": 1001,
+        "course_id": 99003,
+        "name": "Lab 1: Microscopy",
+        "assignment_group_id": 101,
+        "points_possible": 50.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1002": {
+        "id": 1002,
+        "course_id": 99003,
+        "name": "Lab 2: Enzymes",
+        "assignment_group_id": 101,
+        "points_possible": 50.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1003": {
+        "id": 1003,
+        "course_id": 99003,
+        "name": "Lab 3: Cellular Respiration",
+        "assignment_group_id": 101,
+        "points_possible": 50.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1004": {
+        "id": 1004,
+        "course_id": 99003,
+        "name": "Lecture Exam 1",
+        "assignment_group_id": 102,
+        "points_possible": 100.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1005": {
+        "id": 1005,
+        "course_id": 99003,
+        "name": "Quiz 1: Biomolecules",
+        "assignment_group_id": 103,
+        "points_possible": 20.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      "1006": {
+        "id": 1006,
+        "course_id": 99003,
+        "name": "Quiz 2: Cell Membrane",
+        "assignment_group_id": 103,
+        "points_possible": 20.0,
+        "due_at": null,
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      }
+    }
+  },
+  "rubrics": {
+    "99001": {
+      "rubric_1": {
+        "id": "rubric_1",
+        "title": "HW 1 Algorithmic Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_1_0",
+            "description": "Asymptotic Correctness",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_1_0_0",
+                "description": "Full Marks: Rigorous Big-O derivation",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_1_0_1",
+                "description": "Minor algebra mistake",
+                "points": 35.0
+              },
+              {
+                "id": "rat_rubric_1_0_2",
+                "description": "Incorrect complexity class",
+                "points": 10.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_1_1",
+            "description": "Code Implementation",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_1_1_0",
+                "description": "Full Marks: Optimal solution with tests",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_1_1_1",
+                "description": "Suboptimal implementation",
+                "points": 30.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      },
+      "rubric_2": {
+        "id": "rubric_2",
+        "title": "HW 3 DP Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_2_0",
+            "description": "Recurrence Relation",
+            "points": 60.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_2_0_0",
+                "description": "Exact recurrence and base cases",
+                "points": 60.0
+              },
+              {
+                "id": "rat_rubric_2_0_1",
+                "description": "Flawed transition formula",
+                "points": 25.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_2_1",
+            "description": "Memoization / Tabulation Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_2_1_0",
+                "description": "Optimal O(N*W) space/time",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_2_1_1",
+                "description": "Exponential recursion",
+                "points": 0.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      },
+      "rubric_3": {
+        "id": "rubric_3",
+        "title": "Final Project Comprehensive Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_3_0",
+            "description": "Algorithmic Correctness & Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_3_0_0",
+                "description": "Exemplary complexity and edge handling",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_3_0_1",
+                "description": "Passes standard tests with minor inefficiency",
+                "points": 30.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_3_1",
+            "description": "Code Quality & Modularity",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_3_1_0",
+                "description": "Modular pure functions and high test coverage",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_3_1_1",
+                "description": "Monolithic architecture",
+                "points": 15.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_3_2",
+            "description": "Written Empirical Evaluation",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_3_2_0",
+                "description": "Clear benchmark charts and trade-off analysis",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_3_2_1",
+                "description": "Basic measurements without analysis",
+                "points": 15.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      },
+      "rubric_4": {
+        "id": "rubric_4",
+        "title": "HW 1 Algorithmic Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_4_0",
+            "description": "Asymptotic Correctness",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_0_0",
+                "description": "Full Marks: Rigorous Big-O derivation",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_0_1",
+                "description": "Minor algebra mistake",
+                "points": 35.0
+              },
+              {
+                "id": "rat_rubric_4_0_2",
+                "description": "Incorrect complexity class",
+                "points": 10.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_4_1",
+            "description": "Code Implementation",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_1_0",
+                "description": "Full Marks: Optimal solution with tests",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_1_1",
+                "description": "Suboptimal implementation",
+                "points": 30.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      },
+      "rubric_5": {
+        "id": "rubric_5",
+        "title": "HW 3 DP Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_5_0",
+            "description": "Recurrence Relation",
+            "points": 60.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_0_0",
+                "description": "Exact recurrence and base cases",
+                "points": 60.0
+              },
+              {
+                "id": "rat_rubric_5_0_1",
+                "description": "Flawed transition formula",
+                "points": 25.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_5_1",
+            "description": "Memoization / Tabulation Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_1_0",
+                "description": "Optimal O(N*W) space/time",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_5_1_1",
+                "description": "Exponential recursion",
+                "points": 0.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      },
+      "rubric_6": {
+        "id": "rubric_6",
+        "title": "Final Project Comprehensive Rubric",
+        "data": [
+          {
+            "id": "crit_rubric_6_0",
+            "description": "Algorithmic Correctness & Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_0_0",
+                "description": "Exemplary complexity and edge handling",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_6_0_1",
+                "description": "Passes standard tests with minor inefficiency",
+                "points": 30.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_1",
+            "description": "Code Quality & Modularity",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_1_0",
+                "description": "Modular pure functions and high test coverage",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_1_1",
+                "description": "Monolithic architecture",
+                "points": 15.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_2",
+            "description": "Written Empirical Evaluation",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_2_0",
+                "description": "Clear benchmark charts and trade-off analysis",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_2_1",
+                "description": "Basic measurements without analysis",
+                "points": 15.0
+              }
+            ]
+          }
+        ],
+        "points_possible": 100.0
+      }
+    }
+  },
+  "enrollments": {
+    "99001": {
+      "9991": {
+        "id": 8802,
+        "user_id": 9991,
+        "course_id": 99001,
+        "type": "StudentEnrollment",
+        "enrollment_state": "active",
+        "computed_current_score": 90.71,
+        "computed_final_score": 58.9,
+        "computed_current_grade": "A-",
+        "computed_final_grade": "F"
+      }
+    },
+    "99002": {
+      "9991": {
+        "id": 8802,
+        "user_id": 9991,
+        "course_id": 99002,
+        "type": "StudentEnrollment",
+        "enrollment_state": "active",
+        "computed_current_score": 91.33,
+        "computed_final_score": 60.89,
+        "computed_current_grade": "A-",
+        "computed_final_grade": "D-"
+      }
+    },
+    "99003": {
+      "9991": {
+        "id": 8802,
+        "user_id": 9991,
+        "course_id": 99003,
+        "type": "StudentEnrollment",
+        "enrollment_state": "active",
+        "computed_current_score": 91.0,
+        "computed_final_score": 91.0,
+        "computed_current_grade": "A-",
+        "computed_final_grade": "A-"
+      }
+    }
+  },
+  "submissions": {
+    "99001": {
+      "1001": {
+        "assignment_id": 1001,
+        "user_id": 9991,
+        "score": 95.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1002": {
+        "assignment_id": 1002,
+        "user_id": 9991,
+        "score": 72.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1003": {
+        "assignment_id": 1003,
+        "user_id": 9991,
+        "score": 98.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1004": {
+        "assignment_id": 1004,
+        "user_id": 9991,
+        "score": null,
+        "excused": true,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "unsubmitted",
+        "rubric_assessment": null
+      },
+      "1005": {
+        "assignment_id": 1005,
+        "user_id": 9991,
+        "score": null,
+        "excused": false,
+        "missing": true,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "unsubmitted",
+        "rubric_assessment": null
+      },
+      "1006": {
+        "assignment_id": 1006,
+        "user_id": 9991,
+        "score": 85.0,
+        "excused": false,
+        "missing": false,
+        "late": true,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1007": {
+        "assignment_id": 1007,
+        "user_id": 9991,
+        "score": 48.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1008": {
+        "assignment_id": 1008,
+        "user_id": 9991,
+        "score": 94.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": null,
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      }
+    },
+    "99002": {
+      "1001": {
+        "assignment_id": 1001,
+        "user_id": 9991,
+        "score": 92.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1002": {
+        "assignment_id": 1002,
+        "user_id": 9991,
+        "score": 23.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1003": {
+        "assignment_id": 1003,
+        "user_id": 9991,
+        "score": 21.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1004": {
+        "assignment_id": 1004,
+        "user_id": 9991,
+        "score": 138.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      }
+    },
+    "99003": {
+      "1001": {
+        "assignment_id": 1001,
+        "user_id": 9991,
+        "score": 46.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1002": {
+        "assignment_id": 1002,
+        "user_id": 9991,
+        "score": 35.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1003": {
+        "assignment_id": 1003,
+        "user_id": 9991,
+        "score": 48.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1004": {
+        "assignment_id": 1004,
+        "user_id": 9991,
+        "score": 88.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1005": {
+        "assignment_id": 1005,
+        "user_id": 9991,
+        "score": 18.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      },
+      "1006": {
+        "assignment_id": 1006,
+        "user_id": 9991,
+        "score": 19.0,
+        "excused": false,
+        "missing": false,
+        "late": false,
+        "posted_at": "2026-10-15T12:00:00Z",
+        "workflow_state": "graded",
+        "rubric_assessment": null
+      }
+    }
+  },
+  "announcements": {
+    "99001": [
+      {
+        "id": 5001,
+        "title": "Welcome to CS 101: Guidelines and Office Hours",
+        "message": "<p>Welcome to CS 101! Office hours are held Monday/Wednesday 2-4 PM.</p>",
+        "posted_at": "2026-10-25T14:30:00Z",
+        "is_announcement": true,
+        "context_code": "course_99001"
+      },
+      {
+        "id": 5002,
+        "title": "URGENT: HW 2 Deadline Extended to Friday 11:59 PM",
+        "message": "<p>Due to server maintenance on the grading cluster, HW 2 is now due Friday at 11:59 PM.</p>",
+        "posted_at": "2026-10-25T14:30:00Z",
+        "is_announcement": true,
+        "context_code": "course_99001"
+      }
+    ]
+  },
+  "modules": {
+    "99001": [
+      {
+        "id": 3001,
+        "name": "Module 1: Foundations & Asymptotic Complexity",
+        "items_count": 6,
+        "items": [
+          {
+            "id": 4001,
+            "title": "Week 1 Guide & AI Collaboration Policy",
+            "type": "Page",
+            "page_url": "week-1-guide-and-ai-collaboration-policy",
+            "content_id": null
+          },
+          {
+            "id": 4002,
+            "title": "Lecture 1 Notes: Asymptotic Notation",
+            "type": "Page",
+            "page_url": "lecture-1-notes-asymptotic-notation",
+            "content_id": null
+          },
+          {
+            "id": 4003,
+            "title": "CS101_Complete_Syllabus.pdf",
+            "type": "File",
+            "page_url": null,
+            "content_id": 6001
+          },
+          {
+            "id": 4004,
+            "title": "Week 1 Guide & AI Collaboration Policy",
+            "type": "Page",
+            "page_url": "week-1-guide-and-ai-collaboration-policy",
+            "content_id": null
+          },
+          {
+            "id": 4005,
+            "title": "Lecture 1 Notes: Asymptotic Notation",
+            "type": "Page",
+            "page_url": "lecture-1-notes-asymptotic-notation",
+            "content_id": null
+          },
+          {
+            "id": 4006,
+            "title": "CS101_Complete_Syllabus.pdf",
+            "type": "File",
+            "page_url": null,
+            "content_id": 6001
+          }
+        ]
+      }
+    ]
+  },
+  "pages": {
+    "99001": [
+      {
+        "url": "week-1-guide-and-ai-collaboration-policy",
+        "title": "Week 1 Guide & AI Collaboration Policy",
+        "body": "<p>Review this guide for policies on using AI tools as learning companions.</p>",
+        "created_at": "2026-09-01T10:00:00Z",
+        "updated_at": "2026-09-01T10:00:00Z"
+      },
+      {
+        "url": "lecture-1-notes-asymptotic-notation",
+        "title": "Lecture 1 Notes: Asymptotic Notation",
+        "body": "<p>Formal definitions of Big-O, Big-Omega, and Big-Theta.</p>",
+        "created_at": "2026-09-01T10:00:00Z",
+        "updated_at": "2026-09-01T10:00:00Z"
+      }
+    ]
+  },
+  "files": {
+    "99001": [
+      {
+        "id": 6001,
+        "display_name": "CS101_Complete_Syllabus.pdf",
+        "filename": "CS101_Complete_Syllabus.pdf",
+        "content-type": "application/pdf",
+        "size": 1024,
+        "url": "https://canvas.instructure.com/files/6001/download"
+      }
+    ]
+  },
+  "calendar_events": {
+    "99001": [
+      {
+        "id": 7001,
+        "title": "CS 101 Midterm 1 Review Session",
+        "start_at": "2026-10-15T18:00:00Z",
+        "end_at": "2026-10-15T20:00:00Z",
+        "context_code": "course_99001"
+      }
+    ]
+  }
+}

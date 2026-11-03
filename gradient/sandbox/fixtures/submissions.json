@@ -1,0 +1,90 @@
+[
+  {
+    "assignment_id": 1001,
+    "user_id": 9991,
+    "score": 95.0,
+    "excused": false,
+    "missing": false,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1002,
+    "user_id": 9991,
+    "score": 72.0,
+    "excused": false,
+    "missing": false,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1003,
+    "user_id": 9991,
+    "score": 98.0,
+    "excused": false,
+    "missing": false,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1004,
+    "user_id": 9991,
+    "score": null,
+    "excused": true,
+    "missing": false,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "unsubmitted",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1005,
+    "user_id": 9991,
+    "score": null,
+    "excused": false,
+    "missing": true,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "unsubmitted",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1006,
+    "user_id": 9991,
+    "score": 85.0,
+    "excused": false,
+    "missing": false,
+    "late": true,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1007,
+    "user_id": 9991,
+    "score": 48.0,
+    "excused": false,
+    "missing": false,
+    "late": false,
+    "posted_at": "2026-10-15T12:00:00Z",
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  },
+  {
+    "assignment_id": 1008,
+    "user_id": 9991,
+    "score": 94.0,
+    "excused": false,
+    "missing": false,
+    "late": false,
+    "posted_at": null,
+    "workflow_state": "graded",
+    "rubric_assessment": null
+  }
+]

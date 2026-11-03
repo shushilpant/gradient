@@ -1,0 +1,35 @@
+[
+  {
+    "id": 8802,
+    "user_id": 9991,
+    "course_id": 99001,
+    "type": "StudentEnrollment",
+    "enrollment_state": "active",
+    "computed_current_score": 90.71,
+    "computed_final_score": 58.9,
+    "computed_current_grade": "A-",
+    "computed_final_grade": "F"
+  },
+  {
+    "id": 8802,
+    "user_id": 9991,
+    "course_id": 99002,
+    "type": "StudentEnrollment",
+    "enrollment_state": "active",
+    "computed_current_score": 91.33,
+    "computed_final_score": 60.89,
+    "computed_current_grade": "A-",
+    "computed_final_grade": "D-"
+  },
+  {
+    "id": 8802,
+    "user_id": 9991,
+    "course_id": 99003,
+    "type": "StudentEnrollment",
+    "enrollment_state": "active",
+    "computed_current_score": 91.0,
+    "computed_final_score": 91.0,
+    "computed_current_grade": "A-",
+    "computed_final_grade": "A-"
+  }
+]

@@ -1,0 +1,507 @@
+[
+  {
+    "id": "prohibited-01-cs101",
+    "category": "prohibited",
+    "title": "CS 101: Introduction to Computer Science",
+    "text": "CS 101: Introduction to Computer Science\nInstructor: Dr. Alan Turing\nCourse Policy:\nThe use of generative AI tools like ChatGPT or GitHub Copilot is strictly prohibited on all coursework.\nAny submitted work containing AI-generated syntax or logic constitutes academic dishonesty and will receive an automatic zero.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-02-engl105",
+    "category": "prohibited",
+    "title": "ENGL 105: Academic Writing Seminar",
+    "text": "ENGL 105: Academic Writing Seminar\nProfessor: Dr. Virginia Woolf\nAcademic Integrity:\nAll essays, drafts, and responses must be entirely your own work without generative AI assistance.\nUsing automated writing tools or large language models is forbidden and violates university policy.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-03-phys201",
+    "category": "prohibited",
+    "title": "PHYS 201: Classical Mechanics",
+    "text": "PHYS 201: Classical Mechanics\nInstructor: Dr. Richard Feynman\nGrading & Honor Code:\nProblem set solutions must represent your own analytical derivations.\nGenerative AI tools cannot be used under any circumstances on homework or exams.\nZero tolerance for AI-assisted problem solving.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-04-phil120",
+    "category": "prohibited",
+    "title": "PHIL 120: Introduction to Ethics",
+    "text": "PHIL 120: Introduction to Ethics\nInstructor: Dr. Immanuel Kant\nCourse Policy on AI:\nUnauthorized use of artificial intelligence for written arguments will result in disciplinary referral.\nThe department prohibits the use of AI tools for generating philosophical arguments.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-05-bio110",
+    "category": "prohibited",
+    "title": "BIO 110: Cellular and Molecular Biology",
+    "text": "BIO 110: Cellular and Molecular Biology\nInstructor: Dr. Rosalind Franklin\nLab Policy:\nNo AI tools are permitted for lab reports, literature summaries, or exam prep.\nAll data interpretations must be written independently by students.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-06-math310",
+    "category": "prohibited",
+    "title": "MATH 310: Abstract Algebra",
+    "text": "MATH 310: Abstract Algebra\nInstructor: Prof. Emmy Noether\nAssignments:\nWeekly problem sets are due on Mondays.\nAny use of ChatGPT, Claude, or machine-generated proofs is strictly prohibited.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-07-econ202",
+    "category": "prohibited",
+    "title": "ECON 202: Intermediate Microeconomics",
+    "text": "ECON 202: Intermediate Microeconomics\nInstructor: Dr. John Maynard Keynes\nAssessment Guidelines:\nStudents must refrain from using large language models or AI chatbots for problem sets and quizzes.\nSuch actions constitute plagiarism.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "prohibited-08-chem101",
+    "category": "prohibited",
+    "title": "CHEM 101: General Chemistry",
+    "text": "CHEM 101: General Chemistry\nInstructor: Dr. Marie Curie\nSafety and Integrity:\nThe use of AI tools is not permitted in this course.\nCalculations and lab notebooks must be prepared by the enrolled student only.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-01-engl210",
+    "category": "permittedWithDisclosure",
+    "title": "ENGL 210: Digital Rhetoric",
+    "text": "ENGL 210: Digital Rhetoric\nInstructor: Dr. Marshall McLuhan\nTechnology Policy:\nGenerative AI tools are permitted with disclosure on all essays and project drafts.\nStudents must disclose and properly cite any prompts, model versions, and generative responses utilized.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-02-comm100",
+    "category": "permittedWithDisclosure",
+    "title": "COMM 100: Media and Culture",
+    "text": "COMM 100: Media and Culture\nInstructor: Dr. Neil Postman\nGenerative AI:\nUse of ChatGPT and LLMs is permitted with citation in all weekly discussion assignments.\nYou must include an explicit disclosure statement explaining how AI was utilized.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-03-hist300",
+    "category": "permittedWithDisclosure",
+    "title": "HIST 300: Historical Methods and Research",
+    "text": "HIST 300: Historical Methods and Research\nProfessor: Dr. Fernand Braudel\nCitation Standards:\nStudents are allowed to explore generative AI provided you document your use and cite all AI assistance in your footnotes.\nTransparency of methodology is mandatory.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-04-cs350",
+    "category": "permittedWithDisclosure",
+    "title": "CS 350: Software Engineering Practices",
+    "text": "CS 350: Software Engineering Practices\nInstructor: Prof. Grace Hopper\nTools Policy:\nGitHub Copilot and generative AI assistants are permitted provided you cite all AI assistance and document your use in your pull requests.\nFull disclosure is required.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-05-bus220",
+    "category": "permittedWithDisclosure",
+    "title": "BUS 220: Business Communications",
+    "text": "BUS 220: Business Communications\nInstructor: Prof. Peter Drucker\nProfessional Standards:\nAI tools may be used for drafting presentations and memos, but explicit disclosure is required in the appendix of each submission.\nYou must cite any use.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-06-ds100",
+    "category": "permittedWithDisclosure",
+    "title": "DS 100: Foundations of Data Science",
+    "text": "DS 100: Foundations of Data Science\nInstructor: Dr. John Tukey\nCourse Conduct:\nGenerative AI models are permitted with disclosure in coding lab notebooks.\nStudents must properly cite and acknowledge any use of AI assistants.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "disclosure-07-soc205",
+    "category": "permittedWithDisclosure",
+    "title": "SOC 205: Sociology of Technology",
+    "text": "SOC 205: Sociology of Technology\nInstructor: Dr. Shoshana Zuboff\nSyllabus Policy:\nGenerative AI assistance is permitted with disclosure for all seminar essays.\nA dedicated declaration of AI use must accompany every submitted draft.",
+    "expectedOverallTier": "permittedWithDisclosure",
+    "expectedDisclosureRequired": true,
+    "expectedByAssessmentType": {
+      "homework": "permittedWithDisclosure",
+      "essay": "permittedWithDisclosure",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-01-cw150",
+    "category": "permittedForNamedUses",
+    "title": "CW 150: Creative Writing Workshop",
+    "text": "CW 150: Creative Writing Workshop\nInstructor: Prof. Ursula Le Guin\nCreative Process:\nGenerative AI is permitted for brainstorming and ideation only.\nActual prose and character dialogue must be written entirely by the author.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-02-span102",
+    "category": "permittedForNamedUses",
+    "title": "SPAN 102: Intermediate Spanish",
+    "text": "SPAN 102: Intermediate Spanish\nInstructor: Prof. Gabriel Garcia Marquez\nHomework Policy:\nAI tools are permitted for grammar checking and spell check only.\nMachine translation of entire compositions is strictly unacceptable.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-03-cs225",
+    "category": "permittedForNamedUses",
+    "title": "CS 225: Data Structures",
+    "text": "CS 225: Data Structures\nInstructor: Prof. Donald Knuth\nProgramming Policy:\nLLMs are permitted for debugging assistance only.\nSynthesizing code algorithms directly from AI is unauthorized.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-04-wrt101",
+    "category": "permittedForNamedUses",
+    "title": "WRT 101: Expository Writing",
+    "text": "WRT 101: Expository Writing\nInstructor: Dr. George Orwell\nWriting Guidelines:\nStudents may use AI for outlining and brainstorming thesis arguments.\nAll sentence structure in the submitted essays must remain your original voice.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-05-stat200",
+    "category": "permittedForNamedUses",
+    "title": "STAT 200: Statistical Computing",
+    "text": "STAT 200: Statistical Computing\nInstructor: Dr. Florence Nightingale\nCoding Rules:\nCopilot and AI are authorized only for syntax correction in R scripts.\nInterpretation of statistical hypotheses must be done without AI.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-06-tech240",
+    "category": "permittedForNamedUses",
+    "title": "TECH 240: Technical Communication",
+    "text": "TECH 240: Technical Communication\nInstructor: Dr. Claude Shannon\nCommunication Standards:\nGenerative AI tools are permitted for formatting assistance and grammar checking.\nTechnical specifications must be authored by student teams.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "named-07-art180",
+    "category": "permittedForNamedUses",
+    "title": "ART 180: Digital Design Fundamentals",
+    "text": "ART 180: Digital Design Fundamentals\nInstructor: Prof. Walter Gropius\nStudio Projects:\nAI generative software is permitted for brainstorming and moodboard ideation only.\nFinal rendered artifacts must be created manually in Adobe suite.",
+    "expectedOverallTier": "permittedForNamedUses",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "permittedForNamedUses",
+      "essay": "permittedForNamedUses",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "mixed-01-cs250",
+    "category": "mixed",
+    "title": "CS 250: Systems Programming",
+    "text": "CS 250: Systems Programming\nInstructor: Prof. Ken Thompson\nAssignments & Exams:\nAI tools are strictly prohibited on quizzes and exams.\nFor programming projects, Copilot is allowed only for debugging assistance with proper citation.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "mixed-02-ling301",
+    "category": "mixed",
+    "title": "LING 301: Syntax and Semantics",
+    "text": "LING 301: Syntax and Semantics\nInstructor: Dr. Noam Chomsky\nAssessment Integrity:\nGenerative AI is strictly prohibited on homework assignments and weekly problem sets.\nFor the final research project, LLMs are permitted with disclosure of training prompts.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "permittedWithDisclosure",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "mixed-03-bio230",
+    "category": "mixed",
+    "title": "BIO 230: Genetics Lab",
+    "text": "BIO 230: Genetics Lab\nInstructor: Dr. Gregor Mendel\nLab Policies:\nAI is strictly prohibited on exams and lab quizzes.\nStudents may use AI for brainstorming hypothesis angles on the final poster project.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "prohibited",
+      "project": "permittedForNamedUses",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "mixed-04-psyc210",
+    "category": "mixed",
+    "title": "PSYC 210: Cognitive Psychology",
+    "text": "PSYC 210: Cognitive Psychology\nInstructor: Dr. Jean Piaget\nCourse Requirements:\nQuizzes must be completed without any AI tools; unauthorized use will receive a zero.\nOn writing assignments, ChatGPT is permitted with disclosure.",
+    "expectedOverallTier": "prohibited",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "prohibited",
+      "essay": "permittedWithDisclosure",
+      "project": "prohibited",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-01-soc101",
+    "category": "ambiguous",
+    "title": "SOC 101: Introduction to Sociology",
+    "text": "SOC 101: Introduction to Sociology\nInstructor: Dr. Max Weber\nPolicy Statement:\nAI tools are discouraged in this class because they interfere with developing your critical perspective.\nPlease speak with me if you have questions.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-02-engl101",
+    "category": "ambiguous",
+    "title": "ENGL 101: College Composition",
+    "text": "ENGL 101: College Composition\nInstructor: Prof. Ralph Waldo Emerson\nWriting Guidelines:\nCheck with me before using any generative AI tools on your papers.\nEvery assignment has unique learning objectives.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-03-phil201",
+    "category": "ambiguous",
+    "title": "PHIL 201: Epistemology",
+    "text": "PHIL 201: Epistemology\nInstructor: Dr. Rene Descartes\nLearning Advice:\nUse your best judgment regarding artificial intelligence assistants.\nReflective thinking is the core value of this seminar.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-04-comm215",
+    "category": "ambiguous",
+    "title": "COMM 215: Public Relations",
+    "text": "COMM 215: Public Relations\nInstructor: Dr. Edward Bernays\nCourse Advice:\nConsult with the instructor before deploying any AI chatbots for assignments.\nWe evaluate appropriateness on a case-by-case basis.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-05-educ300",
+    "category": "ambiguous",
+    "title": "EDUC 300: Educational Technology",
+    "text": "EDUC 300: Educational Technology\nInstructor: Dr. John Dewey\nTechnology Stance:\nAI usage remains a grey area in instructional pedagogy.\nPlease seek prior approval before incorporating LLM outputs into course lesson plans.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "ambiguous-06-hist150",
+    "category": "ambiguous",
+    "title": "HIST 150: American History",
+    "text": "HIST 150: American History\nInstructor: Dr. Eric Foner\nIntegrity Notice:\nProceed with caution if experimenting with LLMs in your historical essays.\nInaccurate citations will negatively impact your grade.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "silent-01-calc1",
+    "category": "silent",
+    "title": "MATH 151: Calculus I",
+    "text": "MATH 151: Calculus I\nInstructor: Dr. Isaac Newton\nOffice Hours: Mon/Wed 2-4pm.\nGrading: Homework 20%, Midterm 1 25%, Midterm 2 25%, Final Exam 30%.\nThe lowest homework score will be dropped at the end of the term.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "silent-02-psyc100",
+    "category": "silent",
+    "title": "PSYC 100: Introduction to Psychology",
+    "text": "PSYC 100: Introduction to Psychology\nInstructor: Dr. B.F. Skinner\nTextbook: Psychological Science 6th edition.\nAttendance at all Friday discussion sections is mandatory.\nMidterm exam covers chapters 1-7.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "silent-03-art101",
+    "category": "silent",
+    "title": "ART 101: Art History Survey",
+    "text": "ART 101: Art History Survey\nInstructor: Dr. Giorgio Vasari\nWeekly museum visit reports are due each Sunday at midnight.\nGrading scale: A = 93-100%, B = 83-92%, C = 73-82%, D = 60-72%, F < 60%.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  },
+  {
+    "id": "silent-04-geog110",
+    "category": "silent",
+    "title": "GEOG 110: Physical Geography",
+    "text": "GEOG 110: Physical Geography\nInstructor: Dr. Alexander von Humboldt\nLab sessions meet in Science Hall 204.\nLate assignments lose 10% per day up to 3 days maximum.\nPlease see syllabus appendix for field trip dates.",
+    "expectedOverallTier": "unspecified",
+    "expectedDisclosureRequired": false,
+    "expectedByAssessmentType": {
+      "homework": "unspecified",
+      "essay": "unspecified",
+      "project": "unspecified",
+      "quizExam": "prohibited"
+    }
+  }
+]
+

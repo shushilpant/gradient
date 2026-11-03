@@ -1,0 +1,141 @@
+[
+  {
+    "assignment_id": 1001,
+    "rubric": [
+      {
+        "id": "crit_rubric_4_0",
+        "description": "Asymptotic Correctness",
+        "points": 50.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_4_0_0",
+            "description": "Full Marks: Rigorous Big-O derivation",
+            "points": 50.0
+          },
+          {
+            "id": "rat_rubric_4_0_1",
+            "description": "Minor algebra mistake",
+            "points": 35.0
+          },
+          {
+            "id": "rat_rubric_4_0_2",
+            "description": "Incorrect complexity class",
+            "points": 10.0
+          }
+        ]
+      },
+      {
+        "id": "crit_rubric_4_1",
+        "description": "Code Implementation",
+        "points": 50.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_4_1_0",
+            "description": "Full Marks: Optimal solution with tests",
+            "points": 50.0
+          },
+          {
+            "id": "rat_rubric_4_1_1",
+            "description": "Suboptimal implementation",
+            "points": 30.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "assignment_id": 1003,
+    "rubric": [
+      {
+        "id": "crit_rubric_5_0",
+        "description": "Recurrence Relation",
+        "points": 60.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_5_0_0",
+            "description": "Exact recurrence and base cases",
+            "points": 60.0
+          },
+          {
+            "id": "rat_rubric_5_0_1",
+            "description": "Flawed transition formula",
+            "points": 25.0
+          }
+        ]
+      },
+      {
+        "id": "crit_rubric_5_1",
+        "description": "Memoization / Tabulation Efficiency",
+        "points": 40.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_5_1_0",
+            "description": "Optimal O(N*W) space/time",
+            "points": 40.0
+          },
+          {
+            "id": "rat_rubric_5_1_1",
+            "description": "Exponential recursion",
+            "points": 0.0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "assignment_id": 1008,
+    "rubric": [
+      {
+        "id": "crit_rubric_6_0",
+        "description": "Algorithmic Correctness & Efficiency",
+        "points": 40.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_6_0_0",
+            "description": "Exemplary complexity and edge handling",
+            "points": 40.0
+          },
+          {
+            "id": "rat_rubric_6_0_1",
+            "description": "Passes standard tests with minor inefficiency",
+            "points": 30.0
+          }
+        ]
+      },
+      {
+        "id": "crit_rubric_6_1",
+        "description": "Code Quality & Modularity",
+        "points": 30.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_6_1_0",
+            "description": "Modular pure functions and high test coverage",
+            "points": 30.0
+          },
+          {
+            "id": "rat_rubric_6_1_1",
+            "description": "Monolithic architecture",
+            "points": 15.0
+          }
+        ]
+      },
+      {
+        "id": "crit_rubric_6_2",
+        "description": "Written Empirical Evaluation",
+        "points": 30.0,
+        "ratings": [
+          {
+            "id": "rat_rubric_6_2_0",
+            "description": "Clear benchmark charts and trade-off analysis",
+            "points": 30.0
+          },
+          {
+            "id": "rat_rubric_6_2_1",
+            "description": "Basic measurements without analysis",
+            "points": 15.0
+          }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "url": "week-1-guide-and-ai-collaboration-policy",
+    "title": "Week 1 Guide & AI Collaboration Policy",
+    "body": "<p>Review this guide for policies on using AI tools as learning companions.</p>",
+    "created_at": "2026-09-01T10:00:00Z",
+    "updated_at": "2026-09-01T10:00:00Z"
+  },
+  {
+    "url": "lecture-1-notes-asymptotic-notation",
+    "title": "Lecture 1 Notes: Asymptotic Notation",
+    "body": "<p>Formal definitions of Big-O, Big-Omega, and Big-Theta.</p>",
+    "created_at": "2026-09-01T10:00:00Z",
+    "updated_at": "2026-09-01T10:00:00Z"
+  }
+]

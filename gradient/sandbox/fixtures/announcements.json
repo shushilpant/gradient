@@ -1,0 +1,18 @@
+[
+  {
+    "id": 5001,
+    "title": "Welcome to CS 101: Guidelines and Office Hours",
+    "message": "<p>Welcome to CS 101! Office hours are held Monday/Wednesday 2-4 PM.</p>",
+    "posted_at": "2026-10-25T14:30:00Z",
+    "is_announcement": true,
+    "context_code": "course_99001"
+  },
+  {
+    "id": 5002,
+    "title": "URGENT: HW 2 Deadline Extended to Friday 11:59 PM",
+    "message": "<p>Due to server maintenance on the grading cluster, HW 2 is now due Friday at 11:59 PM.</p>",
+    "posted_at": "2026-10-25T14:30:00Z",
+    "is_announcement": true,
+    "context_code": "course_99001"
+  }
+]

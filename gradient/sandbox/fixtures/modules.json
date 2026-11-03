@@ -1,0 +1,51 @@
+[
+  {
+    "id": 3001,
+    "name": "Module 1: Foundations & Asymptotic Complexity",
+    "items_count": 6,
+    "items": [
+      {
+        "id": 4001,
+        "title": "Week 1 Guide & AI Collaboration Policy",
+        "type": "Page",
+        "page_url": "week-1-guide-and-ai-collaboration-policy",
+        "content_id": null
+      },
+      {
+        "id": 4002,
+        "title": "Lecture 1 Notes: Asymptotic Notation",
+        "type": "Page",
+        "page_url": "lecture-1-notes-asymptotic-notation",
+        "content_id": null
+      },
+      {
+        "id": 4003,
+        "title": "CS101_Complete_Syllabus.pdf",
+        "type": "File",
+        "page_url": null,
+        "content_id": 6001
+      },
+      {
+        "id": 4004,
+        "title": "Week 1 Guide & AI Collaboration Policy",
+        "type": "Page",
+        "page_url": "week-1-guide-and-ai-collaboration-policy",
+        "content_id": null
+      },
+      {
+        "id": 4005,
+        "title": "Lecture 1 Notes: Asymptotic Notation",
+        "type": "Page",
+        "page_url": "lecture-1-notes-asymptotic-notation",
+        "content_id": null
+      },
+      {
+        "id": 4006,
+        "title": "CS101_Complete_Syllabus.pdf",
+        "type": "File",
+        "page_url": null,
+        "content_id": 6001
+      }
+    ]
+  }
+]

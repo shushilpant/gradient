@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+backend/.venv/
+__pycache__/
+*.pyc
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Test and tool caches
+.pytest_cache/
+.vitest/
+
+# Environment and secrets
+.env
+*.local
+.DS_Store
+

@@ -1,0 +1,143 @@
+[
+  {
+    "id": "q01-big-o-limit",
+    "query": "How do we formally prove Big-O using limit definitions and tight bounds?",
+    "expected_chunk_ids": ["chunk_cs101_w1_s12"],
+    "course_id": "99001",
+    "topic": "Asymptotic Analysis"
+  },
+  {
+    "id": "q02-loop-invariants",
+    "query": "What are the initialization, maintenance, and termination conditions for loop invariants?",
+    "expected_chunk_ids": ["chunk_cs101_w1_p2"],
+    "course_id": "99001",
+    "topic": "Loop Invariants & Summations"
+  },
+  {
+    "id": "q03-master-theorem",
+    "query": "When does Case 1 of the Master Theorem apply to divide and conquer recurrences?",
+    "expected_chunk_ids": ["chunk_cs101_w2_s8", "chunk_open_mit_6006_rec"],
+    "course_id": "99001",
+    "topic": "Master Theorem"
+  },
+  {
+    "id": "q04-mergesort-inversions",
+    "query": "How does MergeSort count inversions in linear merge time?",
+    "expected_chunk_ids": ["chunk_cs101_w2_p4"],
+    "course_id": "99001",
+    "topic": "MergeSort"
+  },
+  {
+    "id": "q05-dp-tabulation",
+    "query": "What are the four steps of dynamic programming from optimal substructure to bottom-up tabulation?",
+    "expected_chunk_ids": ["chunk_cs101_w3_s15"],
+    "course_id": "99001",
+    "topic": "Dynamic Programming"
+  },
+  {
+    "id": "q06-knapsack-pseudo",
+    "query": "Why is the 0/1 knapsack dynamic programming algorithm considered pseudo-polynomial time?",
+    "expected_chunk_ids": ["chunk_cs101_w3_p3"],
+    "course_id": "99001",
+    "topic": "Knapsack DP"
+  },
+  {
+    "id": "q07-dijkstra-shortest-path",
+    "query": "Why does Dijkstra's algorithm fail on graphs with negative edge weights?",
+    "expected_chunk_ids": ["chunk_cs101_w4_s6"],
+    "course_id": "99001",
+    "topic": "Graph Algorithms"
+  },
+  {
+    "id": "q08-greedy-exchange",
+    "query": "How do you construct an exchange argument to prove the greedy choice property?",
+    "expected_chunk_ids": ["chunk_cs101_w5_s12"],
+    "course_id": "99001",
+    "topic": "Greedy Algorithms"
+  },
+  {
+    "id": "q09-empirical-variance",
+    "query": "How do we filter system noise and measure wall-clock timing using perf_counter?",
+    "expected_chunk_ids": ["chunk_cs101_w6_s9"],
+    "course_id": "99001",
+    "topic": "Empirical Benchmarking"
+  },
+  {
+    "id": "q10-log-log-scaling",
+    "query": "How to plot empirical scaling on log-log axes to find polynomial slope k?",
+    "expected_chunk_ids": ["chunk_cs101_w6_s9"],
+    "course_id": "99001",
+    "topic": "Scaling Benchmarks"
+  },
+  {
+    "id": "q11-edge-cases-testing",
+    "query": "Why is testing empty inputs, duplicate keys, and pure functions critical for modularity?",
+    "expected_chunk_ids": ["chunk_cs101_w7_p5"],
+    "course_id": "99001",
+    "topic": "Testing & Modularity"
+  },
+  {
+    "id": "q12-math-induction-steps",
+    "query": "What is the structure of a proof by mathematical induction from base case to inductive step?",
+    "expected_chunk_ids": ["chunk_math201_w1_p1"],
+    "course_id": "99002",
+    "topic": "Mathematical Induction"
+  },
+  {
+    "id": "q13-characteristic-equation",
+    "query": "How do you solve linear homogeneous recurrence relations using characteristic equation roots?",
+    "expected_chunk_ids": ["chunk_math201_w3_s4"],
+    "course_id": "99002",
+    "topic": "Characteristic Equations"
+  },
+  {
+    "id": "q14-microscopy-resolution",
+    "query": "What is the diffraction limit of resolution d = lambda / (2 * NA) in light microscopy?",
+    "expected_chunk_ids": ["chunk_bio110_w1_p3"],
+    "course_id": "99003",
+    "topic": "Microscopy Calibration"
+  },
+  {
+    "id": "q15-michaelis-menten-km",
+    "query": "What is the meaning of Km and how do competitive inhibitors affect Lineweaver-Burk plots?",
+    "expected_chunk_ids": ["chunk_bio110_w2_s7"],
+    "course_id": "99003",
+    "topic": "Enzyme Kinetics"
+  },
+  {
+    "id": "q16-ocw-recursion-tree",
+    "query": "How does geometric series summation over recursion tree depth solve Master Theorem recurrences?",
+    "expected_chunk_ids": ["chunk_open_mit_6006_rec", "chunk_cs101_w2_s8"],
+    "course_id": "open",
+    "topic": "Recursion Trees"
+  },
+  {
+    "id": "q17-openstax-dp-dag",
+    "query": "How is dynamic programming related to finding paths in a Directed Acyclic Graph DAG?",
+    "expected_chunk_ids": ["chunk_open_openstax_algo", "chunk_cs101_w3_s15"],
+    "course_id": "open",
+    "topic": "DP on DAGs"
+  },
+  {
+    "id": "q18-libretexts-well-ordering",
+    "query": "How is the well-ordering principle of minimal counterexamples equivalent to mathematical induction?",
+    "expected_chunk_ids": ["chunk_open_libretexts_math", "chunk_math201_w1_p1"],
+    "course_id": "open",
+    "topic": "Well-Ordering Principle"
+  },
+  {
+    "id": "q19-sorting-decision-tree",
+    "query": "How does Stirling approximation on decision tree leaves prove comparison sort is Omega(N log N)?",
+    "expected_chunk_ids": ["chunk_open_wiki_sorting"],
+    "course_id": "open",
+    "topic": "Sorting Lower Bound"
+  },
+  {
+    "id": "q20-quadratic-nested-summations",
+    "query": "Why does an inner loop running from 1 to i produce an arithmetic sum Theta(N^2)?",
+    "expected_chunk_ids": ["chunk_cs101_w1_p2"],
+    "course_id": "99001",
+    "topic": "Nested Summations"
+  }
+]
+

@@ -1,0 +1,284 @@
+[
+  {
+    "id": 101,
+    "name": "Homework & Problem Sets",
+    "group_weight": 40.0,
+    "rules": {
+      "drop_lowest": 1,
+      "drop_highest": 1,
+      "never_drop": [
+        1001
+      ]
+    },
+    "assignments": [
+      {
+        "id": 1001,
+        "course_id": 99001,
+        "name": "HW 1: Algorithm Complexity & Big-O",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-09-15T23:59:00Z",
+        "submission_types": [
+          "online_upload",
+          "online_text_entry"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_4_0",
+            "description": "Asymptotic Correctness",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_0_0",
+                "description": "Full Marks: Rigorous Big-O derivation",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_0_1",
+                "description": "Minor algebra mistake",
+                "points": 35.0
+              },
+              {
+                "id": "rat_rubric_4_0_2",
+                "description": "Incorrect complexity class",
+                "points": 10.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_4_1",
+            "description": "Code Implementation",
+            "points": 50.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_4_1_0",
+                "description": "Full Marks: Optimal solution with tests",
+                "points": 50.0
+              },
+              {
+                "id": "rat_rubric_4_1_1",
+                "description": "Suboptimal implementation",
+                "points": 30.0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 1002,
+        "course_id": 99001,
+        "name": "HW 2: Sorting and Divide & Conquer",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-09-29T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      {
+        "id": 1003,
+        "course_id": 99001,
+        "name": "HW 3: Dynamic Programming",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-10-13T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_5_0",
+            "description": "Recurrence Relation",
+            "points": 60.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_0_0",
+                "description": "Exact recurrence and base cases",
+                "points": 60.0
+              },
+              {
+                "id": "rat_rubric_5_0_1",
+                "description": "Flawed transition formula",
+                "points": 25.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_5_1",
+            "description": "Memoization / Tabulation Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_5_1_0",
+                "description": "Optimal O(N*W) space/time",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_5_1_1",
+                "description": "Exponential recursion",
+                "points": 0.0
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 1004,
+        "course_id": 99001,
+        "name": "HW 4: Graph Traversals",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-10-27T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      },
+      {
+        "id": 1005,
+        "course_id": 99001,
+        "name": "HW 5: Greedy Algorithms",
+        "assignment_group_id": 101,
+        "points_possible": 100.0,
+        "due_at": "2026-11-10T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      }
+    ]
+  },
+  {
+    "id": 102,
+    "name": "Midterm Exams",
+    "group_weight": 30.0,
+    "rules": {
+      "drop_lowest": 0,
+      "drop_highest": 0,
+      "never_drop": []
+    },
+    "assignments": [
+      {
+        "id": 1006,
+        "course_id": 99001,
+        "name": "Midterm Exam 1",
+        "assignment_group_id": 102,
+        "points_possible": 100.0,
+        "due_at": "2026-10-18T20:00:00Z",
+        "submission_types": [
+          "on_paper",
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": false
+      }
+    ]
+  },
+  {
+    "id": 103,
+    "name": "Final Project",
+    "group_weight": 30.0,
+    "rules": {
+      "drop_lowest": 0,
+      "drop_highest": 0,
+      "never_drop": []
+    },
+    "assignments": [
+      {
+        "id": 1007,
+        "course_id": 99001,
+        "name": "Final Project Proposal & Draft",
+        "assignment_group_id": 103,
+        "points_possible": 50.0,
+        "due_at": "2026-11-01T23:59:00Z",
+        "submission_types": [
+          "online_text_entry"
+        ],
+        "omit_from_final_grade": true,
+        "published": true,
+        "has_rubric": false
+      },
+      {
+        "id": 1008,
+        "course_id": 99001,
+        "name": "Final Project Implementation & Report",
+        "assignment_group_id": 103,
+        "points_possible": 100.0,
+        "due_at": "2026-11-20T23:59:00Z",
+        "submission_types": [
+          "online_upload"
+        ],
+        "omit_from_final_grade": false,
+        "published": true,
+        "has_rubric": true,
+        "rubric": [
+          {
+            "id": "crit_rubric_6_0",
+            "description": "Algorithmic Correctness & Efficiency",
+            "points": 40.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_0_0",
+                "description": "Exemplary complexity and edge handling",
+                "points": 40.0
+              },
+              {
+                "id": "rat_rubric_6_0_1",
+                "description": "Passes standard tests with minor inefficiency",
+                "points": 30.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_1",
+            "description": "Code Quality & Modularity",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_1_0",
+                "description": "Modular pure functions and high test coverage",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_1_1",
+                "description": "Monolithic architecture",
+                "points": 15.0
+              }
+            ]
+          },
+          {
+            "id": "crit_rubric_6_2",
+            "description": "Written Empirical Evaluation",
+            "points": 30.0,
+            "ratings": [
+              {
+                "id": "rat_rubric_6_2_0",
+                "description": "Clear benchmark charts and trade-off analysis",
+                "points": 30.0
+              },
+              {
+                "id": "rat_rubric_6_2_1",
+                "description": "Basic measurements without analysis",
+                "points": 15.0
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]
