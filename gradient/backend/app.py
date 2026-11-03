@@ -1,10 +1,10 @@
 """
-GRADIENT Backend: Stateless FastAPI Service
+GRADIENT Backend: Local FastAPI Service
 
 HARD RULE 6 (NON-NEGOTIABLE):
-Privacy honesty: anything sent to an LLM or backend must be minimised,
-never stored server-side, and visible to the user (a "what is sent" view).
-Do not claim "fully local" if any API is used.
+Coursework is minimized and sent only to installed loopback Ollama models.
+Assistant jobs keep results in bounded, expiring process memory, never a database.
+Optional public research sends disclosed search terms to external providers.
 """
 
 from typing import Any, Dict, List, Optional
@@ -12,6 +12,11 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import sympy as sp
+
+try:
+    from local_assistant import router as local_assistant_router
+except ImportError:
+    from backend.local_assistant import router as local_assistant_router
 
 try:
     from policy_extractor import (
@@ -97,11 +102,13 @@ app = FastAPI(
 # CORS configuration for browser extension content scripts and panel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Extension runs from chrome-extension:// origins
+    allow_origin_regex=r"^(?:chrome-extension://[a-p]{32}|https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)$",
     allow_credentials=False,  # Stateless: no cookies or server sessions
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
+
+app.include_router(local_assistant_router)
 
 
 class HealthResponse(BaseModel):

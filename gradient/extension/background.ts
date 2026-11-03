@@ -1,6 +1,45 @@
-// The toolbar button restores or hides GRADIENT in the current Canvas tab.
+import { localAssistantFetch } from './assistantTransport.js';
+import { isDeadlineMessage, handleDeadlineMessage, initializeDeadlineReminders, deliverDeadlineAlarm, openDeadlineNotification } from './deadlineCalendar.js';
+
+// The toolbar also grants activeTab access for a user-requested page screenshot.
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return;
   try { await chrome.tabs.sendMessage(tab.id, { type: 'GRADIENT_TOGGLE' }); }
   catch { await chrome.runtime.openOptionsPage(); }
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (sender.id !== chrome.runtime.id) return false;
+  if (isDeadlineMessage(message)) {
+    void handleDeadlineMessage(message, sender).then(sendResponse);
+    return true;
+  }
+  if (message?.type === 'GRADIENT_ASSISTANT_REQUEST') {
+    void (async () => {
+      if (typeof message.backendUrl !== 'string' || typeof message.path !== 'string' || !['GET', 'POST'].includes(message.method)) throw new Error('Invalid local assistant request.');
+      return localAssistantFetch(message.backendUrl, message.path, message.method, message.body);
+    })().then(data => sendResponse({ ok: true, data }), error => sendResponse({ ok: false, error: error instanceof Error ? error.message : 'The local assistant request failed.' }));
+    return true;
+  }
+  if (message?.type === 'GRADIENT_CAPTURE_CONTEXT') {
+    void (async () => {
+      if (!sender.tab?.id || sender.tab.windowId === undefined) throw new Error('Inspect the page from its Canvas tab.');
+      const [active] = await chrome.tabs.query({ active: true, windowId: sender.tab.windowId });
+      if (active?.id !== sender.tab.id) throw new Error('Keep the Canvas tab active while inspecting it.');
+      try {
+        const screenshot = await chrome.tabs.captureVisibleTab(sender.tab.windowId, { format: 'jpeg', quality: 55 });
+        return { screenshot };
+      } catch {
+        // DOM context is still useful. Chrome grants screenshot access after a toolbar click.
+        return { warning: 'Screenshot unavailable. Click the GRADIENT toolbar icon to grant active-tab access, then inspect again.' };
+      }
+    })().then(data => sendResponse({ ok: true, data }), error => sendResponse({ ok: false, error: error instanceof Error ? error.message : 'Page capture failed.' }));
+    return true;
+  }
+  return false;
+});
+
+chrome.alarms.onAlarm.addListener(alarm => { void deliverDeadlineAlarm(alarm).catch(console.error); });
+chrome.notifications.onClicked.addListener(id => { void openDeadlineNotification(id).catch(console.error); });
+chrome.runtime.onStartup.addListener(() => { void initializeDeadlineReminders().catch(console.error); });
+chrome.runtime.onInstalled.addListener(() => { void initializeDeadlineReminders().catch(console.error); });

@@ -18,8 +18,10 @@ After source changes, run `make build`, click **Reload** on GRADIENT's extension
 - Assignment groups, drop rules, due dates, your own submissions, rubric data, and instructor comments where accessible.
 - Course syllabus, modules, pages, files, announcements, and calendar events where allowed by Canvas.
 - Local what-if grade calculations, effort planning using configurable credit hours, and downloadable assignment deadline calendars.
+- Optional local AI Assistant: installed-model discovery, Canvas PDF/DOCX/page reading, source-based public web research, three explanation depths, illustrated guides and clearly labeled sample assignment exports. Start it with `make assistant`; see [LOCAL_AI.md](LOCAL_AI.md).
+- Opt-in deadline tracking in Settings: Chrome reminders at 24 hours and 1 hour before due dates, Google event links, and Apple/Google `.ics` imports. See [CALENDAR.md](CALENDAR.md).
 
-Requests use the signed-in tab's session, stay on that Canvas origin, and only use GET. Raw course content and credentials are not sent to an external AI service. Account data stays in memory and is fetched afresh on refresh. Instructor restrictions are shown as unavailable sections, never substituted with invented course data. TA/teacher-only enrollments are excluded from the student workspace.
+Requests use the signed-in tab's session, stay on that Canvas origin, and only use GET. Raw course content and credentials are not sent to an external AI service. Course contents stay in tab memory and are fetched afresh on refresh. When requested, selected coursework is sent to the loopback AI backend and local Ollama; public research sends assignment-title or locally inferred topic searches to the web. Completed AI jobs expire from backend memory after 30 minutes. Preferences and enabled reminder metadata are saved in local extension storage. Instructor restrictions are shown as unavailable sections, never substituted with invented course data. TA/teacher-only enrollments are excluded from the student workspace.
 
 Supported automatic hosts are `*.instructure.com` and `canvas.usm.edu`. Adding another custom domain requires updating the manifest and host allowlist, then reloading the development extension. Browser host permissions are not granted by typing a domain into a text box.
 
@@ -34,3 +36,7 @@ The extension pauses on quiz-taking pages and active assessments. It does not su
 ## When Pages or Files is hidden
 
 A course's Pages/Files index can return 403 or 404 while files and pages linked in modules or coursework remain available. GRADIENT builds one deduplicated library from the indexes, module items, syllabus, assignment descriptions, and announcements. Known locked or hidden resources stay excluded. Material access details show when the library uses linked resources instead of an index; Canvas still checks permissions when each link is opened. Unexpected network/server errors remain visible under Sync issues.
+
+## New extension permissions
+
+`http://127.0.0.1/*` and `http://localhost/*` allow the service worker to reach your local AI backend; non-loopback backend URLs are rejected. `alarms` and `notifications` support opt-in deadline reminders. `activeTab` supports screenshots after you click the GRADIENT toolbar icon. If screenshot access is unavailable, page inspection uses text and visible resource links and reports that limitation. Screenshots exclude the GRADIENT overlay. No broad desktop control permission is requested.

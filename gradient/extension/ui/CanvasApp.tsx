@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { loadCanvasSnapshot, type CanvasSnapshot } from '../liveCanvas.js';
 import { Workspace } from './Workspace.js';
+import { syncTrackedDeadlines } from '../deadlineCalendar.js';
 
 /** Live controller. Canvas failures stay errors; demo data is never imported here. */
 export function CanvasApp({ initialUrl }: { initialUrl: string }) {
@@ -21,7 +22,10 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
     setError(null);
     loadCanvasSnapshot({ courseId, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } })
       .then((result) => {
-        if (!controller.signal.aborted) setSnapshot(result);
+        if (!controller.signal.aborted) {
+          setSnapshot(result);
+          void syncTrackedDeadlines(result).catch(() => { /* The tracking view reports reminder errors separately. */ });
+        }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {

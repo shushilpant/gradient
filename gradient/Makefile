@@ -1,4 +1,4 @@
-.PHONY: all install test test-ts test-py build probe sandbox-check clean
+.PHONY: all install test test-ts test-py build probe sandbox-check clean assistant
 
 SHELL := /bin/bash
 UV ?= $(HOME)/.local/bin/uv
@@ -6,6 +6,9 @@ PYTHON ?= backend/.venv/bin/python
 PYTEST ?= backend/.venv/bin/pytest
 
 all: build test
+
+assistant:
+	$(PYTHON) -m uvicorn backend.app:app --host 127.0.0.1 --port 8765
 
 install:
 	@echo "==> Installing Node.js dependencies..."
@@ -67,9 +70,9 @@ test-ts:
 test-py:
 	@echo "==> Running Backend test suite (Pytest)..."
 	@if [ -x "$(PYTEST)" ]; then \
-		$(PYTEST) backend/test_backend.py -v; \
+		$(PYTEST) backend -v; \
 	else \
-		pytest backend/test_backend.py -v; \
+		pytest backend -v; \
 	fi
 
 build:

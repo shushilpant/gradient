@@ -1,10 +1,13 @@
-.PHONY: all install test test-ts test-py build probe sandbox-check clean demo-replay demo-live report
+.PHONY: all install test test-ts test-py build probe sandbox-check clean demo-replay demo-live report assistant
 
 all:
 	$(MAKE) -C gradient all
 
 install:
 	$(MAKE) -C gradient install
+
+assistant:
+	$(MAKE) -C gradient assistant
 
 demo-replay:
 	$(MAKE) -C gradient demo-replay

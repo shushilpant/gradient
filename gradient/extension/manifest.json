@@ -1,15 +1,19 @@
 {
   "manifest_version": 3,
   "name": "GRADIENT: Canvas Academic Companion",
-  "version": "0.3.0",
-  "description": "Your live Canvas study workspace. Coursework, grade planning, and resources in the tab you already use.",
+  "version": "0.4.0",
+  "description": "Your local AI study copilot: Canvas research, assignment samples, visual explanations, and deadline reminders using installed models.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://*.instructure.com/*",
-    "https://canvas.usm.edu/*"
+    "https://canvas.usm.edu/*",
+    "http://127.0.0.1/*",
+    "http://localhost/*"
   ],
   "action": {
     "default_title": "GRADIENT",
