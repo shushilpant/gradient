@@ -1,8 +1,10 @@
+import { z } from 'zod';
+import { renderToString } from 'katex';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import type { CanvasSnapshot, CanvasLiveAssignment } from '../liveCanvas.js';
 import type { AssistantHealth, AssistantSettings, BrowserPlan, DetailLevel, StudyDiagram, StudyGraph, StudyPacket } from '../assistantTypes.js';
-import { applyBrowserAction, captureBrowserContext, generateStudyPacket, getAssistantHealth, loadAssistantSettings, planBrowserAction, saveAssistantSettings } from '../assistantClient.js';
+import { enableBrowserSearch, applyBrowserAction, captureBrowserContext, generateStudyPacket, getAssistantHealth, loadAssistantSettings, planBrowserAction, saveAssistantSettings } from '../assistantClient.js';
 import { Icon } from './Icons.js';
 import { ASSISTANT_STYLES } from './assistantStyles.js';
 
@@ -48,9 +50,15 @@ function plain(value: string): string {
   doc.querySelectorAll('p,br,li,h1,h2,h3,div').forEach(node => node.append(doc.createTextNode('\n')));
   return (doc.body.textContent ?? '').replace(/\n{3,}/g, '\n\n').trim();
 }
+function MathFormula({tex, display = false}: {tex:string; display?:boolean}) {
+  try {
+    const html = renderToString(tex, {output: 'mathml', displayMode: display, trust: false, throwOnError: true, maxExpand: 300, maxSize: 20});
+    return <span class={display ? 'ja-math display' : 'ja-math'} dangerouslySetInnerHTML={{__html: html}}/>;
+  } catch { return <code class="ja-math-error" title="Unsupported or incomplete formula">{tex}</code>; }
+}
 function inline(text: string): ComponentChildren[] {
   const nodes: ComponentChildren[] = [];
-  const pattern = /\[([^\]]+)\]\(([^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`/g;
+  const pattern = /\[([^\]]+)\]\(([^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\\\(([^]*?)\\\)|\$([^$\n]+)\$/g;
   let start = 0;
   for (const match of text.matchAll(pattern)) {
     const index = match.index ?? 0;
@@ -59,11 +67,21 @@ function inline(text: string): ComponentChildren[] {
       const href = safeUrl(match[2] ?? '');
       nodes.push(href ? <a href={href} target="_blank" rel="noopener noreferrer">{match[1]}</a> : match[1]);
     } else if (match[3] !== undefined) nodes.push(<strong>{match[3]}</strong>);
-    else nodes.push(<code>{match[4]}</code>);
+    else if (match[4] !== undefined) nodes.push(<code>{match[4]}</code>);
+    else nodes.push(<MathFormula tex={match[5] ?? match[6] ?? ""}/>);
     start = index + match[0].length;
   }
   if (start < text.length) nodes.push(text.slice(start));
   return nodes;
+}
+const embeddedDiagramSchema = z.object({
+  title: z.string().max(300),
+  nodes: z.array(z.object({id:z.string().max(100),label:z.string().max(500)})).min(1).max(16),
+  edges: z.array(z.object({from:z.string(),to:z.string(),label:z.string().max(300).optional()})).max(40),
+}).refine(d => new Set(d.nodes.map(n => n.id)).size === d.nodes.length && d.edges.every(e => d.nodes.some(n => n.id === e.from) && d.nodes.some(n => n.id === e.to)));
+function embeddedDiagram(text:string): StudyDiagram | null {
+  if (text.length > 30000) return null;
+  try { const parsed = embeddedDiagramSchema.safeParse(JSON.parse(text)); return parsed.success ? parsed.data : null; } catch { return null; }
 }
 /** Markdown stays in Preact text nodes; model output cannot inject HTML or scripts. */
 export function AssistantMarkdown({ text }: { text: string }) {
@@ -72,10 +90,32 @@ export function AssistantMarkdown({ text }: { text: string }) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
     if (!line.trim()) continue;
+    const trimmed = line.trim();
+    if (trimmed.startsWith('{')) {
+      let candidate = '';
+      let end = i;
+      let diagram:StudyDiagram|null = null;
+      for (; end < Math.min(lines.length, i + 150); end++) {
+        candidate += (candidate ? '\n' : '') + lines[end];
+        if (candidate.length > 30000) break;
+        diagram = embeddedDiagram(candidate);
+        if (diagram) break;
+      }
+      if (diagram) { blocks.push(<ConceptDiagram diagram={diagram}/>); i = end; continue; }
+    }
+    const delimiter = trimmed.startsWith('$$') ? '$$' : trimmed.startsWith('\\[') ? '\\[' : null;
+    if (delimiter) {
+      const close = delimiter === '$$' ? '$$' : '\\]';
+      let formula = trimmed.slice(delimiter.length);
+      while (!formula.trimEnd().endsWith(close) && i + 1 < lines.length) formula += '\n' + (lines[++i] ?? '');
+      if (formula.trimEnd().endsWith(close)) formula = formula.trimEnd().slice(0, -close.length);
+      blocks.push(<div class="ja-math-block"><MathFormula tex={formula.trim()} display/></div>); continue;
+    }
     if (/^```/.test(line)) {
       const code: string[] = [];
       while (++i < lines.length && !/^```/.test(lines[i] ?? '')) code.push(lines[i] ?? '');
-      blocks.push(<pre><code>{code.join('\n')}</code></pre>); continue;
+      const diagram = embeddedDiagram(code.join('\n'));
+      blocks.push(diagram ? <ConceptDiagram diagram={diagram}/> : <pre><code>{code.join('\n')}</code></pre>); continue;
     }
     if (line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(lines[i + 1] ?? '')) {
       const cells = (row: string) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split(/(?<!\\)\|/).map(cell => cell.trim().replace(/\\\|/g, '|'));
@@ -101,7 +141,7 @@ export function AssistantMarkdown({ text }: { text: string }) {
     }
     if (/^>\s?/.test(line)) { blocks.push(<blockquote>{inline(line.replace(/^>\s?/, ''))}</blockquote>); continue; }
     const paragraph = [line];
-    while (i + 1 < lines.length && (lines[i + 1] ?? '').trim() && !/^(?:#{1,6}\s|```|\s*[-*+]\s|\s*\d+[.)]\s|>)/.test(lines[i + 1] ?? '')) paragraph.push(lines[++i] ?? '');
+    while (i + 1 < lines.length && (lines[i + 1] ?? '').trim() && !/^(?:#{1,6}\s|```|\s*[-*+]\s|\s*\d+[.)]\s|>|\s*\{)/.test(lines[i + 1] ?? '')) paragraph.push(lines[++i] ?? '');
     blocks.push(<p>{inline(paragraph.join('\n'))}</p>);
   }
   return <div class="ja-prose">{blocks}</div>;
@@ -258,7 +298,7 @@ export function AssistantView({ snapshot, preview = false, initialCourseId, init
         {mode === 'sample' && <p class="ja-note">A complete reference draft, clearly marked as an AI-generated sample. Verify it and follow your course’s AI policy.</p>}
         <div class="ja-switches"><label class="ja-switch"><input type="checkbox" checked={settings.webResearch} disabled={generating} onChange={e => updateSettings({ webResearch: e.currentTarget.checked })}/>Research the web</label>{(['diagrams', 'graphs', 'images'] as const).map(key => <label class="ja-switch" key={key}><input type="checkbox" checked={visuals[key]} disabled={generating} onChange={e => setVisuals({ ...visuals, [key]: e.currentTarget.checked })}/>{key[0]?.toUpperCase()}{key.slice(1)}</label>)}</div>
       </section>
-      <section class="ja-section"><label class="ja-label" for="ja-prompt">Anything you want me to focus on?</label><textarea id="ja-prompt" class="ja-control" rows={3} value={prompt} disabled={generating} onInput={e => setPrompt(e.currentTarget.value)} placeholder="Explain the hard parts, compare approaches, or write a sample with diagrams and references…"/>
+      <section class="ja-section"><button class="ja-btn" style={{marginBottom:'12px',marginRight:'8px'}} onClick={async()=>{try { const granted=await enableBrowserSearch(); setGenerationError(granted?'': 'Google access was not enabled.'); } catch(error){setGenerationError(errorMessage(error));}}}>Enable Google browser search</button><a class="ja-btn" style={{marginBottom: '12px'}} target="_blank" rel="noopener noreferrer" href={`https://www.google.com/search?q=${encodeURIComponent(`${assignment?.name ?? ''} ${prompt.trim()} tutorial explanation`.slice(0, 250))}`}>Open Google search <Icon name="external" size={12}/></a><label class="ja-label" for="ja-prompt">Anything you want me to focus on?</label><textarea id="ja-prompt" class="ja-control" rows={3} value={prompt} disabled={generating} onInput={e => setPrompt(e.currentTarget.value)} placeholder="Explain the hard parts, compare approaches, or write a sample with diagrams and references…"/>
         <button class="ja-btn primary full" style={{ marginTop: '11px' }} disabled={!ready || !assignment || generating} onClick={generate}>{generating ? <><Icon name="refresh" size={15} className="g-spinner"/>Working on your request…</> : <><Icon name="spark" size={15}/>{mode === 'sample' ? 'Create my sample assignment' : 'Build my study packet'}<Icon name="arrow" size={14}/></>}</button>
         {generating && <div class="ja-progress" role="status"><span>Reading Canvas materials, researching, then drafting with {settings.reasoningModel}. This can take several minutes.</span></div>}
         {generationError && <div class="ja-notice error" role="alert" style={{ marginTop: '10px' }}>{generationError}</div>}

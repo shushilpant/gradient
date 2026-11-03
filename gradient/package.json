@@ -13,12 +13,14 @@
     "build": "node --import tsx scripts/build.ts"
   },
   "dependencies": {
+    "katex": "^0.19.1",
     "preact": "^11.1.1",
     "zod": "3.23.8"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1",
     "@types/chrome": "0.0.280",
+    "@types/katex": "^0.16.8",
     "@types/node": "22.8.7",
     "fast-check": "^3.23.1",
     "playwright": "^1.64.1",

@@ -459,3 +459,42 @@ def test_actual_math_json_escape_failure_is_recovered_before_schema_retry(monkey
     response = client.post("/api/v1/assistant/generate", headers=HEADERS, json=study_request(mode="sample"))
     assert response.status_code == 200 and len(calls) == 1
     assert r"\(s_i\ge f_j\)" in response.json()["sampleMarkdown"]
+
+
+def test_configured_general_search_uses_api_and_rejects_credential_redirects(monkeypatch):
+    monkeypatch.setenv('GRADIENT_BRAVE_SEARCH_API_KEY', 'test-only-key')
+    calls = []
+    def fetch(url, **kwargs):
+        calls.append((url, kwargs))
+        return json.dumps({'web': {'results': [
+            {'title': 'Laplace course notes', 'url': 'https://university.example/laplace', 'description': 'Time shift property'},
+            {'title': 'Duplicate', 'url': 'https://university.example/laplace'},
+            {'title': 'Unsafe', 'url': 'javascript:alert(1)'},
+        ]}}), url
+    monkeypatch.setattr(ai, 'fetch_public_html', fetch)
+    result = ai.optional_brave_search('Laplace time shift', 5)
+    assert len(result) == 1 and result[0]['title'] == 'Laplace course notes'
+    assert calls[0][0].startswith('https://api.search.brave.com/')
+    assert 'test-only-key' not in calls[0][0]
+    assert calls[0][1]['redirects'] == 0
+    assert calls[0][1]['extra_headers']['X-Subscription-Token'] == 'test-only-key'
+
+
+def test_google_search_extracts_real_links_and_excludes_google_navigation(monkeypatch):
+    calls = []
+    def fetch(url, **kwargs):
+        calls.append(url)
+        return '<a href="https://support.google.com/websearch">Help</a><a href="/url?q=https%3A%2F%2Funiversity.example%2Flaplace"><h3>Laplace notes</h3></a><a href="https://university.example/laplace">Duplicate</a>', url
+    monkeypatch.setattr(ai, 'fetch_public_html', fetch)
+    results = ai.search_web('Laplace time shift', 3)
+    assert calls[0].startswith('https://www.google.com/search?q=')
+    assert results == [{'title':'Laplace notes','url':'https://university.example/laplace','snippet':''}]
+
+
+def test_browser_discovered_results_are_used_without_server_search(monkeypatch):
+    monkeypatch.setattr(ai, 'search_web', lambda *_: pytest.fail('Browser results should bypass server search'))
+    monkeypatch.setattr(ai, 'read_page', lambda result: ({'title':result['title'],'url':result['url'],'text':'A real browser-discovered source.'}, []))
+    payload = ai.StudyRequest.model_validate(study_request(webResearch=True, webSources=[{'title':'University Laplace guide','url':'https://university.example/laplace','snippet':'Time shifting'}]))
+    sources, documents, _, warnings = ai.collect_sources(payload)
+    assert any(s.url == 'https://university.example/laplace' and s.kind == 'web' for s in sources)
+    assert not any('Google search could not' in w for w in warnings)

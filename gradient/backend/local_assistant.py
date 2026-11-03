@@ -84,6 +84,12 @@ class MaterialContext(BaseModel):
     text: str | None = Field(default=None, max_length=22000)
 
 
+class BrowserSearchSource(BaseModel):
+    title: str = Field(max_length=500)
+    url: str = Field(max_length=3000)
+    snippet: str = Field(default="", max_length=1800)
+
+
 class StudyRequest(BaseModel):
     course: CourseContext = Field(default_factory=CourseContext)
     assignment: AssignmentContext
@@ -91,6 +97,7 @@ class StudyRequest(BaseModel):
     level: Literal["a_bit", "a_bit_more", "all_in"] = "a_bit_more"
     model: str = Field(default="gpt-oss:20b", min_length=1, max_length=200)
     webResearch: bool = True
+    webSources: list[BrowserSearchSource] = Field(default_factory=list, max_length=8)
     resources: list[MaterialContext] = Field(default_factory=list, max_length=30)
     mode: Literal["explain", "sample"] = "explain"
 
@@ -348,7 +355,7 @@ class PinnedHTTPSConnection(http.client.HTTPSConnection):
         self.sock = self._context.wrap_socket(sock, server_hostname=self.host)
 
 
-def fetch_public_html(url: str, redirects: int = 3, accepted_types: tuple[str, ...] = ("text/html", "application/xhtml+xml", "text/plain")) -> tuple[str, str]:
+def fetch_public_html(url: str, redirects: int = 3, accepted_types: tuple[str, ...] = ("text/html", "application/xhtml+xml", "text/plain"), extra_headers: dict[str, str] | None = None) -> tuple[str, str]:
     """No cookies, no auth, no proxy; validate/pin each redirect to prevent SSRF."""
     current = url
     for _ in range(redirects + 1):
@@ -357,7 +364,7 @@ def fetch_public_html(url: str, redirects: int = 3, accepted_types: tuple[str, .
         target = urlunsplit(("", "", parsed.path or "/", parsed.query, ""))
         connection = PinnedHTTPSConnection(hostname, address)
         try:
-            connection.request("GET", target, headers={"User-Agent": "GRADIENT-StudyAssistant/1.0 (+local-student-research)", "Accept": ",".join(accepted_types), "Accept-Encoding": "identity"})
+            connection.request("GET", target, headers={"User-Agent": "GRADIENT-StudyAssistant/1.0 (+local-student-research)", "Accept": ",".join(accepted_types), "Accept-Encoding": "identity", **(extra_headers or {})})
             response = connection.getresponse()
             if response.status in (301, 302, 303, 307, 308):
                 location = response.getheader("Location")
@@ -455,7 +462,87 @@ class SearchParser(HTMLParser):
             self.current["snippet"] += data
 
 
+class GoogleSearchParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.results = []
+        self.current = None
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "a":
+            return
+        self.current = None
+        href = dict(attrs).get("href", "")
+        parsed = urlsplit(href)
+        if parsed.path == "/url" and (not parsed.hostname or parsed.hostname in ("google.com", "www.google.com")):
+            href = parse_qs(parsed.query).get("q", parse_qs(parsed.query).get("url", [""]))[0]
+            parsed = urlsplit(href)
+        host = (parsed.hostname or "").lower()
+        if parsed.scheme != "https" or not host or parsed.username or parsed.password or host == "google.com" or host.endswith((".google.com", ".googleusercontent.com", ".gstatic.com")):
+            return
+        self.current = {"url": href, "title": "", "snippet": ""}
+        self.results.append(self.current)
+
+    def handle_endtag(self, tag):
+        if tag == "a":
+            self.current = None
+
+    def handle_data(self, data):
+        if self.current is not None:
+            self.current["title"] += data
+
+
 def search_web(query: str, limit: int) -> list[dict]:
+    if limit <= 0:
+        return []
+    try:
+        html, _ = fetch_public_html("https://www.google.com/search?q=" + quote(query[:250]) + "&gbv=1")
+        parser = GoogleSearchParser()
+        parser.feed(html)
+        results, seen = [], set()
+        for result in parser.results:
+            if result["url"] in seen or not result["title"].strip():
+                continue
+            result["title"] = result["title"].strip()[:500]
+            seen.add(result["url"])
+            results.append(result)
+            if len(results) >= min(limit, 20):
+                break
+        if results:
+            return results
+    except (ValueError, OSError, http.client.HTTPException):
+        pass
+    return fallback_search(query, limit, fetch_public_html)
+
+
+def optional_brave_search(query: str, limit: int) -> list[dict]:
+    api_key = os.environ.get("GRADIENT_BRAVE_SEARCH_API_KEY", "").strip()
+    if api_key:
+        try:
+            raw, _ = fetch_public_html(
+                "https://api.search.brave.com/res/v1/web/search?q=" + quote(query[:250]) + "&count=" + str(min(20, max(1, limit))),
+                redirects=0, accepted_types=("application/json",),
+                extra_headers={"X-Subscription-Token": api_key},
+            )
+            records = json.loads(raw).get("web", {}).get("results", [])
+            results = []
+            seen = set()
+            for record in records:
+                url = record.get("url", "")
+                parsed = urlsplit(url)
+                if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or url in seen:
+                    continue
+                title = record.get("title", "")
+                if not isinstance(title, str) or not title.strip():
+                    continue
+                seen.add(url)
+                results.append({"title": title[:500], "url": url, "snippet": str(record.get("description", ""))[:2400]})
+                if len(results) >= limit:
+                    break
+            if results:
+                return results
+        except (ValueError, OSError, http.client.HTTPException, TypeError, AttributeError):
+            pass  # Preserve honest fallback warnings if the configured provider fails.
     try:
         html, _ = fetch_public_html("https://html.duckduckgo.com/html/?q=" + quote(query[:250]))
         parser = SearchParser()
@@ -555,9 +642,9 @@ def collect_sources(payload: StudyRequest) -> tuple[list[Source], list[dict], li
         if query is None:
             return sources, documents, images, warnings
         try:
-            results = search_web(query, DEPTHS[payload.level]["sources"])
+            results = [source.model_dump() for source in payload.webSources if urlsplit(source.url).scheme == "https" and urlsplit(source.url).hostname and not urlsplit(source.url).username] if payload.webSources else search_web(query, DEPTHS[payload.level]["sources"])
             if any(result.get("_provider") for result in results):
-                warnings.append("General web search was unavailable; Wikipedia/Crossref topic discovery was used. Coverage is narrower than a full web search.")
+                warnings.append("Google search could not return readable results to the local backend; Wikipedia/Crossref topic discovery was used. Coverage is narrower than a full web search.")
             if not results:
                 warnings.append("Web search returned no accessible results. This response uses available Canvas material and the model's knowledge.")
             def load(result):

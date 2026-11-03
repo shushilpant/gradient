@@ -82,12 +82,23 @@ async function runJob(settings: AssistantSettings, type: 'generate' | 'browser',
   throw new Error('Generation exceeded 15 minutes. Try a smaller installed model or a lower detail level.');
 }
 
+export async function enableBrowserSearch(): Promise<boolean> {
+  if (!extensionAvailable()) throw new Error('Browser Google search requires the installed Chrome extension.');
+  return (await sendMessage({type:'GRADIENT_ENABLE_SEARCH'})).granted;
+}
+
 export async function generateStudyPacket(settings: AssistantSettings, input: StudyRequest): Promise<StudyPacket> {
+  let webSources: {title:string;url:string;snippet:string}[] = [];
+  const searchWarnings:string[] = [];
+  if (input.webResearch && extensionAvailable()) {
+    try { webSources = await sendMessage({type:'GRADIENT_BROWSER_SEARCH',query: `${input.assignment.title} tutorial explanation`.slice(0,250),limit:input.level==='all_in'?8:input.level==='a_bit_more'?5:3}); }
+    catch(error) { searchWarnings.push(error instanceof Error?error.message:'Browser search was unavailable.'); }
+  }
   const origin = typeof window !== 'undefined' ? window.location.origin : new URL(input.assignment.url).origin;
   const materials = await readCanvasMaterials(input.resources, origin, input.course.id,
     file => request(settings, 'materials/extract', 'POST', file));
-  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...input, resources: materials.resources }));
-  packet.warnings = [...materials.warnings, ...packet.warnings];
+  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...input, resources: materials.resources, webSources }));
+  packet.warnings = [...searchWarnings, ...materials.warnings, ...packet.warnings];
   return packet;
 }
 

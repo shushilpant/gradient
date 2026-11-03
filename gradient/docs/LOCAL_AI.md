@@ -214,3 +214,15 @@ sources: the supplied brief, two Wikipedia topic pages, and a Crossref-discovere
 paper. The unavailable general search and the paper's partial access were disclosed
 in the packet. This verifies the local research-to-export contract, not the quality
 of every answer or access to a particular student's Canvas account.
+
+## Reliable general web search
+
+Set `GRADIENT_BRAVE_SEARCH_API_KEY` in the environment that starts `make assistant`, then restart the backend. The key stays in the local process and is sent only as an authentication header to `api.search.brave.com`; API redirects are rejected. Obtain a key from https://brave.com/search/api/ and review the provider plan before enabling it. Topic searches use the configured API first; failed or unconfigured providers retain the disclosed Wikipedia/Crossref fallback. Never put the key in extension settings or commit it to source control. Existing packets retain their original warnings; generate a new packet after configuration.
+
+## Google search (default)
+
+The default general-search provider is now `https://www.google.com/search`. The backend extracts public result links when returned. Google may instead require JavaScript, consent or a human challenge; GRADIENT does not bypass these. In that case, the packet explicitly reports Google access failure and uses Wikipedia/Crossref discovery. **Open Google search** in Assistant opens the selected assignment topic in your normal browser. This link sends the assignment title and entered focus text to Google when clicked. Previously generated packets are unchanged.
+
+## Browser-powered Google research
+
+Reload the extension after building, restart the backend, then click **Enable Google browser search** in Assistant and approve the optional permission for `www.google.com`. This lets GRADIENT open a temporary Google search tab and read actual rendered result titles, links and snippets using your normal browser. It requires no search API key. Successful temporary tabs close automatically; if Google needs consent or a human challenge, the tab remains open for you to handle and the app reports the limitation. The backend reads discovered public sources using its existing bounded fetcher. It cannot bypass paywalls, site restrictions, or challenges. Search queries include the selected assignment title. The extension never injects model-generated code into a website.

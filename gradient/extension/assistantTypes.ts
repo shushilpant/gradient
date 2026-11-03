@@ -50,6 +50,7 @@ export interface StudyPacket {
   generatedAt?: string;
 }
 export interface StudyRequest {
+  webSources?: {title:string;url:string;snippet:string}[];
   course: { id: string; name: string; code: string };
   assignment: { id: string; title: string; description: string; url: string; dueAt: string | null; rubric?: string };
   prompt: string;

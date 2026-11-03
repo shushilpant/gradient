@@ -5,7 +5,7 @@ import { launchBrowser, mockCanvas, waitForLoaded } from './browserHarness.js';
 
 const packet = {
   title: 'A sourced systems study packet', summary: 'A complete reference for your assignment.',
-  markdown: '## How it works\n\nUnderstand the process [S1].\n\n<script>window.injected=true</script>\n\n[Unsafe](javascript:alert(1))',
+  markdown: JSON.stringify({title:'Time-Shift Property',nodes:[{id:'f',label:'f(t-a)u(t-a)'},{id:'F',label:'F(s)'},{id:'shift',label:'e^{-as}F(s)'}],edges:[{from:'f',to:'F',label:'Laplace'},{from:'F',to:'shift',label:'multiply by e^{-as}'}]}, null, 2) + '\n\n```json\n' + JSON.stringify({title:'Fenced diagram',nodes:[{id:'a',label:'Input'},{id:'b',label:'Output'}],edges:[{from:'a',to:'b'}]}) + '\n```\n\n' + '## How it works\n\nUnderstand the process [S1]. Inline \\(x^2 + \\frac{1}{2}\\).\n\n$$\n\\int_0^1 x^2 dx = \\frac{1}{3}\n$$\n\n<script>window.injected=true</script>\n\n[Unsafe](javascript:alert(1))',
   sampleMarkdown: '## Sample assignment for review\n\nA worked reference answer, with a disclosed AI contribution.',
   sources: [{ id: 'S1', title: 'Verified course guide', url: 'https://canvas.instructure.com/courses/99001/pages/signals-study-guide', kind: 'canvas' }],
   diagrams: [{ title: 'Branching process', nodes: [{ id: 'a', label: 'Start' }, { id: 'b', label: 'Left' }, { id: 'c', label: 'Right' }], edges: [{ from: 'a', to: 'b', label: 'Path one' }, { from: 'a', to: 'c', label: 'Path two' }] }],
@@ -70,6 +70,9 @@ describe('Local study assistant browser flow', () => {
       expect(received[0]?.type).toBe('generate');
       expect(received[0]?.request).toMatchObject({ level: 'all_in', mode: 'sample', model: 'gpt-oss:20b' });
       expect(received[0]?.request.resources.some((r: any) => r.text?.includes('real retrieved explanation'))).toBe(true);
+      expect(await page.locator('.ja-result math').count()).toBe(2);
+      expect(await page.getByRole('img', {name: 'Time-Shift Property:', exact:false}).count()).toBe(1);
+      expect(await page.getByRole('img', {name: 'Fenced diagram:', exact:false}).count()).toBe(1);
       expect(await page.evaluate(() => (window as any).injected)).toBeUndefined();
       expect(await page.locator('.ja-result a[href^="javascript:"]').count()).toBe(0);
       expect(await page.getByRole('img', { name: 'Illustrative comparison' }).count()).toBe(1);

@@ -1,3 +1,4 @@
+import { browserSearch } from './browserSearch.js';
 import { localAssistantFetch } from './assistantTransport.js';
 import { isDeadlineMessage, handleDeadlineMessage, initializeDeadlineReminders, deliverDeadlineAlarm, openDeadlineNotification } from './deadlineCalendar.js';
 
@@ -10,6 +11,15 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
+  if (message?.type === 'GRADIENT_ENABLE_SEARCH') {
+    void chrome.permissions.request({origins:['https://www.google.com/*']}).then(granted=>sendResponse({ok:true,data:{granted}}), error=>sendResponse({ok:false,error:String(error)}));
+    return true;
+  }
+  if (message?.type === 'GRADIENT_BROWSER_SEARCH') {
+    if (typeof message.query !== 'string' || message.query.length > 250) { sendResponse({ok:false,error:'Invalid search query.'}); return false; }
+    void browserSearch(message.query, Number(message.limit)||5).then(data=>sendResponse({ok:true,data}),error=>sendResponse({ok:false,error:error instanceof Error?error.message:'Google search failed.'}));
+    return true;
+  }
   if (isDeadlineMessage(message)) {
     void handleDeadlineMessage(message, sender).then(sendResponse);
     return true;
