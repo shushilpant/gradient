@@ -61,6 +61,7 @@ async function buildExtension() {
   console.log('  ✓ Bundled extension/options/options.js');
 
   fs.cpSync(path.join(rootDir, 'extension/icons'), path.join(extDistDir, 'icons'), { recursive: true });
+  fs.cpSync(path.join(rootDir, 'extension/licenses'), path.join(extDistDir, 'licenses'), { recursive: true });
 
   // 3. Copy Manifest V3 JSON
   fs.copyFileSync(

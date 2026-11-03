@@ -2,6 +2,7 @@ import { h, render } from 'preact';
 import { shouldRunOnPage } from './safetyGuard.js';
 import { loadOptions } from './options/optionsStorage.js';
 import { CanvasApp } from './ui/CanvasApp.js';
+import { FONT_STYLES } from './ui/fontStyles.js';
 
 export function matchesCanvasHost(hostname: string, pattern: string): boolean {
   if (pattern.startsWith('*.')) {
@@ -22,6 +23,10 @@ export async function initPanel(): Promise<{ injected: boolean; reason: string }
   }
   if (!shouldRunOnPage(window.location.href, document)) return { injected: false, reason: 'Canvas navigated to an assessment' };
   if (document.getElementById('gradient-panel-host')) return { injected: true, reason: 'Already mounted' };
+  if (!document.getElementById('gradient-fonts')) {
+    const fonts = document.createElement('style'); fonts.id = 'gradient-fonts'; fonts.textContent = FONT_STYLES;
+    document.head.appendChild(fonts);
+  }
   const host = document.createElement('div');
   host.id = 'gradient-panel-host';
   // Reset inherited site styles while keeping the Canvas DOM and styles untouched.

@@ -6,6 +6,7 @@ import { shouldRunOnPage } from './safetyGuard.js';
 import { getFixtureCourses } from './fixtureData.js';
 import { currentGrade, finalGrade } from '../core/gradeModel.js';
 import type { CanvasSnapshot } from './liveCanvas.js';
+import { FONT_STYLES } from './ui/fontStyles.js';
 
 function previewSnapshot(): CanvasSnapshot {
   return {
@@ -32,6 +33,7 @@ function Preview() {
     initialCourseId={window.location.pathname.match(/\/courses\/(\d+)/)?.[1]} />;
 }
 if (['localhost', '127.0.0.1'].includes(window.location.hostname) && shouldRunOnPage(window.location.href, document)) {
+  const fonts = document.createElement('style'); fonts.id = 'gradient-fonts'; fonts.textContent = FONT_STYLES; document.head.appendChild(fonts);
   const host = document.createElement('div');
   host.id = 'gradient-panel-host';
   host.style.cssText = 'all:initial;position:fixed;inset:0 0 auto auto;width:0;height:0;z-index:2147483646;';

@@ -36,6 +36,22 @@ export interface StudyGraph {
   points: { label: string; value: number }[];
 }
 export interface StudyImage { title: string; url: string; alt: string; sourceUrl: string }
+export interface RenderedVisual {
+  id: string; title: string; kind: 'function' | 'data' | 'diagram';
+  mimeType: 'image/png'; data: string; caption: string;
+  provenance: { sourceId: string; quote: string };
+  verification: 'computed' | 'source-data' | 'conceptual';
+}
+export interface ParsedBrief {
+  summary: string;
+  requirements: { id: string; text: string; evidence: string }[];
+  missingInformation: string[];
+}
+export interface AssignmentReview {
+  coverage: { requirementId: string; status: 'covered' | 'partial' | 'missing'; evidence: string; notes: string }[];
+  limitations: string[];
+}
+export interface StudyProgress { stage: string; label: string }
 export interface StudyPacket {
   title: string;
   summary: string;
@@ -48,11 +64,18 @@ export interface StudyPacket {
   warnings: string[];
   checklist?: string[];
   generatedAt?: string;
+  autopilot?: boolean;
+  brief?: ParsedBrief | null;
+  review?: AssignmentReview | null;
+  renderedVisuals?: RenderedVisual[];
 }
 export interface StudyRequest {
+  autopilot?: boolean;
+  assignmentKind?: 'homework' | 'other';
+  visualPreferences?: { diagrams: boolean; graphs: boolean; images: boolean };
   webSources?: {title:string;url:string;snippet:string}[];
   course: { id: string; name: string; code: string };
-  assignment: { id: string; title: string; description: string; url: string; dueAt: string | null; rubric?: string };
+  assignment: { id: string; title: string; description: string; url: string; dueAt: string | null; rubric?: string; submissionTypes?: string[] };
   prompt: string;
   level: DetailLevel;
   mode: 'explain' | 'sample';

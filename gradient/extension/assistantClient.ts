@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { AssistantSettings, AssistantHealth, StudyRequest, StudyPacket, BrowserPlanRequest, BrowserPlan, BrowserAction } from './assistantTypes.js';
+import type { AssistantSettings, AssistantHealth, StudyRequest, StudyPacket, BrowserPlanRequest, BrowserPlan, BrowserAction, StudyProgress } from './assistantTypes.js';
 import { localAssistantFetch, validateBackendUrl } from './assistantTransport.js';
 import { readCanvasMaterials } from './canvasMaterials.js';
 export type * from './assistantTypes.js';
@@ -19,6 +19,10 @@ const packetSchema = z.object({
   graphs: z.array(z.object({ title: z.string(), xLabel: z.string().optional(), yLabel: z.string().optional(), points: z.array(z.object({ label: z.string(), value: z.number().finite() })).max(100) })).max(10),
   images: z.array(z.object({ title: z.string(), url: z.string(), alt: z.string(), sourceUrl: z.string() })).max(20),
   warnings: z.array(z.string()).max(100), checklist: z.array(z.string()).optional(), generatedAt: z.string().optional(),
+  autopilot: z.boolean().optional(),
+  brief: z.object({summary:z.string(),requirements:z.array(z.object({id:z.string(),text:z.string(),evidence:z.string()})).max(50),missingInformation:z.array(z.string())}).nullable().optional(),
+  review: z.object({coverage:z.array(z.object({requirementId:z.string(),status:z.enum(['covered','partial','missing']),evidence:z.string(),notes:z.string()})).max(50),limitations:z.array(z.string())}).nullable().optional(),
+  renderedVisuals: z.array(z.object({id:z.string(),title:z.string(),kind:z.enum(['function','data','diagram']),mimeType:z.literal('image/png'),data:z.string().max(4000000).regex(/^[A-Za-z0-9+/]+={0,2}$/),caption:z.string(),provenance:z.object({sourceId:z.string(),quote:z.string()}),verification:z.enum(['computed','source-data','conceptual'])})).max(4).optional(),
 });
 
 function extensionAvailable(): boolean { return typeof chrome !== 'undefined' && !!chrome.runtime?.id; }
@@ -70,11 +74,12 @@ export async function pullAssistantModel(settings: AssistantSettings, model: str
 }
 
 /** Poll short requests so MV3's 30-second fetch limit never interrupts local inference. */
-async function runJob(settings: AssistantSettings, type: 'generate' | 'browser', input: StudyRequest | BrowserPlanRequest): Promise<unknown> {
+async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research', input: StudyRequest | BrowserPlanRequest, onProgress?: (progress: StudyProgress) => void): Promise<unknown> {
   const job = z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/) }).parse(await request(settings, 'jobs', 'POST', { type, request: input }));
   const start = Date.now();
   while (Date.now() - start < 15 * 60 * 1000) {
     const state = await request(settings, `jobs/${job.id}`, 'GET');
+    if (typeof state.stage === 'string' && typeof state.label === 'string') onProgress?.({stage:state.stage,label:state.label});
     if (state.status === 'complete') return state.result;
     if (state.status === 'error') throw new Error(state.error || 'Local model generation failed.');
     await new Promise(resolve => setTimeout(resolve, 1500));
@@ -87,17 +92,34 @@ export async function enableBrowserSearch(): Promise<boolean> {
   return (await sendMessage({type:'GRADIENT_ENABLE_SEARCH'})).granted;
 }
 
-export async function generateStudyPacket(settings: AssistantSettings, input: StudyRequest): Promise<StudyPacket> {
+export async function generateStudyPacket(settings: AssistantSettings, input: StudyRequest, onProgress?: (progress: StudyProgress) => void): Promise<StudyPacket> {
+  const origin = typeof window !== 'undefined' ? window.location.origin : new URL(input.assignment.url).origin;
+  onProgress?.({stage:'reading',label:'Reading the assignment and accessible course documents'});
+  const materials = await readCanvasMaterials(input.resources, origin, input.course.id,
+    file => request(settings, 'materials/extract', 'POST', file));
+  const enriched = {...input, resources: materials.resources};
   let webSources: {title:string;url:string;snippet:string}[] = [];
   const searchWarnings:string[] = [];
   if (input.webResearch && extensionAvailable()) {
-    try { webSources = await sendMessage({type:'GRADIENT_BROWSER_SEARCH',query: `${input.assignment.title} tutorial explanation`.slice(0,250),limit:input.level==='all_in'?8:input.level==='a_bit_more'?5:3}); }
-    catch(error) { searchWarnings.push(error instanceof Error?error.message:'Browser search was unavailable.'); }
+    let query:string|null = `${input.assignment.title} tutorial explanation`.slice(0,250);
+    const genericWords = new Set('homework assignment assignments problems problem exercise exercises worksheet chapter module weekly project final draft submission questions unit exam quiz test task practice report lab essay paper'.split(' '));
+    const meaningful = (input.assignment.title.toLowerCase().match(/[a-z]{4,}/g) || []).some(word=>!genericWords.has(word));
+    if (!meaningful) {
+      onProgress?.({stage:'parsing',label:'Inferring a public research topic locally from the homework instructions'});
+      try {
+        const plan = z.object({query:z.string().max(250).nullable(),warning:z.string().nullable()}).parse(await runJob(settings,'research',enriched,onProgress));
+        query=plan.query;
+        if (plan.warning) searchWarnings.push(plan.warning);
+      } catch (error) {query=null; searchWarnings.push(error instanceof Error?error.message:'Could not infer a reliable research topic.');}
+    }
+    if (query) {
+      onProgress?.({stage:'researching',label:'Reading Google search results in your browser'});
+      try { webSources = await sendMessage({type:'GRADIENT_BROWSER_SEARCH',query,limit:input.level==='all_in'?8:input.level==='a_bit_more'?5:3}); }
+      catch(error) { searchWarnings.push(error instanceof Error?error.message:'Browser search was unavailable.'); }
+    }
   }
-  const origin = typeof window !== 'undefined' ? window.location.origin : new URL(input.assignment.url).origin;
-  const materials = await readCanvasMaterials(input.resources, origin, input.course.id,
-    file => request(settings, 'materials/extract', 'POST', file));
-  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...input, resources: materials.resources, webSources }));
+  onProgress?.({stage:'queued',label:'Sending the brief to your local model'});
+  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...enriched, webSources }, onProgress));
   packet.warnings = [...searchWarnings, ...materials.warnings, ...packet.warnings];
   return packet;
 }

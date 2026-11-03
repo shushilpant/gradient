@@ -226,3 +226,9 @@ The default general-search provider is now `https://www.google.com/search`. The 
 ## Browser-powered Google research
 
 Reload the extension after building, restart the backend, then click **Enable Google browser search** in Assistant and approve the optional permission for `www.google.com`. This lets GRADIENT open a temporary Google search tab and read actual rendered result titles, links and snippets using your normal browser. It requires no search API key. Successful temporary tabs close automatically; if Google needs consent or a human challenge, the tab remains open for you to handle and the app reports the limitation. The backend reads discovered public sources using its existing bounded fetcher. It cannot bypass paywalls, site restrictions, or challenges. Search queries include the selected assignment title. The extension never injects model-generated code into a website.
+
+## Homework autopilot and computed figures
+
+Turn on **Homework autopilot**, select ordinary homework, confirm its type, and choose **Run homework autopilot**. The app reads accessible course files, extracts the instructions, researches, drafts, checks requirement coverage, and computes supported figures. Exam/quiz metadata and titles disable autopilot. The final coverage review includes exact instruction excerpts, sample evidence, remaining gaps and limitations. No work is submitted automatically. See [AUTOPILOT.md](AUTOPILOT.md).
+
+New figures are Python-rendered PNGs from source-backed mathematical expressions, quoted coordinate pairs or explicit relationships. They are embedded in HTML/Markdown exports with provenance. Legacy model-generated bars and ungrounded node chains are no longer displayed. See [VISUALS.md](VISUALS.md) for supported functions, inverse Laplace transforms, derivatives and clear limits.

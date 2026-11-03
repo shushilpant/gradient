@@ -13,6 +13,8 @@
     "build": "node --import tsx scripts/build.ts"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
     "katex": "^0.19.1",
     "preact": "^11.1.1",
     "zod": "3.23.8"

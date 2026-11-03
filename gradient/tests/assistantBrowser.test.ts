@@ -11,9 +11,10 @@ const packet = {
   diagrams: [{ title: 'Branching process', nodes: [{ id: 'a', label: 'Start' }, { id: 'b', label: 'Left' }, { id: 'c', label: 'Right' }], edges: [{ from: 'a', to: 'b', label: 'Path one' }, { from: 'a', to: 'c', label: 'Path two' }] }],
   graphs: [{ title: 'Illustrative comparison', xLabel: 'Condition', yLabel: 'Value', points: [{ label: 'A', value: 10 }, { label: 'B', value: -4 }] }],
   images: [], warnings: ['Verify the sample against the rubric.'],
+  renderedVisuals: [{id:'plot-1',title:'Computed time-shift response',kind:'function',mimeType:'image/png',data:readFileSync(new URL('./fixtures/computed-time-shift.png',import.meta.url)).toString('base64'),caption:'Computed from the assignment equation; zero before t=2.',provenance:{sourceId:'S1',quote:'f(t) = (t-2)*exp(-(t-2))*u(t-2)'},verification:'computed'}],
 };
 
-async function mockAssistant(page: Page, received: Record<string, any>[], failure = false) {
+async function mockAssistant(page: Page, received: Record<string, any>[], failure = false, resultPacket: Record<string, any> = packet) {
   await page.route('http://127.0.0.1:8765/**', route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
@@ -33,7 +34,7 @@ async function mockAssistant(page: Page, received: Record<string, any>[], failur
       received.push(request.postDataJSON());
       return route.fulfill({ headers, json: { id: 'test-job', status: 'running' } });
     }
-    if (path.endsWith('/jobs/test-job')) return route.fulfill({ headers, json: failure ? { status: 'error', error: 'Not enough memory for this model.' } : { status: 'complete', result: packet } });
+    if (path.endsWith('/jobs/test-job')) return route.fulfill({ headers, json: failure ? { status: 'error', error: 'Not enough memory for this model.' } : { status: 'complete', stage: 'complete', label: 'Ready for review', result: resultPacket } });
     return route.fulfill({ headers, status: 404, json: { detail: 'Unsupported test endpoint' } });
   });
 }
@@ -71,19 +72,20 @@ describe('Local study assistant browser flow', () => {
       expect(received[0]?.request).toMatchObject({ level: 'all_in', mode: 'sample', model: 'gpt-oss:20b' });
       expect(received[0]?.request.resources.some((r: any) => r.text?.includes('real retrieved explanation'))).toBe(true);
       expect(await page.locator('.ja-result math').count()).toBe(2);
-      expect(await page.getByRole('img', {name: 'Time-Shift Property:', exact:false}).count()).toBe(1);
-      expect(await page.getByRole('img', {name: 'Fenced diagram:', exact:false}).count()).toBe(1);
+      expect(await page.getByRole('img', {name: 'Time-Shift Property:', exact:false}).count()).toBe(0);
+      expect(await page.getByRole('img', {name: 'Fenced diagram:', exact:false}).count()).toBe(0);
       expect(await page.evaluate(() => (window as any).injected)).toBeUndefined();
       expect(await page.locator('.ja-result a[href^="javascript:"]').count()).toBe(0);
-      expect(await page.getByRole('img', { name: 'Illustrative comparison' }).count()).toBe(1);
-      expect(await page.locator('.ja-result').innerText()).toContain('Start → Right');
+      expect(await page.getByRole('img', { name: 'Illustrative comparison' }).count()).toBe(0);
+      expect(await page.getByRole('img', { name: 'Computed from the assignment equation; zero before t=2.' }).count()).toBe(1);
+      expect(await page.locator('.ja-result').innerText()).not.toContain('Start → Right');
       const downloading = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Export illustrated HTML' }).click();
       const download = await downloading;
       const file = await download.path();
       expect(download.suggestedFilename()).toMatch(/\.html$/);
       const html = readFileSync(file!, 'utf8');
-      expect(html).toContain('<svg');
+      expect(html).toContain('data:image/png;base64,');
       expect(html).toContain('Verified course guide');
       expect(html).not.toContain('<script>window.injected=true</script>');
       await page.getByRole('tab', { name: 'Overview', exact: true }).click();
@@ -112,4 +114,76 @@ describe('Local study assistant browser flow', () => {
       expect(await page.getByRole('region', { name: 'Generated study packet' }).count()).toBe(0);
     } finally { await page.close(); }
   }, 20000);
+  it('runs homework autopilot with evidence, coverage review and computed figures, and blocks assessments', async () => {
+    const brief = 'Plot f(t) = (t-2)*exp(-(t-2))*u(t-2) and explain the time shift.';
+    const { page } = await mockCanvas(browser, {configureData: courses => {
+      const course = courses[0]!;
+      for (const assignment of course.assignments) assignment.description = `<p>${brief}</p>`;
+      course.assignments[0].name = 'Homework: time-shift response';
+      course.assignments[1].name = 'Exam 2';
+      course.assignments[1].submission_types = ['online_quiz'];
+    }});
+    const received:Record<string,any>[]=[];
+    try {
+      await waitForLoaded(page);
+      await mockAssistant(page, received, false, {...packet,autopilot:true,brief:{summary:'Plot and explain the response.',requirements:[{id:'R1',text:'Plot the time-shifted response',evidence:brief}],missingInformation:[]},review:{coverage:[{requirementId:'R1',status:'covered',evidence:'A worked reference answer',notes:'Check the equation against the course convention.'}],limitations:['Model review still needs a human calculation check.']}});
+      await connect(page);
+      const assignmentSelect=page.getByLabel('Assistant assignment', {exact:true});
+      await assignmentSelect.selectOption({label:'Homework: time-shift response'});
+      await page.getByRole('switch',{name:'Homework autopilot',exact:true}).click();
+      expect(await page.getByRole('button',{name:'Run homework autopilot'}).isDisabled()).toBe(true);
+      await page.getByLabel('This is homework, not an exam, quiz, or timed assessment.').check();
+      await page.getByRole('button',{name:'Run homework autopilot'}).click();
+      await page.getByRole('heading',{name:packet.title,exact:true}).waitFor();
+      expect(received[0]?.request).toMatchObject({autopilot:true,assignmentKind:'homework',mode:'sample',level:'all_in'});
+      expect(await page.getByRole('region',{name:'Assignment requirements and review'}).innerText()).toContain('1/1 covered');
+      expect(await page.locator('.ja-rendered-visual img').evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>1)).toBe(true);
+      await page.locator('.g-body').evaluate(el=>el.scrollTo(0,0));
+      await page.screenshot({path:'/private/tmp/gradient-autopilot-workbench.png',fullPage:true});
+      await assignmentSelect.selectOption({label:'Exam 2'});
+      expect(await page.getByRole('button',{name:'Run homework autopilot'}).isDisabled()).toBe(true);
+      expect(await page.getByRole('alert').filter({hasText:'homework only'}).count()).toBe(1);
+      expect(received).toHaveLength(1);
+      for (const width of [375,768,1024,1440]) {
+        await page.setViewportSize({width,height:900});
+        expect(await page.locator('#gradient-workspace').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
+      }
+    } finally {await page.close();}
+  }, 20000);
+
+  it('derives a public topic locally before browser research for a generic homework title', async () => {
+    const {page}=await mockCanvas(browser,{configureData:courses=>{for(const a of courses[0]!.assignments){a.name='Homework 9';a.description='<p>Private course instructions: explain the Laplace time-shift property.</p>';}}});
+    const received:Record<string,any>[]=[];
+    try {
+      await waitForLoaded(page);
+      await mockAssistant(page, received);
+      await page.route('http://127.0.0.1:8765/api/v1/assistant/jobs**',route=>{
+        const request=route.request();const path=new URL(request.url()).pathname;
+        const headers={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+        if(request.method()==='OPTIONS') return route.fulfill({status:204,headers});
+        if(request.method()==='POST') {const body=request.postDataJSON();received.push(body);return route.fulfill({headers,json:{id:body.type==='research'?'research-job':'generate-job'}});}
+        return route.fulfill({headers,json:{status:'complete',result:path.endsWith('research-job')?{query:'laplace transform time shift tutorial',warning:null}:packet}});
+      });
+      await page.evaluate(()=>{
+        const w=window as any;w.__queries=[];
+        const c=w.chrome||{};
+        c.runtime={id:'test-extension',sendMessage:async(message:any)=>{
+          if(message.type==='GRADIENT_BROWSER_SEARCH'){w.__queries.push(message.query);return {ok:true,data:[{title:'Laplace guide',url:'https://university.example/laplace',snippet:'A public reference'}]};}
+          if(message.type==='GRADIENT_ASSISTANT_REQUEST'){
+            const response=await fetch(message.backendUrl+message.path,{method:message.method,headers:{'Content-Type':'application/json'},body:message.method==='POST'?JSON.stringify(message.body):undefined});
+            return {ok:response.ok,data:await response.json()};
+          }
+          return {ok:false,error:'Not used in this test'};
+        }};
+        if(!w.chrome)Object.defineProperty(window,'chrome',{value:c,configurable:true});
+      });
+      await connect(page);
+      await page.getByRole('button',{name:'Build my study packet',exact:true}).click();
+      await page.getByRole('heading',{name:packet.title,exact:true}).waitFor();
+      expect(received.map(job=>job.type)).toEqual(['research','generate']);
+      expect(await page.evaluate(()=>(window as any).__queries)).toEqual(['laplace transform time shift tutorial']);
+      expect(received[1]?.request.webSources[0].title).toBe('Laplace guide');
+    } finally {await page.close();}
+  },20000);
+
 });

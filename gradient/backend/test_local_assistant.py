@@ -92,7 +92,8 @@ def test_generate_grounded_sources_diagrams_and_no_external_research(monkeypatch
     data = response.json()
     assert [source["id"] for source in data["sources"]] == ["S1", "S2"]
     assert data["sources"][1]["kind"] == "canvas"
-    assert data["diagrams"][0]["edges"][0]["from"] == "a"
+    assert data["diagrams"] == [] and data["graphs"] == []
+    assert data["renderedVisuals"] == []
     assert data["sampleMarkdown"] == ""
     assert any("research is off" in warning for warning in data["warnings"])
     chat = next(body for path, body in calls if path == "/api/chat")
@@ -498,3 +499,125 @@ def test_browser_discovered_results_are_used_without_server_search(monkeypatch):
     sources, documents, _, warnings = ai.collect_sources(payload)
     assert any(s.url == 'https://university.example/laplace' and s.kind == 'web' for s in sources)
     assert not any('Google search could not' in w for w in warnings)
+
+
+@pytest.mark.parametrize('updates', [
+    {'assignmentKind':'other'},
+    {'assignment':{'id':'2','title':'Homework quiz','description':'Solve x + 2 = 4.','url':'https://school.instructure.com/courses/1/quizzes/2'}},
+    {'assignment':{'id':'2','title':'Homework','description':'A proctored assignment.'}},
+    {'assignment':{'id':'2','title':'Homework','description':'Solve x + 2 = 4.','submissionTypes':['online_quiz']}},
+    {'assignment':{'id':'2','title':'Homework','description':''}},
+])
+def test_autopilot_is_homework_only_and_rejected_before_model_or_web(monkeypatch, updates):
+    monkeypatch.setattr(ai, 'installed_model', lambda *_: pytest.fail('Rejected before inference'))
+    request = study_request(autopilot=True, assignmentKind='homework')
+    request.update(updates)
+    response = client.post('/api/v1/assistant/jobs', headers=HEADERS, json={'type':'generate','request':request})
+    assert response.status_code == 422
+
+
+def test_requirement_parser_discards_invented_evidence_and_preserves_numbered_items(monkeypatch):
+    payload = ai.StudyRequest.model_validate(study_request(autopilot=True, assignmentKind='homework', assignment={
+        'id':'2','title':'Homework 2','description':'1. Solve x + 2 = 4.\n2. Plot f(t)=exp(-t).'}))
+    monkeypatch.setattr(ai, 'model_json', lambda *_a, **_k: ai.AssignmentBrief(summary='Algebra and a plot',requirements=[
+        ai.Requirement(id='anything',text='Solve the equation',evidence='Solve x + 2 = 4.'),
+        ai.Requirement(id='made-up',text='Perform an experiment',evidence='Measure three trials.'),
+    ]))
+    brief = ai.parse_homework(payload)
+    assert [r.id for r in brief.requirements] == ['R1','R2']
+    assert any('Plot f(t)' in r.text for r in brief.requirements)
+    assert not any('experiment' in r.text for r in brief.requirements)
+
+
+def test_review_downgrades_unsupported_coverage_and_fills_omitted_items(monkeypatch):
+    brief = ai.AssignmentBrief(summary='Work',requirements=[
+        ai.Requirement(id='R1',text='Solve',evidence='Solve'),ai.Requirement(id='R2',text='Plot',evidence='Plot')])
+    monkeypatch.setattr(ai, 'model_json', lambda *_a, **_k: ai.AssignmentReview(coverage=[
+        ai.CoverageItem(requirementId='R1',status='covered',evidence='A made-up answer')]))
+    review = ai.review_homework(ai.StudyRequest.model_validate(study_request()),brief,'x = 2')
+    assert [r.status for r in review.coverage] == ['partial','missing']
+
+
+def test_autopilot_revises_once_and_reports_actual_pipeline_stages(monkeypatch):
+    mock_ollama(monkeypatch)
+    calls, stages = [], []
+    brief = ai.AssignmentBrief(summary='Solve the equation',requirements=[ai.Requirement(id='R1',text='Solve x + 2 = 4.',evidence='Solve x + 2 = 4.')])
+    def model(_model, _messages, output_type, *_args, **_kwargs):
+        calls.append(output_type)
+        if output_type is ai.AssignmentBrief: return brief
+        if output_type is ai.AssignmentReview:
+            return ai.AssignmentReview(coverage=[ai.CoverageItem(requirementId='R1',status='partial' if calls.count(ai.AssignmentReview)==1 else 'covered',evidence='' if calls.count(ai.AssignmentReview)==1 else 'x = 2',notes='Show the solution.')])
+        return ai.SampleStudyOutput.model_validate(model_output(sampleMarkdown='Sample assignment for review\nx = 2\nAI assistance disclosed.'))
+    monkeypatch.setattr(ai,'model_json',model)
+    token=ai._PROGRESS.set(lambda stage,label:stages.append(stage))
+    try:
+        response=client.post('/api/v1/assistant/generate',headers=HEADERS,json=study_request(autopilot=True,assignmentKind='homework',assignment={
+            'id':'2','title':'Homework 2','description':'Solve x + 2 = 4.'}))
+    finally: ai._PROGRESS.reset(token)
+    assert response.status_code == 200, response.text
+    result=response.json()
+    assert result['autopilot'] and result['level']=='all_in'
+    assert result['review']['coverage'][0]['status']=='covered'
+    assert calls.count(ai.SampleStudyOutput)==2 and calls.count(ai.AssignmentReview)==2
+    assert stages == ['parsing','researching','drafting','rendering','reviewing','revising','rendering','reviewing','complete']
+    assert result['diagrams']==[] and result['graphs']==[]
+
+
+def test_autopilot_job_returns_live_progress(monkeypatch):
+    payload=ai.StudyRequest.model_validate(study_request())
+    def generate(_payload):
+        ai.report_stage('parsing','Reading homework')
+        assert ai._JOBS['stage-test']['stage']=='parsing'
+        return ai.StudyPacket.model_validate(model_output())
+    monkeypatch.setattr(ai,'generate_study_packet',generate)
+    ai._JOBS['stage-test']={'id':'stage-test','status':'running','updated':time.monotonic()}
+    ai.run_job('stage-test','generate',payload)
+    assert ai.get_job('stage-test')['stage']=='complete'
+    ai._JOBS.pop('stage-test')
+
+
+def test_requirement_parser_recovers_exact_sentences_when_model_rewrites_math(monkeypatch):
+    payload = ai.StudyRequest.model_validate(study_request(assignment={'title':'Homework','description':'Plot f(t) = exp(-t). Explain the decay.'}))
+    monkeypatch.setattr(ai,'model_json',lambda *_a,**_k:ai.AssignmentBrief(summary='Decay',requirements=[ai.Requirement(id='R1',text='Plot it',evidence='Plot f(t)=e^-t')]))
+    brief=ai.parse_homework(payload)
+    assert [r.evidence for r in brief.requirements]==['Plot f(t) = exp(-t).','Explain the decay.']
+
+
+def test_visual_preferences_prevent_disabled_figures_and_legacy_numeric_fabrication(monkeypatch):
+    mock_ollama(monkeypatch,model_output(visualSpecs=[{'kind':'function','title':'Decay','sourceId':'S1','quote':'Plot f(t)=exp(-t).','expression':'exp(-t)','variable':'t','xMin':0,'xMax':5}]))
+    monkeypatch.setattr(ai,'render_visuals',lambda *_a:pytest.fail('Graphs disabled'))
+    response=client.post('/api/v1/assistant/generate',headers=HEADERS,json=study_request(assignment={'title':'Homework','description':'Plot f(t)=exp(-t).'},visualPreferences={'graphs':False,'diagrams':False,'images':False}))
+    assert response.status_code==200,response.text
+    assert response.json()['renderedVisuals']==[] and response.json()['diagrams']==[] and response.json()['graphs']==[]
+
+
+def test_research_job_infers_topics_and_browser_results_skip_duplicate_inference(monkeypatch):
+    mock_ollama(monkeypatch)
+    monkeypatch.setattr(ai, 'research_query', lambda *_: ('integration by parts learning resources', None))
+    request=study_request()
+    response=client.post('/api/v1/assistant/jobs',headers=HEADERS,json={'type':'research','request':request})
+    assert response.status_code==202,response.text
+    job_id=response.json()['id']
+    for _ in range(100):
+        state=client.get('/api/v1/assistant/jobs/'+job_id).json()
+        if state['status']!='running':break
+        time.sleep(.01)
+    assert state['status']=='complete' and state['result']['query']=='integration by parts learning resources'
+    monkeypatch.setattr(ai, 'research_query', lambda *_:pytest.fail('Browser sources need no second topic inference'))
+    monkeypatch.setattr(ai, 'read_page', lambda result:({'title':result['title'],'url':result['url'],'text':'A public explanation.'},[]))
+    payload=ai.StudyRequest.model_validate(study_request(webResearch=True,webSources=[{'title':'Public guide','url':'https://university.example/guide'}]))
+    assert any(source.kind=='web' for source in ai.collect_sources(payload)[0])
+
+
+def test_review_accepts_only_literal_interior_of_wrapped_quote(monkeypatch):
+    brief=ai.AssignmentBrief(summary='Solve',requirements=[ai.Requirement(id='R1',text='Solve',evidence='Solve')])
+    monkeypatch.setattr(ai,'model_json',lambda *_a,**_k:ai.AssignmentReview(coverage=[ai.CoverageItem(requirementId='R1',status='covered',evidence='"x = 2"')]))
+    review=ai.review_homework(ai.StudyRequest.model_validate(study_request()),brief,'The answer is x = 2.')
+    assert review.coverage[0].status=='covered' and review.coverage[0].evidence=='x = 2'
+
+
+@pytest.mark.parametrize('sentinel', ['None', 'None – all required data are present in the instructions.', 'No missing information', 'Not applicable', 'N/A'])
+def test_requirement_parser_removes_no_missing_information_sentinels(monkeypatch, sentinel):
+    payload=ai.StudyRequest.model_validate(study_request(assignment={'title':'Homework','description':'Solve x + 2 = 4.'}))
+    monkeypatch.setattr(ai,'model_json',lambda *_a,**_k:ai.AssignmentBrief(summary='Solve',requirements=[ai.Requirement(id='R1',text='Solve',evidence='Solve x + 2 = 4.')],missingInformation=[sentinel,'The measured temperature was not supplied.']))
+    assert ai.parse_homework(payload).missingInformation==['The measured temperature was not supplied.']

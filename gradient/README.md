@@ -2,6 +2,8 @@
 
 > **Live Canvas extension:** Build with `make build`, then load `gradient/dist` using Chrome’s **Load unpacked** at `chrome://extensions`. Sign in to your real Canvas tab and refresh. No API token or backend is needed for the live workspace. See [extension installation and capabilities](docs/EXTENSION.md). The localhost demo is a synthetic preview, not your Canvas account.
 
+**Homework autopilot:** The Assistant can now parse homework requirements, research, draft a complete labeled sample, compute figures with Python, and review coverage. The redesigned academic workbench uses locally bundled typography and a forest/graphite palette. See [autopilot](docs/AUTOPILOT.md), [grounded figures](docs/VISUALS.md), and [design system](docs/DESIGN.md).
+
 **Local AI copilot:** The Assistant tab discovers models already installed in Ollama. This Mac's defaults are `gpt-oss:20b` for efficient reasoning and `gemma4:e4b` for screenshot understanding. It reads Canvas briefs and accessible PDF/DOCX/page contents, researches public sources, and creates illustrated study packets or labeled sample assignments at **A bit / A bit more / Go all in** depth. Export HTML or Markdown; print HTML to PDF. Deadline tracking adds Chrome reminders, Google event links, and Apple/Google calendar imports.
 
 Run `make assistant` after installing backend dependencies, then build/reload the extension. Model downloads are unnecessary when the installed inventory is used. See [local AI setup and supported capabilities](docs/LOCAL_AI.md) and [extension installation](docs/EXTENSION.md).
