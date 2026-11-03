@@ -34,7 +34,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "backend"
+    "backend",
+    "sandbox/canvas_local/upstream"
   ]
 }
 

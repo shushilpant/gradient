@@ -63,3 +63,6 @@ sandbox-check:
 clean:
 	$(MAKE) -C gradient clean
 
+
+assistant-start:
+	$(MAKE) -C gradient assistant-start

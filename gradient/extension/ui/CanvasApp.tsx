@@ -5,6 +5,7 @@ import { syncTrackedDeadlines } from '../deadlineCalendar.js';
 
 /** Live controller. Canvas failures stay errors; demo data is never imported here. */
 export function CanvasApp({ initialUrl }: { initialUrl: string }) {
+  const [workflowMode, setWorkflowMode] = useState<'manual' | 'auto' | null>(null);
   const [snapshot, setSnapshot] = useState<CanvasSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +41,10 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
   }, [courseId]);
 
   useEffect(() => {
-    refresh();
+    if (workflowMode === 'manual') refresh();
     return () => activeRequest.current?.abort();
-  }, [refresh]);
+  }, [refresh, workflowMode]);
 
   return <Workspace snapshot={snapshot} loading={loading} error={error} progress={progress}
-    onRefresh={refresh} initialCourseId={courseId} initialAssignmentId={assignmentId} />;
+    onRefresh={refresh} onWorkflowMode={setWorkflowMode} initialCourseId={courseId} initialAssignmentId={assignmentId} />;
 }

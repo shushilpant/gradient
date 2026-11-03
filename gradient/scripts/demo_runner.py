@@ -26,7 +26,7 @@ SANDBOX_FIXTURES_DIR = os.path.join(BASE_DIR, "sandbox/fixtures")
 DIST_DIR = os.path.join(BASE_DIR, "dist")
 
 HTML_PAGE_PORT = 8085
-BACKEND_PORT = 8000
+BACKEND_PORT = 8765
 SANDBOX_API_PORT = 8086
 
 # Generate static mock Canvas LMS page with injected extension bundle
@@ -120,8 +120,8 @@ def start_backend_if_needed():
 
     print(f"  [BACKEND] Starting stateless FastAPI backend (port {BACKEND_PORT})...")
     proc = subprocess.Popen(
-        [python_exec, "-m", "uvicorn", "app:app", "--host", "127.0.0.1", "--port", str(BACKEND_PORT)],
-        cwd=os.path.join(BASE_DIR, "backend"),
+        [python_exec, "-m", "uvicorn", "backend.app:app", "--host", "127.0.0.1", "--port", str(BACKEND_PORT)],
+        cwd=BASE_DIR,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

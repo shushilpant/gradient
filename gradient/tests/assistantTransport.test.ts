@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { localAssistantFetch, validateAssistantPath, validateBackendUrl } from '../extension/assistantTransport.js';
-import { applyBrowserAction, safeBrowserUrl } from '../extension/assistantClient.js';
+import { assistantRequest, localAssistantFetch, validateAssistantPath, validateBackendUrl } from '../extension/assistantTransport.js';
+import { applyBrowserAction, safeBrowserUrl, planBrowserAction } from '../extension/assistantClient.js';
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
@@ -104,4 +104,42 @@ describe('user-invoked browser actions', () => {
     await applyBrowserAction({ kind: 'read', description: 'Read the notes', url: '/courses/10/pages/notes' });
     expect(browser.open).toHaveBeenCalledWith('https://school.instructure.com/courses/10/pages/notes', '_blank', 'noopener,noreferrer');
   });
+});
+
+describe('bounded local computer-agent relay paths',()=>{
+  it('allows only config, sessions and cancellation endpoints',async()=>{
+    const {validateAssistantPath}=await import('../extension/assistantTransport.js');
+    expect(()=>validateAssistantPath('/api/v1/computer/config','GET')).not.toThrow();
+    expect(()=>validateAssistantPath('/api/v1/computer/sessions/abc-123','GET')).not.toThrow();
+    expect(()=>validateAssistantPath('/api/v1/computer/sessions','POST')).not.toThrow();
+    expect(()=>validateAssistantPath('/api/v1/computer/sessions/abc-123/cancel','POST')).not.toThrow();
+    for(const path of ['/api/v1/computer/shell','/api/v1/computer/sessions/../config','/api/v1/computer/sessions/abc/artifacts/private','/api/v1/computer/config?origin=https://attacker.example'])expect(()=>validateAssistantPath(path,'POST')).toThrow();
+  });
+});
+
+
+describe('browser plan optional targets', () => {
+  it('normalizes backend null targets while preserving typed action fields', async () => {
+    vi.stubGlobal('chrome', {runtime:{sendMessage:vi.fn(async(message) => ({ok:true,data:message.path.endsWith('/jobs') ? {id:'null-targets'} : {status:'complete',result:{summary:'Navigate',actions:[{kind:'open',description:'Course',url:'http://127.0.0.1:8080/courses/1',text:null},{kind:'scroll',description:'Continue',url:null,text:null}],warnings:[]}}}))}});
+    const result=await planBrowserAction({backendUrl:'http://127.0.0.1:8765',reasoningModel:'gpt-oss:20b',visionModel:'gemma4:e4b',detailLevel:'a_bit',webResearch:false},{goal:'Find homework',url:'http://127.0.0.1:8080/',title:'Canvas',text:'Courses',model:'gpt-oss:20b'});
+    expect(result.actions[0]?.text).toBeUndefined();
+    expect(result.actions[0]?.url).toBe('http://127.0.0.1:8080/courses/1');
+    expect(result.actions[1]?.url).toBeUndefined();
+  });
+});
+
+
+describe('extension reload recovery',()=>{
+ it('falls back to the local service only when Chrome invalidates the context',async()=>{
+  vi.stubGlobal('chrome',{runtime:{sendMessage:vi.fn().mockRejectedValue(new Error('Extension context invalidated.'))}});
+  const fetch=vi.fn().mockResolvedValue(new Response(JSON.stringify({ok:true}),{status:200}));vi.stubGlobal('fetch',fetch);
+  expect(await assistantRequest('http://127.0.0.1:8765','/api/v1/computer/config','GET')).toEqual({ok:true});
+  expect(fetch).toHaveBeenCalledTimes(1);
+ });
+ it('does not retry unrelated failures',async()=>{
+  vi.stubGlobal('chrome',{runtime:{sendMessage:vi.fn().mockRejectedValue(new Error('Generation failed'))}});
+  const fetch=vi.fn();vi.stubGlobal('fetch',fetch);
+  await expect(assistantRequest('http://127.0.0.1:8765','/api/v1/assistant/jobs','POST',{})).rejects.toThrow('Generation failed');
+  expect(fetch).not.toHaveBeenCalled();
+ });
 });

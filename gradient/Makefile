@@ -104,3 +104,6 @@ sandbox-check:
 clean:
 	rm -rf dist
 
+
+assistant-start:
+	$(PYTHON) scripts/assistant_service.py

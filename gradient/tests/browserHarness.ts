@@ -17,6 +17,7 @@ export function bundle(name = 'content'): string {
 }
 
 export interface MockCanvasOptions {
+  workflowMode?: 'manual' | 'auto' | null;
   url?: string;
   denied?: boolean;
   resourceDenied?: boolean;
@@ -74,6 +75,9 @@ export async function mockCanvas(browser: Browser, options: MockCanvasOptions = 
   });
   await page.goto(options.url ?? `${CANVAS_ORIGIN}/courses/99001`);
   await page.evaluate(bundle());
+  if (options.workflowMode !== null && !/\/quizzes\/.*\/take/.test(options.url || '') && !/quiz_timer|submit_quiz_form/.test(options.html || '') && !options.url?.includes('notinstructure')) {
+    await page.getByRole('button', {name: options.workflowMode === 'auto' ? 'Use auto mode' : 'Use manual mode', exact:true}).click({timeout:3000}).catch(()=>{});
+  }
   return { page, requests };
 }
 

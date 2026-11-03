@@ -18,3 +18,10 @@ build/
 *.local
 .DS_Store
 
+
+# Local assistant process metadata and logs
+gradient/.runtime/
+
+# Pinned upstream Canvas checkout and isolated local state
+gradient/sandbox/canvas_local/upstream/
+gradient/sandbox/canvas_local/.state/

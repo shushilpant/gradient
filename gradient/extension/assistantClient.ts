@@ -1,18 +1,19 @@
 import { z } from 'zod';
 import type { AssistantSettings, AssistantHealth, StudyRequest, StudyPacket, BrowserPlanRequest, BrowserPlan, BrowserAction, StudyProgress } from './assistantTypes.js';
-import { localAssistantFetch, validateBackendUrl } from './assistantTransport.js';
+import { assistantRequest, invalidatedExtension, validateBackendUrl } from './assistantTransport.js';
 import { readCanvasMaterials } from './canvasMaterials.js';
 export type * from './assistantTypes.js';
 
 export const DEFAULT_ASSISTANT_SETTINGS: AssistantSettings = {
   backendUrl: 'http://127.0.0.1:8765', reasoningModel: 'gpt-oss:20b', visionModel: 'gemma4:e4b', detailLevel: 'a_bit_more', webResearch: true,
 };
+let cachedSettings:AssistantSettings|undefined;
 const SETTINGS_KEY = 'gradient_assistant_settings';
 const settingsSchema = z.object({
   backendUrl: z.string().transform(validateBackendUrl), reasoningModel: z.string().min(1).max(200),
   visionModel: z.string().min(1).max(100), detailLevel: z.enum(['a_bit', 'a_bit_more', 'all_in']), webResearch: z.boolean(),
 });
-const packetSchema = z.object({
+export const packetSchema = z.object({
   title: z.string().max(1000), summary: z.string().max(10000), markdown: z.string().max(200000), sampleMarkdown: z.string().max(200000),
   sources: z.array(z.object({ id: z.string(), title: z.string(), url: z.string(), excerpt: z.string().optional(), kind: z.enum(['canvas', 'web']).optional() })).max(80),
   diagrams: z.array(z.object({ title: z.string(), nodes: z.array(z.object({ id: z.string(), label: z.string() })).max(20), edges: z.array(z.object({ from: z.string(), to: z.string(), label: z.string().optional() })).max(40) })).max(10),
@@ -25,7 +26,7 @@ const packetSchema = z.object({
   renderedVisuals: z.array(z.object({id:z.string(),title:z.string(),kind:z.enum(['function','data','diagram']),mimeType:z.literal('image/png'),data:z.string().max(4000000).regex(/^[A-Za-z0-9+/]+={0,2}$/),caption:z.string(),provenance:z.object({sourceId:z.string(),quote:z.string()}),verification:z.enum(['computed','source-data','conceptual'])})).max(4).optional(),
 });
 
-function extensionAvailable(): boolean { return typeof chrome !== 'undefined' && !!chrome.runtime?.id; }
+function extensionAvailable(): boolean { return typeof chrome !== 'undefined' && typeof chrome.runtime?.sendMessage === 'function'; }
 
 async function sendMessage(message: unknown): Promise<any> {
   const response = await chrome.runtime.sendMessage(message);
@@ -35,26 +36,30 @@ async function sendMessage(message: unknown): Promise<any> {
 
 async function request(settings: AssistantSettings, path: string, method: 'GET' | 'POST', body?: unknown): Promise<any> {
   const backendUrl = validateBackendUrl(settings.backendUrl);
-  if (extensionAvailable()) return sendMessage({ type: 'GRADIENT_ASSISTANT_REQUEST', backendUrl, path: `/api/v1/assistant/${path}`, method, body });
-  return localAssistantFetch(backendUrl, `/api/v1/assistant/${path}`, method, body);
+  return assistantRequest(backendUrl, `/api/v1/assistant/${path}`, method, body);
 }
 
 export async function loadAssistantSettings(): Promise<AssistantSettings> {
-  let saved: unknown;
-  if (typeof chrome !== 'undefined' && chrome.storage?.local) saved = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY];
+  let saved: unknown=cachedSettings;
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    try {saved = (await chrome.storage.local.get(SETTINGS_KEY))[SETTINGS_KEY];}
+    catch(error){if(!invalidatedExtension(error))throw error;}
+  }
   else if (typeof localStorage !== 'undefined') {
     try { saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { saved = {}; }
   }
   const parsed = settingsSchema.safeParse({ ...DEFAULT_ASSISTANT_SETTINGS, ...(saved && typeof saved === 'object' ? saved : {}) });
-  return parsed.success ? parsed.data : { ...DEFAULT_ASSISTANT_SETTINGS };
+  cachedSettings=parsed.success ? parsed.data : { ...DEFAULT_ASSISTANT_SETTINGS };
+  return {...cachedSettings};
 }
 
 let settingsWrite: Promise<unknown> = Promise.resolve();
 export function saveAssistantSettings(patch: Partial<AssistantSettings>): Promise<AssistantSettings> {
   const write = settingsWrite.catch(() => {}).then(async () => {
     const next = settingsSchema.parse({ ...await loadAssistantSettings(), ...patch });
-    if (typeof chrome !== 'undefined' && chrome.storage?.local) await chrome.storage.local.set({ [SETTINGS_KEY]: next });
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) {try{await chrome.storage.local.set({ [SETTINGS_KEY]: next });}catch(error){if(!invalidatedExtension(error))throw error;}}
     else if (typeof localStorage !== 'undefined') localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+    cachedSettings=next;
     return next;
   });
   settingsWrite = write;
@@ -127,7 +132,7 @@ export async function generateStudyPacket(settings: AssistantSettings, input: St
 export async function captureBrowserContext(): Promise<{ url: string; title: string; text: string; screenshot?: string }> {
   const root = (document.querySelector('main') || document.body).cloneNode(true) as HTMLElement;
   root.querySelectorAll('#gradient-panel-host,script,style,input,textarea,select,[contenteditable],iframe').forEach(el => el.remove());
-  const links = Array.from(root.querySelectorAll('a[href]')).slice(0, 100).flatMap(anchor => {
+  const links = Array.from(document.querySelectorAll('a[href]')).filter(a=>!a.closest('#gradient-panel-host,#gradient-page-control')).slice(0, 160).flatMap(anchor => {
     try {
       const url = new URL(anchor.getAttribute('href') || '', window.location.href);
       return url.origin === window.location.origin && ['http:', 'https:'].includes(url.protocol) ? [`${(anchor.textContent || '').trim().slice(0, 150)}: ${url.href}`] : [];
@@ -144,6 +149,8 @@ export async function captureBrowserContext(): Promise<{ url: string; title: str
       await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const capture = await sendMessage({ type: 'GRADIENT_CAPTURE_CONTEXT' });
       screenshot = capture.screenshot;
+    } catch(error) {
+      if(!invalidatedExtension(error))throw error;
     } finally {
       if (oldVisibility) host?.style.setProperty('visibility', oldVisibility, oldPriority);
       else host?.style.removeProperty('visibility');
@@ -153,7 +160,7 @@ export async function captureBrowserContext(): Promise<{ url: string; title: str
 }
 
 export async function planBrowserAction(settings: AssistantSettings, input: BrowserPlanRequest): Promise<BrowserPlan> {
-  return z.object({ summary: z.string(), actions: z.array(z.object({ kind: z.enum(['open', 'find', 'scroll', 'read']), description: z.string(), url: z.string().optional(), text: z.string().optional() })).max(12), warnings: z.array(z.string()) }).parse(await runJob(settings, 'browser', input));
+  return z.object({ summary: z.string(), actions: z.array(z.object({ kind: z.enum(['open', 'find', 'scroll', 'read']), description: z.string(), url: z.string().nullish().transform(value => value ?? undefined), text: z.string().nullish().transform(value => value ?? undefined) })).max(12), warnings: z.array(z.string()) }).parse(await runJob(settings, 'browser', input));
 }
 
 export function safeBrowserUrl(value: string): string {
@@ -182,4 +189,8 @@ export async function applyBrowserAction(action: BrowserAction): Promise<void> {
       if (!found) throw new Error('The suggested text was not found on this page.');
     } else throw new Error('The model did not provide a section or link to read. Inspect the page again with a more specific goal.');
   } else throw new Error('This action needs a link or text target.');
+}
+
+export async function renderAssignmentPdf(settings:AssistantSettings,html:string):Promise<string>{
+ return z.object({data:z.string().regex(/^[A-Za-z0-9+/]+=*$/)}).parse(await request(settings,'export/pdf','POST',{html})).data;
 }

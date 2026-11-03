@@ -1,0 +1,14 @@
+<style>
+/* Local Canvas login: prevent action columns colliding at narrow widths. */
+.ic-Login #login_form .ic-Login__actions {
+  display: flex; flex-direction: column; align-items: stretch; gap: 18px;
+}
+.ic-Login #login_form .ic-Login__actions-timeout {
+  float: none; width: 100%; min-width: 0; margin: 0;
+}
+.ic-Login #login_form .ic-Login__forgot { margin-top: 10px; }
+.ic-Login #login_form .ic-Login__actions > .ic-Form-control {
+  float: none; width: 100%; margin: 0;
+}
+.ic-Login #login_form .Button--login { width: 100%; float: none; }
+</style>

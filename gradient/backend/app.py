@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 import sympy as sp
 
 try:
+    from computer_agent import router as computer_agent_router
+except ImportError:
+    from backend.computer_agent import router as computer_agent_router
+
+try:
     from local_assistant import router as local_assistant_router
 except ImportError:
     from backend.local_assistant import router as local_assistant_router
@@ -102,13 +107,19 @@ app = FastAPI(
 # CORS configuration for browser extension content scripts and panel
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^(?:chrome-extension://[a-p]{32}|https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)$",
+    allow_origin_regex=r"^(?:chrome-extension://[a-p]{32}|https://(?:[a-zA-Z0-9-]+\.)?instructure\.com|https://canvas\.usm\.edu|https?://(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?)$",
     allow_credentials=False,  # Stateless: no cookies or server sessions
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
 app.include_router(local_assistant_router)
+app.include_router(computer_agent_router)
+try:
+    from sandbox_mirror import router as sandbox_mirror_router
+except ImportError:
+    from backend.sandbox_mirror import router as sandbox_mirror_router
+app.include_router(sandbox_mirror_router)
 
 
 class HealthResponse(BaseModel):
@@ -376,3 +387,9 @@ def scan_announcements(payload: ScanAnnouncementsRequest) -> Dict[str, Any]:
 
 
 
+
+try:
+    from assignment_pdf import router as assignment_pdf_router
+except ImportError:
+    from backend.assignment_pdf import router as assignment_pdf_router
+app.include_router(assignment_pdf_router)

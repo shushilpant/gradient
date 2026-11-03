@@ -9,7 +9,7 @@ export function AutopilotProgress({progress}:{progress:StudyProgress|null}) {
   const active = STAGES.findIndex(item=>item.id===stage);
   return <div class="ja-autopilot-progress" role="status" aria-live="polite">
     <ol class="ja-stages" aria-label="Autopilot workflow">{STAGES.map((item,index)=><li key={item.id} class={index===active?'current':index<active?'done':''}><span>{String(index+1).padStart(2,'0')}</span>{item.label}</li>)}</ol>
-    <p>{progress?.label || 'Preparing your homework workspace'}</p><small>Local models work through several passes. This can take a few minutes.</small>
+    <p>{progress?.label || 'Working…'}</p>
   </div>;
 }
 
@@ -19,7 +19,7 @@ export function WorkEvidence({packet}:{packet:StudyPacket}) {
   if (!brief) return null;
   const covered=review?.coverage.filter(item=>item.status==='covered').length ?? 0;
   return <section class="ja-requirements" aria-label="Assignment requirements and review">
-    <div class="ja-row"><h3>Instructions, accounted for.</h3><span class="ja-evidence-count">{review?`${covered}/${brief.requirements.length} covered`:'Brief parsed'}</span></div>
+    <div class="ja-row"><h3>Requirements</h3><span class="ja-evidence-count">{review?`${covered}/${brief.requirements.length} covered`:'Brief parsed'}</span></div>
     <p class="ja-note">{brief.summary}</p>
     <ol class="ja-coverage">{brief.requirements.map(requirement=>{
       const check=review?.coverage.find(item=>item.requirementId===requirement.id);
@@ -28,7 +28,6 @@ export function WorkEvidence({packet}:{packet:StudyPacket}) {
     })}</ol>
     {brief.missingInformation.length>0 && <div class="ja-notice warning"><strong>Information still needed</strong><ul>{brief.missingInformation.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}
     {!!review?.limitations.length && <div class="ja-notice warning"><strong>Review limits</strong><ul>{review.limitations.map((item,i)=><li key={i}>{item}</li>)}</ul></div>}
-    <p class="ja-note">Coverage is a local-model review, not a correctness guarantee. Check the sample against the original instructions before adapting it.</p>
   </section>;
 }
 

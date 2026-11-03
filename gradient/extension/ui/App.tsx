@@ -89,7 +89,6 @@ export function App({ initialUrl = '', isFixtureMode = true }: AppProps) {
         <div class="gradient-header" onClick={() => isMinimized && setIsMinimized(false)}>
           <div class="gradient-brand">
             <span>GRADIENT</span>
-            <span class="gradient-brand-pill">v0.1</span>
           </div>
           <div class="header-actions">
             <button
@@ -112,7 +111,6 @@ export function App({ initialUrl = '', isFixtureMode = true }: AppProps) {
             <div class="detail-bar" role="region" aria-label="Support Depth Control">
               <div class="detail-bar-header">
                 <span>Support Depth</span>
-                <span class="detail-disclaimer">Critique only • Zero ghostwriting</span>
               </div>
               <div class="detail-buttons" role="radiogroup" aria-label="Support Depth Selection">
                 <button

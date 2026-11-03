@@ -1,0 +1,9 @@
+# pgvector's official image includes the PostgreSQL extension required by Canvas.
+# This avoids an apt repository bootstrap during the local database image build.
+FROM pgvector/pgvector:0.8.7-pg14-trixie
+RUN echo "max_locks_per_transaction = 640" >> /usr/share/postgresql/14/postgresql.conf.sample \
+ && echo "max_stack_depth = 5MB" >> /usr/share/postgresql/14/postgresql.conf.sample \
+ && echo "random_page_cost = 1.0" >> /usr/share/postgresql/14/postgresql.conf.sample \
+ && echo "shared_buffers = 256MB" >> /usr/share/postgresql/14/postgresql.conf.sample
+COPY upstream/docker-compose/postgres/create-dbs.sh /docker-entrypoint-initdb.d/
+COPY upstream/docker-compose/postgres/wait-for-it /

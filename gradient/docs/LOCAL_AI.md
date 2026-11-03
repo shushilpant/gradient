@@ -232,3 +232,7 @@ Reload the extension after building, restart the backend, then click **Enable Go
 Turn on **Homework autopilot**, select ordinary homework, confirm its type, and choose **Run homework autopilot**. The app reads accessible course files, extracts the instructions, researches, drafts, checks requirement coverage, and computes supported figures. Exam/quiz metadata and titles disable autopilot. The final coverage review includes exact instruction excerpts, sample evidence, remaining gaps and limitations. No work is submitted automatically. See [AUTOPILOT.md](AUTOPILOT.md).
 
 New figures are Python-rendered PNGs from source-backed mathematical expressions, quoted coordinate pairs or explicit relationships. They are embedded in HTML/Markdown exports with provenance. Legacy model-generated bars and ungrounded node chains are no longer displayed. See [VISUALS.md](VISUALS.md) for supported functions, inverse Laplace transforms, derivatives and clear limits.
+
+Use `make assistant-start` to start the backend independently of a terminal. Its process metadata and request-path logs live in ignored `gradient/.runtime/`. Supported Canvas origins can reach the local backend when Chrome uses content-script request origins; all POSTs still require the extension client header.
+
+Gradient requests a minimum 100,000-token context for local model calls and preserves larger explicit contexts. The installed GPT-OSS 20B and Gemma4 E4B report 131,072-token support. Response token limits remain separate; larger context uses more memory and may increase latency.

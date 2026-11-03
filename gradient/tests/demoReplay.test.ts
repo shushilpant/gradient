@@ -17,6 +17,7 @@ describe('Explicit local demo preview', () => {
       });
       await page.goto('http://127.0.0.1:8086/courses/99001');
       await page.evaluate(bundle('preview'));
+      await page.getByRole('button',{name:'Use manual mode',exact:true}).click();
       await page.getByText(/Demo preview/i).first().waitFor({ timeout: 10000 });
       expect(await page.locator('#gradient-panel-host').count()).toBe(1);
       expect(apiRequests).toEqual([]);

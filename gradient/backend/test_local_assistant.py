@@ -99,7 +99,7 @@ def test_generate_grounded_sources_diagrams_and_no_external_research(monkeypatch
     chat = next(body for path, body in calls if path == "/api/chat")
     assert chat["stream"] is False and chat["keep_alive"] == "30s"
     assert "ATP and NADPH" in chat["messages"][1]["content"]
-    assert chat["options"]["num_ctx"] <= 16384
+    assert chat["options"]["num_ctx"] == 100_000
 
 
 def test_detail_levels_change_actual_generation_budgets(monkeypatch):
@@ -563,6 +563,34 @@ def test_autopilot_revises_once_and_reports_actual_pipeline_stages(monkeypatch):
     assert result['diagrams']==[] and result['graphs']==[]
 
 
+@pytest.mark.parametrize('failure', ['review', 'revision', 'revised_review'])
+def test_autopilot_preserves_original_sample_and_figures_when_optional_repair_fails(monkeypatch, failure):
+    mock_ollama(monkeypatch)
+    calls = []
+    brief = ai.AssignmentBrief(summary='Solve and plot', requirements=[ai.Requirement(id='R1', text='Solve x + 2 = 4.', evidence='Solve x + 2 = 4.')])
+    def model(_model, _messages, output_type, *_args, **_kwargs):
+        calls.append(output_type)
+        if output_type is ai.AssignmentBrief:
+            return brief
+        if output_type is ai.AssignmentReview:
+            if failure == 'review' or failure == 'revised_review' and calls.count(ai.AssignmentReview) == 2:
+                raise ai.HTTPException(502, 'The model hit its response limit.')
+            return ai.AssignmentReview(coverage=[ai.CoverageItem(requirementId='R1', status='partial', notes='Explain the intermediate step.')])
+        if calls.count(ai.SampleStudyOutput) == 2 and failure == 'revision':
+            raise ai.HTTPException(502, 'The model hit its response limit.')
+        sample = 'Original complete sample: x = 2. AI assistance disclosed.' if calls.count(ai.SampleStudyOutput) == 1 else 'Candidate revision: x = 9.'
+        return ai.SampleStudyOutput.model_validate(model_output(sampleMarkdown=sample))
+    monkeypatch.setattr(ai, 'model_json', model)
+    response = client.post('/api/v1/assistant/generate', headers=HEADERS, json=study_request(autopilot=True, assignmentKind='homework', assignment={
+        'id':'2', 'title':'Homework 2', 'description':'Solve x + 2 = 4. Plot f(t)=exp(-t).'}))
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert 'Original complete sample' in result['sampleMarkdown'] and 'x = 9' not in result['sampleMarkdown']
+    assert result['renderedVisuals'] and base64.b64decode(result['renderedVisuals'][0]['data']).startswith(b'\x89PNG\r\n\x1a\n')
+    assert result['review']['coverage'][0]['status'] == 'partial'
+    assert any('could not finish' in warning for warning in result['warnings'])
+
+
 def test_autopilot_job_returns_live_progress(monkeypatch):
     payload=ai.StudyRequest.model_validate(study_request())
     def generate(_payload):
@@ -640,3 +668,19 @@ def test_model_json_accepts_complete_object_with_preamble_and_literal_newlines(m
     monkeypatch.setattr(ai, 'ollama_request', lambda *_a, **_k: {'message':{'content':raw}})
     result = ai.model_json('gpt-oss:20b', [], ai.ModelStudyOutput, 2000)
     assert result.markdown == 'First line\nSecond line'
+
+
+def test_supported_canvas_preflight_is_allowed_but_arbitrary_sites_are_not():
+    response = client.options('/api/v1/assistant/jobs', headers={'Origin':'https://usm.instructure.com','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-gradient-client'})
+    assert response.status_code == 200
+    assert response.headers['access-control-allow-origin'] == 'https://usm.instructure.com'
+    response = client.options('/api/v1/assistant/jobs', headers={'Origin':'https://attacker.example','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'x-gradient-client'})
+    assert response.status_code == 400
+
+
+@pytest.mark.parametrize('requested,expected', [(None,100_000),(32768,100_000),(131072,131072)])
+def test_model_context_minimum_preserves_larger_windows(monkeypatch,requested,expected):
+    calls=[]
+    mock_ollama(monkeypatch,captures=calls)
+    ai.model_json('gpt-oss:20b', [{'role':'user','content':'Explain'}], ai.ModelStudyOutput, 1000, context_length=requested)
+    assert next(body for path,body in calls if path=='/api/chat')['options']['num_ctx']==expected

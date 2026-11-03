@@ -1,0 +1,6 @@
+# Only dependency installation needs outbound networking. Not used by normal up.
+services:
+  web:
+    networks: [sandbox, bootstrap]
+networks:
+  bootstrap: {}

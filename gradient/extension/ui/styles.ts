@@ -15,10 +15,10 @@ export const PANEL_STYLES = `
 
   :host {
     all: initial;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 13px;
-    line-height: 1.45;
-    color: #0f172a;
+    font-family: Figtree, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #171410;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -28,10 +28,10 @@ export const PANEL_STYLES = `
     right: 16px;
     width: 440px;
     max-height: calc(100vh - 32px);
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    border-radius: 12px;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    background: #fff8f1;
+    border: 1px solid #fff;
+    border-radius: 28px;
+    box-shadow: 0 32px 80px -24px rgba(90, 30, 8, 0.28);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -46,23 +46,23 @@ export const PANEL_STYLES = `
 
   /* Header */
   .gradient-header {
-    padding: 10px 14px;
-    background: #0f172a;
-    color: #ffffff;
+    padding: 16px 18px;
+    background: transparent;
+    color: #171410;
     display: flex;
     justify-content: space-between;
     align-items: center;
     user-select: none;
-    border-bottom: 1px solid #1e293b;
+    border-bottom: 1px solid #f0e6d8;
   }
 
   .gradient-brand {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.05em;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.04em;
   }
 
   .gradient-brand-pill {
@@ -82,12 +82,12 @@ export const PANEL_STYLES = `
   }
 
   .header-btn {
-    background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #cbd5e1;
-    padding: 3px 8px;
-    border-radius: 4px;
-    font-size: 11px;
+    background: #fff;
+    border: 1px solid #e6d9c8;
+    color: #4d433a;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 14px;
     cursor: pointer;
     line-height: 1;
     display: flex;
@@ -97,9 +97,9 @@ export const PANEL_STYLES = `
   }
 
   .header-btn:hover, .header-btn:focus-visible {
-    background: rgba(255, 255, 255, 0.15);
-    color: #ffffff;
-    outline: 2px solid #38bdf8;
+    background: #fff3e4;
+    color: #ff4a12;
+    outline: 2px solid #ff4a12;
   }
 
   /* Detail Level Selector */

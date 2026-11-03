@@ -50,6 +50,21 @@ describe('Local study assistant browser flow', () => {
   beforeAll(async () => { browser = await launchBrowser(); });
   afterAll(async () => { await browser?.close(); });
 
+  it('renders display equations directly after prose without requiring a blank line',async()=>{
+    const {page}=await mockCanvas(browser);
+    try {
+      await waitForLoaded(page);
+      await mockAssistant(page,[],false,{...packet,markdown:'Differentiate the signal:\n\\[\n\\n g\'(t)=e^{-(t-2)}\\bigl[1-(t-2)\\bigr]\n\\]\nThe maximum is:\n$$\nf(3)=e^{-1}\n$$\nThe code stays literal.\n```text\n\\[not rendered as math\\]\n```',sampleMarkdown:''});
+      await connect(page);
+      await page.getByRole('button',{name:'Build my study packet',exact:true}).click();
+      await page.getByRole('heading',{name:packet.title,exact:true}).waitFor();
+      expect(await page.locator('.ja-result .ja-math-block math').count()).toBe(2);
+      expect(await page.locator('.ja-result .ja-math-error').count()).toBe(0);
+      expect(await page.locator('.ja-result pre').innerText()).toBe('\\[not rendered as math\\]');
+      expect((await page.locator('.ja-result p').allTextContents()).join('\n')).not.toContain('\\[');
+    } finally {await page.close();}
+  });
+
   it('builds a sample at the chosen depth, reads course pages, safely renders visuals, exports and retains it across tabs', async () => {
     const { page } = await mockCanvas(browser);
     const received: Record<string, any>[] = [];
