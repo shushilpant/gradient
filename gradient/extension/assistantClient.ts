@@ -68,7 +68,7 @@ export function saveAssistantSettings(patch: Partial<AssistantSettings>): Promis
 
 export async function getAssistantHealth(settings: AssistantSettings): Promise<AssistantHealth> {
   return z.object({
-    ok: z.boolean(), ollamaConnected: z.boolean(), models: z.array(z.string()), message: z.string().optional(), pullStates: z.record(z.string()).optional(),
+    studioVersion: z.number().optional(), ok: z.boolean(), ollamaConnected: z.boolean(), models: z.array(z.string()), message: z.string().optional(), pullStates: z.record(z.string()).optional(),
     modelDetails: z.array(z.object({ name: z.string(), size: z.number(), capabilities: z.array(z.string()), parameterSize: z.string().optional(), quantization: z.string().optional(), remote: z.boolean().optional() })).optional(),
     recommended: z.object({ reasoningModel: z.string(), visionModel: z.string(), reason: z.string().optional(), contextLength: z.number().optional() }).optional(),
   }).parse(await request(settings, 'health', 'GET'));
@@ -79,11 +79,15 @@ export async function pullAssistantModel(settings: AssistantSettings, model: str
 }
 
 /** Poll short requests so MV3's 30-second fetch limit never interrupts local inference. */
-async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research', input: StudyRequest | BrowserPlanRequest, onProgress?: (progress: StudyProgress) => void): Promise<unknown> {
+async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research' | 'speech' | 'photo', input: StudyRequest | BrowserPlanRequest | {text:string;voice:string} | PhotoCheckRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<unknown> {
+  signal?.throwIfAborted();
   const job = z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/) }).parse(await request(settings, 'jobs', 'POST', { type, request: input }));
+  signal?.throwIfAborted();
   const start = Date.now();
   while (Date.now() - start < 15 * 60 * 1000) {
+    signal?.throwIfAborted();
     const state = await request(settings, `jobs/${job.id}`, 'GET');
+    signal?.throwIfAborted();
     if (typeof state.stage === 'string' && typeof state.label === 'string') onProgress?.({stage:state.stage,label:state.label});
     if (state.status === 'complete') return state.result;
     if (state.status === 'error') throw new Error(state.error || 'Local model generation failed.');
@@ -97,11 +101,13 @@ export async function enableBrowserSearch(): Promise<boolean> {
   return (await sendMessage({type:'GRADIENT_ENABLE_SEARCH'})).granted;
 }
 
-export async function generateStudyPacket(settings: AssistantSettings, input: StudyRequest, onProgress?: (progress: StudyProgress) => void): Promise<StudyPacket> {
+export async function generateStudyPacket(settings: AssistantSettings, input: StudyRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<StudyPacket> {
+  signal?.throwIfAborted();
   const origin = typeof window !== 'undefined' ? window.location.origin : new URL(input.assignment.url).origin;
   onProgress?.({stage:'reading',label:'Reading the assignment and accessible course documents'});
   const materials = await readCanvasMaterials(input.resources, origin, input.course.id,
-    file => request(settings, 'materials/extract', 'POST', file));
+    file => request(settings, 'materials/extract', 'POST', file), signal);
+  signal?.throwIfAborted();
   const enriched = {...input, resources: materials.resources};
   let webSources: {title:string;url:string;snippet:string}[] = [];
   const searchWarnings:string[] = [];
@@ -112,7 +118,7 @@ export async function generateStudyPacket(settings: AssistantSettings, input: St
     if (!meaningful) {
       onProgress?.({stage:'parsing',label:'Inferring a public research topic locally from the homework instructions'});
       try {
-        const plan = z.object({query:z.string().max(250).nullable(),warning:z.string().nullable()}).parse(await runJob(settings,'research',enriched,onProgress));
+        const plan = z.object({query:z.string().max(250).nullable(),warning:z.string().nullable()}).parse(await runJob(settings,'research',enriched,onProgress,signal));
         query=plan.query;
         if (plan.warning) searchWarnings.push(plan.warning);
       } catch (error) {query=null; searchWarnings.push(error instanceof Error?error.message:'Could not infer a reliable research topic.');}
@@ -123,13 +129,15 @@ export async function generateStudyPacket(settings: AssistantSettings, input: St
       catch(error) { searchWarnings.push(error instanceof Error?error.message:'Browser search was unavailable.'); }
     }
   }
+  signal?.throwIfAborted();
   onProgress?.({stage:'queued',label:'Sending the brief to your local model'});
-  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...enriched, webSources }, onProgress));
+  const packet = packetSchema.parse(await runJob(settings, 'generate', { ...enriched, webSources }, onProgress, signal));
+  packet.sources = packet.sources.map(source => ({ ...source, documentText: materials.resources.find(resource => resource.url === source.url)?.text ?? (source.id === 'S1' ? input.assignment.description : undefined) }));
   packet.warnings = [...searchWarnings, ...materials.warnings, ...packet.warnings];
   return packet;
 }
 
-export async function captureBrowserContext(): Promise<{ url: string; title: string; text: string; screenshot?: string }> {
+export async function captureBrowserContext(includeScreenshot = true): Promise<{ url: string; title: string; text: string; screenshot?: string }> {
   const root = (document.querySelector('main') || document.body).cloneNode(true) as HTMLElement;
   root.querySelectorAll('#gradient-panel-host,script,style,input,textarea,select,[contenteditable],iframe').forEach(el => el.remove());
   const links = Array.from(document.querySelectorAll('a[href]')).filter(a=>!a.closest('#gradient-panel-host,#gradient-page-control')).slice(0, 160).flatMap(anchor => {
@@ -140,7 +148,7 @@ export async function captureBrowserContext(): Promise<{ url: string; title: str
   });
   const text = (root.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 16000) + '\n\nVisible resource links:\n' + links.join('\n').slice(0, 8000);
   let screenshot: string | undefined;
-  if (extensionAvailable()) {
+  if (includeScreenshot && extensionAvailable()) {
     const host = document.getElementById('gradient-panel-host');
     const oldVisibility = host?.style.getPropertyValue('visibility') || '';
     const oldPriority = host?.style.getPropertyPriority('visibility') || '';
@@ -193,4 +201,14 @@ export async function applyBrowserAction(action: BrowserAction): Promise<void> {
 
 export async function renderAssignmentPdf(settings:AssistantSettings,html:string):Promise<string>{
  return z.object({data:z.string().regex(/^[A-Za-z0-9+/]+=*$/)}).parse(await request(settings,'export/pdf','POST',{html})).data;
+}
+
+export async function generateSpeech(text: string, voice: string, signal?: AbortSignal): Promise<{data:string;mimeType:string;duration:number}> {
+  const settings = await loadAssistantSettings();
+  return z.object({data:z.string().max(30000000).regex(/^[A-Za-z0-9+/]+=*$/),mimeType:z.literal('audio/wav'),duration:z.number().positive()}).parse(await runJob(settings, 'speech', {text,voice}, undefined, signal));
+}
+
+export interface PhotoCheckRequest { phase:'read'|'critique';image?:string;model:string;title:string;instructions:string;transcription?:string;rubric?:unknown[];homeworkConfirmed:boolean }
+export async function checkHomeworkPhoto(input: PhotoCheckRequest, signal?: AbortSignal) {
+  return z.object({transcription:z.string(),uncertainties:z.array(z.string()),warnings:z.array(z.string()),critique:z.object({feedbackSummary:z.string(),rewriteCheckPassed:z.boolean(),criteria:z.array(z.object({criterionDescription:z.string(),readinessLevel:z.string(),evidenceQuotes:z.array(z.string()),whatWouldRaiseIt:z.string()}))}).nullable()}).parse(await runJob(await loadAssistantSettings(),'photo',input,undefined,signal));
 }

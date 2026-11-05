@@ -8,6 +8,7 @@ export interface AssistantSettings {
   webResearch: boolean;
 }
 export interface AssistantHealth {
+  studioVersion?: number;
   ok: boolean;
   ollamaConnected: boolean;
   models: string[];
@@ -22,6 +23,7 @@ export interface StudySource {
   title: string;
   url: string;
   excerpt?: string;
+  documentText?: string;
   kind?: 'canvas' | 'web';
 }
 export interface StudyDiagram {
@@ -70,6 +72,7 @@ export interface StudyPacket {
   renderedVisuals?: RenderedVisual[];
 }
 export interface StudyRequest {
+  studio?: boolean;
   autopilot?: boolean;
   assignmentKind?: 'homework' | 'other';
   visualPreferences?: { diagrams: boolean; graphs: boolean; images: boolean };

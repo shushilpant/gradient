@@ -56,14 +56,17 @@ function base64(bytes: Uint8Array): string {
 }
 
 /** Read only published, unlocked course material using the current Canvas session. */
-export async function readCanvasMaterials(resources: StudyMaterial[], origin: string, courseId: string, extract: ExtractFile): Promise<{ resources: StudyMaterial[]; warnings: string[] }> {
+export async function readCanvasMaterials(resources: StudyMaterial[], origin: string, courseId: string, extract: ExtractFile, signal?: AbortSignal): Promise<{ resources: StudyMaterial[]; warnings: string[] }> {
   const warnings: string[] = [];
   const result: StudyMaterial[] = [];
   for (const resource of resources.slice(0, 12)) {
+    signal?.throwIfAborted();
     if (resource.text?.trim()) { result.push({ ...resource, text: resource.text.slice(0, 22000) }); continue; }
     const endpoint = materialEndpoint(resource.url, origin, courseId);
     if (!endpoint) { result.push(resource); continue; }
     const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener('abort', abort, { once: true });
     const timer = setTimeout(() => controller.abort(), 18000);
     try {
       const metadata = await fetch(origin + endpoint.path, { method: 'GET', credentials: 'include', cache: 'no-store', redirect: 'error', headers: { Accept: 'application/json' }, signal: controller.signal });
@@ -85,9 +88,10 @@ export async function readCanvasMaterials(resources: StudyMaterial[], origin: st
         result.push({ ...resource, text: extracted.text.slice(0, 22000) });
       }
     } catch (error) {
+      signal?.throwIfAborted();
       result.push(resource);
       warnings.push(`${resource.title}: could not read contents (${error instanceof Error ? error.message : 'access unavailable'}). The link is included for reference only.`);
-    } finally { clearTimeout(timer); }
+    } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
   }
   return { resources: result, warnings };
 }

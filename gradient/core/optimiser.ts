@@ -924,3 +924,32 @@ function computeRobustnessCheck(
     },
   };
 }
+
+/** Reusable fixed-noise evaluator for interactive scenarios; no optimization search on drag. */
+export function createGpaSimulator(inputs: CourseOptimizationInput[], options: Pick<OptimizationOptions, 'seed' | 'numSamples' | 'currentTime' | 'customPriors'> = {}) {
+  const count = Math.max(100, Math.min(2000, options.numSamples ?? 500));
+  const contexts = inputs.map(input => buildCourseEvalContext(input, { ...options, capacityHours: 0 }));
+  const random = new SeededRandom(options.seed ?? 42);
+  const noise = new Map<string, Float64Array>();
+  for (const context of contexts) for (const assignment of context.allUpcoming) noise.set(assignment.uniqueKey, Float64Array.from({ length: count }, () => random.nextGaussian()));
+  const totalCredits = contexts.reduce((sum, context) => sum + context.creditHours, 0);
+  const cache = new Map<string, { mean: number; p10: number; p25: number; median: number; p75: number; p90: number }>();
+  return (hours: Record<string, number>) => {
+    const key = contexts.map(context => Math.max(0, Math.min(40, hours[context.course.id] ?? 0)).toFixed(2)).join('|');
+    const cached = cache.get(key); if (cached) return cached;
+    const samples = new Float64Array(count);
+    for (const context of contexts) {
+      const eligible = context.allUpcoming.filter(assignment => assignment.isEligible);
+      const budget = Math.max(0, Math.min(40, hours[context.course.id] ?? 0));
+      const allocation = new Map(eligible.map(assignment => [assignment.uniqueKey, Math.min(assignment.maxHours, budget / Math.max(1, eligible.length))]));
+      const result = evaluateCourseMonteCarlo(context, allocation, noise, count);
+      for (let i = 0; i < count; i++) samples[i]! += result.sampleGpas[i]! * context.creditHours / (totalCredits || 1);
+    }
+    const mean = samples.reduce((sum, value) => sum + value, 0) / count;
+    samples.sort();
+    const percentile = (p: number) => samples[Math.round((count - 1) * p)]!;
+    const result = { mean, p10: percentile(.1), p25: percentile(.25), median: percentile(.5), p75: percentile(.75), p90: percentile(.9) };
+    if (cache.size >= 64) cache.delete(cache.keys().next().value!);
+    cache.set(key, result); return result;
+  };
+}

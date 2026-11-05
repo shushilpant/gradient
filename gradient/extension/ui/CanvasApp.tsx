@@ -5,7 +5,6 @@ import { syncTrackedDeadlines } from '../deadlineCalendar.js';
 
 /** Live controller. Canvas failures stay errors; demo data is never imported here. */
 export function CanvasApp({ initialUrl }: { initialUrl: string }) {
-  const [workflowMode, setWorkflowMode] = useState<'manual' | 'auto' | null>(null);
   const [snapshot, setSnapshot] = useState<CanvasSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,14 +13,16 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
   const courseId = new URL(initialUrl).pathname.match(/^\/courses\/(\d+)/)?.[1];
   const assignmentId = new URL(initialUrl).pathname.match(/^\/courses\/\d+\/assignments\/(\d+)/)?.[1];
 
+  const launchCourseId = useRef(courseId);
   const refresh = useCallback(() => {
-    activeRequest.current?.abort();
+    // All tools share the launch snapshot and join any sync already in flight.
+    if (activeRequest.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
     setLoading(true);
     setSnapshot(null);
     setError(null);
-    loadCanvasSnapshot({ courseId, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } })
+    loadCanvasSnapshot({ courseId: launchCourseId.current, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } })
       .then((result) => {
         if (!controller.signal.aborted) {
           setSnapshot(result);
@@ -36,15 +37,15 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) { activeRequest.current = null; setLoading(false); }
       });
-  }, [courseId]);
+  }, []);
 
   useEffect(() => {
-    if (workflowMode === 'manual') refresh();
+    refresh();
     return () => activeRequest.current?.abort();
-  }, [refresh, workflowMode]);
+  }, [refresh]);
 
   return <Workspace snapshot={snapshot} loading={loading} error={error} progress={progress}
-    onRefresh={refresh} onWorkflowMode={setWorkflowMode} initialCourseId={courseId} initialAssignmentId={assignmentId} />;
+    onRefresh={refresh} initialCourseId={courseId} initialAssignmentId={assignmentId} />;
 }

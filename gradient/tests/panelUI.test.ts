@@ -184,7 +184,7 @@ describe('GRADIENT Canvas workspace', () => {
       await waitForLoaded(page);
       await page.getByRole('button', { name: 'Minimize GRADIENT', exact: true }).click();
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).waitFor();
-      expect(await page.locator('#gradient-workspace').count()).toBe(0);
+      expect(await page.locator('#gradient-workspace').isVisible()).toBe(false);
       await page.evaluate(() => window.dispatchEvent(new Event('gradient:toggle')));
       await page.getByRole('tab', { name: 'Overview', exact: true }).waitFor();
       expect(await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).count()).toBe(0);

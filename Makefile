@@ -66,3 +66,11 @@ clean:
 
 assistant-start:
 	$(MAKE) -C gradient assistant-start
+
+.PHONY: assistant-restart
+assistant-restart:
+	$(MAKE) -C gradient assistant-restart
+
+.PHONY: speech-setup
+speech-setup:
+	$(MAKE) -C gradient speech-setup

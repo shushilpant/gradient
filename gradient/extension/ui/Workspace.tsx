@@ -11,6 +11,12 @@ import { CanvasMirror } from './CanvasMirror.js';
 import { DeadlineTracker } from './DeadlineTracker.js';
 import { AutoWorkflow, WorkflowModeChoice, type WorkflowMode } from './WorkflowMode.js';
 import { WORKFLOW_STYLES } from './workflowStyles.js';
+import { GradeLab } from './GradeLab.js';
+import { PhotoCheck } from './PhotoCheck.js';
+import { GradeLabStyles } from './gradeLabStyles.js';
+import { StudyStudio } from './StudyStudio.js';
+import { CommandCenter } from './CommandCenter.js';
+import { COMMAND_STYLES } from './commandStyles.js';
 
 export interface WorkspaceProps {
   snapshot: CanvasSnapshot | null;
@@ -109,6 +115,27 @@ function AssignmentFeedback({ assignment }: { assignment: CanvasLiveAssignment }
 
 export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId, initialAssignmentId, progress, preview = false, onWorkflowMode }: WorkspaceProps) {
   const [tab, setTab] = useState<Tab>('overview');
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [studioOpen, setStudioOpen] = useState(false);
+  const [extraTool,setExtraTool] = useState<'grades'|'photo'|null>(null);
+  const gradesMounted = useRef(false);
+  const photoMounted = useRef(false);
+  if(extraTool==='grades') gradesMounted.current=true;
+  if(extraTool==='photo') photoMounted.current=true;
+  const commandMounted = useRef(false);
+  const studioMounted = useRef(false);
+  if (studioOpen) studioMounted.current = true;
+  if (commandOpen) commandMounted.current = true;
+  useEffect(() => {
+    const shortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.code === 'Space') {
+        event.preventDefault(); setExtraTool(null); setStudioOpen(false); setMinimized(false); setCommandOpen(previous => !previous);
+        if (!commandOpen && !snapshot) onRefresh();
+      }
+    };
+    window.addEventListener('keydown', shortcut);
+    return () => window.removeEventListener('keydown', shortcut);
+  }, [commandOpen, snapshot, onRefresh]);
   const [workflowMode, setWorkflowMode] = useState<WorkflowMode | null>(null);
   useEffect(() => { onWorkflowMode?.(workflowMode); }, [workflowMode, onWorkflowMode]);
   const [autoOpened, setAutoOpened] = useState(false);
@@ -189,12 +216,17 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const coursePicker = active ? <div class="g-course-menu"><select class="g-select" aria-label="Choose a course" value={active.id} onChange={e => selectCourse(e.currentTarget.value)}>{courses.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select><a class="g-icon-btn" href={safeLink(active.url)} title="Open course in Canvas" aria-label="Open course in Canvas"><Icon name="external" size={18}/></a></div> : null;
   const tabs = [{ id: 'overview', label: 'Overview', icon: 'grid' }, { id: 'assistant', label: 'Assistant', icon: 'spark' }, { id: 'coursework', label: 'Coursework', icon: 'book' }, { id: 'resources', label: 'Resources', icon: 'folder' }, { id: 'settings', label: 'Settings', icon: 'settings' }] as const;
 
-  return <><style>{WORKSPACE_STYLES + WORKFLOW_STYLES}</style>{minimized ? <button id="gradient-launcher" class="g-launcher" aria-label="Open GRADIENT" onClick={() => setMinimized(false)}><Icon name="chart" size={22}/>gradient</button> : <aside id="gradient-workspace" class={`gw ${wide ? 'wide' : ''}`} aria-label="GRADIENT Canvas workspace">
+  return <><style>{WORKSPACE_STYLES + WORKFLOW_STYLES + COMMAND_STYLES + GradeLabStyles}</style>{minimized && <button id="gradient-launcher" class="g-launcher" aria-label="Open GRADIENT" onClick={() => setMinimized(false)}><Icon name="chart" size={22}/>gradient</button>}<aside hidden={minimized} id="gradient-workspace" class={`gw ${wide ? 'wide' : ''}`} aria-label="GRADIENT Canvas workspace">
     <header class="g-header"><div class="g-brand"><div class="g-logo"><Icon name="chart" size={22}/></div><div class="g-wordmark">gradient<span>.</span></div>{preview && <span class="g-chip-status">Demo preview</span>}</div><button class="g-icon-btn g-hide-mobile" aria-label={wide ? 'Compact workspace' : 'Expand workspace'} title={wide ? 'Compact workspace' : 'Expand workspace'} onClick={() => setWide(!wide)}><Icon name="expand" size={17}/></button><button class="g-icon-btn" aria-label="Refresh Canvas data" title="Refresh Canvas data" disabled={loading} onClick={onRefresh}><Icon name="refresh" size={17} className={loading ? 'g-spinner' : ''}/></button><button class="g-icon-btn" aria-label="Minimize GRADIENT" title="Minimize GRADIENT" onClick={() => setMinimized(true)}><Icon name="collapse" size={18}/></button></header>
-    {workflowMode && <div class="g-modes" role="group" aria-label="Workflow mode"><button class={workflowMode === 'auto' ? 'active' : ''} aria-label="Use auto mode" aria-pressed={workflowMode === 'auto'} onClick={() => chooseMode('auto')}><Icon name="bolt" size={17}/>Auto</button><button class={workflowMode === 'manual' ? 'active' : ''} aria-label="Use manual mode" aria-pressed={workflowMode === 'manual'} onClick={() => chooseMode('manual')}><Icon name="grid" size={16}/>Manual</button></div>}
-    <div class="wf-choice-area" hidden={workflowMode !== null}><WorkflowModeChoice onChoose={chooseMode}/></div>
-    {autoOpened && <div class="wf-auto-area" hidden={workflowMode !== 'auto'}><AutoWorkflow/></div>}
-    <div class="wf-manual-area" hidden={workflowMode !== 'manual'}>
+    <div class="g-tool-launchers"><button class="jc-launch" aria-pressed={commandOpen && !studioOpen && !extraTool} onClick={() => { setExtraTool(null); setStudioOpen(false); setCommandOpen(previous => !!extraTool || studioOpen || !previous); if (!snapshot) onRefresh(); }}><span class="tool-copy"><strong>Command center</strong><small>Voice · plan · focus</small></span><Icon name={commandOpen && !studioOpen && !extraTool ? 'close' : 'bolt'} size={17}/></button>
+    <button class="jc-launch" aria-pressed={commandOpen && studioOpen && !extraTool} onClick={() => { setExtraTool(null); setStudioOpen(true); setCommandOpen(previous => !!extraTool || !studioOpen || !previous); if (!snapshot) onRefresh(); }}><span class="tool-copy"><strong>Study studio</strong><small>Sources · practice · review</small></span><Icon name="book" size={17}/></button>
+    <button class="jc-launch" aria-pressed={commandOpen && extraTool==='grades'} onClick={()=>{setExtraTool('grades');setCommandOpen(previous=>extraTool!=='grades'||!previous);if(!snapshot)onRefresh();}}><span class="tool-copy"><strong>Grade lab</strong><small>GPA · grade breakdown</small></span><Icon name="chart" size={17}/></button>
+    <button class="jc-launch" aria-pressed={commandOpen && extraTool==='photo'} onClick={()=>{setExtraTool('photo');setCommandOpen(previous=>extraTool!=='photo'||!previous);if(!snapshot)onRefresh();}}><span class="tool-copy"><strong>Photo check</strong><small>Read · confirm · critique</small></span><Icon name="file" size={17}/></button></div>
+    <div class="jc-area" hidden={!commandOpen}>{loading && <p class="jc-muted" role="status">{progress || 'Refreshing Canvas…'}</p>}{error && <p class="jc-error" role="alert">{error}</p>}{commandMounted.current && assistantSnapshot.current && <div hidden={studioOpen || !!extraTool}><CommandCenter key={`${assistantSnapshot.current.origin}|${assistantSnapshot.current.user.id}`} snapshot={assistantSnapshot.current} active={commandOpen && !studioOpen && !extraTool && !minimized} onRefresh={onRefresh}/></div>}{studioMounted.current && assistantSnapshot.current && <div hidden={!studioOpen || !!extraTool}><StudyStudio key={`${assistantSnapshot.current.origin}|${assistantSnapshot.current.user.id}`} snapshot={assistantSnapshot.current} active={commandOpen && studioOpen && !extraTool && !minimized}/></div>}{gradesMounted.current && assistantSnapshot.current && <div hidden={extraTool!=='grades'}><GradeLab snapshot={assistantSnapshot.current}/></div>}{photoMounted.current && assistantSnapshot.current && <div hidden={extraTool!=='photo'}><PhotoCheck snapshot={assistantSnapshot.current} active={commandOpen && extraTool==='photo' && !minimized}/></div>}</div>
+    {workflowMode && !commandOpen && <div class="g-modes" role="group" aria-label="Workflow mode"><button class={workflowMode === 'auto' ? 'active' : ''} aria-label="Use auto mode" aria-pressed={workflowMode === 'auto'} onClick={() => chooseMode('auto')}><Icon name="bolt" size={17}/>Auto</button><button class={workflowMode === 'manual' ? 'active' : ''} aria-label="Use manual mode" aria-pressed={workflowMode === 'manual'} onClick={() => chooseMode('manual')}><Icon name="grid" size={16}/>Manual</button></div>}
+    <div class="wf-choice-area" hidden={commandOpen || workflowMode !== null}><WorkflowModeChoice onChoose={chooseMode}/></div>
+    {autoOpened && <div class="wf-auto-area" hidden={commandOpen || workflowMode !== 'auto'}><AutoWorkflow/></div>}
+    <div class="wf-manual-area" hidden={commandOpen || workflowMode !== 'manual'}>
     <nav class="g-nav" role="tablist" aria-label="Workspace views">{tabs.map(item => <button key={item.id} id={`g-tab-${item.id}`} class={`g-tab ${tab === item.id ? 'active' : ''}`} role="tab" aria-selected={tab === item.id} aria-controls="gradient-tab-content" onClick={() => changeTab(item.id)}><Icon name={item.icon} size={19}/>{item.label}</button>)}</nav>
     <div id="gradient-tab-content" class="g-body" role="tabpanel" aria-labelledby={`g-tab-${tab}`}>
       {error && <div class="g-notice" role="alert" style={{ marginBottom: '16px' }}><Icon name="alert" size={18}/><div>{error}<button class="g-link-btn" onClick={onRefresh} disabled={loading}>Try again <Icon name="arrow" size={14}/></button></div></div>}
@@ -224,5 +256,5 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
       </>}
       {assistantSnapshot.current && (assistantOpened || tab === 'assistant') && <div key="local-assistant" hidden={tab !== 'assistant' || !snapshot}><AssistantView key={`${assistantSnapshot.current.origin}|${assistantSnapshot.current.user.id}`} snapshot={assistantSnapshot.current} preview={preview} initialCourseId={selectedCourseId || initialCourseId} initialAssignmentId={initialAssignmentId} focus={assistantFocus}/></div>}
     </div></div>
-  </aside>}</>;
+  </aside></>;
 }

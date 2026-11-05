@@ -1,6 +1,7 @@
 """Start the loopback assistant independently of an interactive terminal."""
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +21,23 @@ def healthy():
             return json.load(response).get('ok') is True
     except Exception:
         return False
+
+if '--restart' in sys.argv:
+    pid_file = RUNTIME / 'assistant.pid'
+    if pid_file.exists():
+        pid = int(pid_file.read_text().strip())
+        command = subprocess.run(['ps', '-p', str(pid), '-o', 'command='], capture_output=True, text=True).stdout
+        if 'uvicorn' in command and 'backend.app:app' in command:
+            os.kill(pid, signal.SIGTERM)
+            for _ in range(40):
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                time.sleep(.1)
+        elif command.strip():
+            print('The saved PID belongs to another process; it was not stopped.', file=sys.stderr)
+            sys.exit(1)
 
 if healthy():
     print('GRADIENT is already reachable at http://127.0.0.1:8765')

@@ -107,3 +107,12 @@ clean:
 
 assistant-start:
 	$(PYTHON) scripts/assistant_service.py
+
+.PHONY: assistant-restart
+assistant-restart:
+	$(PYTHON) scripts/assistant_service.py --restart
+
+.PHONY: speech-setup
+speech-setup:
+	uv pip install --python backend/.venv/bin/python "kokoro-onnx>=0.4,<0.5" "soundfile>=0.13,<0.15"
+	$(PYTHON) scripts/setup_speech.py

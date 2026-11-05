@@ -393,3 +393,9 @@ try:
 except ImportError:
     from backend.assignment_pdf import router as assignment_pdf_router
 app.include_router(assignment_pdf_router)
+
+try:
+    from packet_share import router as packet_share_router
+except ImportError:
+    from backend.packet_share import router as packet_share_router
+app.include_router(packet_share_router)

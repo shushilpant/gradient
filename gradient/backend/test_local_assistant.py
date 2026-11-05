@@ -684,3 +684,26 @@ def test_model_context_minimum_preserves_larger_windows(monkeypatch,requested,ex
     mock_ollama(monkeypatch,captures=calls)
     ai.model_json('gpt-oss:20b', [{'role':'user','content':'Explain'}], ai.ModelStudyOutput, 1000, context_length=requested)
     assert next(body for path,body in calls if path=='/api/chat')['options']['num_ctx']==expected
+
+
+def test_sample_expands_omitted_derivation_by_section(monkeypatch):
+    payload=ai.StudyRequest.model_validate(study_request(mode='sample'))
+    output=ai.SampleStudyOutput(title='Work',summary='',markdown='Guide',sampleMarkdown='## 1. Derivation\nFull derivation omitted for brevity; see attached PDF.\n## 2. Answer\nx = 2')
+    calls=[]
+    def expand(*args,**kwargs):
+        calls.append(args)
+        return ai.ExpandedSection(markdown='## 1. Derivation\nx + 2 = 4. Subtract 2 from both sides: x = 2.')
+    monkeypatch.setattr(ai,'model_json',expand)
+    result=ai.complete_sample_sections(payload,output,[])
+    assert len(calls)==1 and 'Subtract 2' in result.sampleMarkdown
+    assert '## 2. Answer\nx = 2' in result.sampleMarkdown
+    assert 'omitted' not in result.sampleMarkdown
+
+
+def test_sample_rejects_expansion_that_still_omits_work(monkeypatch):
+    payload=ai.StudyRequest.model_validate(study_request(mode='sample'))
+    output=ai.SampleStudyOutput(title='Work',summary='',markdown='Guide',sampleMarkdown='Full derivation omitted for brevity; see attached PDF.')
+    monkeypatch.setattr(ai,'model_json',lambda *a,**k: ai.ExpandedSection(markdown='See attached PDF.'))
+    with pytest.raises(ai.HTTPException,match='') as error:
+        ai.complete_sample_sections(payload,output,[])
+    assert error.value.status_code==502

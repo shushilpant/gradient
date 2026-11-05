@@ -17,6 +17,12 @@ GRADIENT is an academically honest pair programming companion and decision-suppo
 
 ---
 
+**Command center:** Voice or typed commands now connect Canvas briefings, course-link search, multi-step revision, page explanations, teach-back, focus sessions, interruptible replanning, change alerts, and editable on-device academic memory. Open **Command center** in either workspace mode, or press **Ctrl/Cmd+Shift+Space**. See [commands, requirements, and demo](gradient/docs/COMMAND_CENTER.md).
+
+**Study studio:** Select readable course sources, inspect exact evidence quotes, generate flashcards and interactive practice, explore concepts, listen to revision chapters, read passages with questions, research and import web excerpts, and schedule spaced reviews. See [study studio](gradient/docs/STUDY_STUDIO.md).
+
+**Signature demos:** Grade Lab adds live GPA uncertainty sliders and grade-contribution waterfalls. Photo Check reads handwriting for student-confirmed rubric critique. Packet citations open side-by-side evidence, and generated packets can be shared to a phone through a temporary, revocable LAN QR link. See [demo walkthrough](gradient/docs/SIGNATURE_DEMO.md).
+
 ## Key Capabilities
 
 1. **Exact Canvas Grade Model (Stage 3)**: Reproduces Canvas LMS gradebook math down to 0.00% difference, including weighted assignment groups, drop-lowest, drop-highest, never-drop exclusions, and unposted scores.

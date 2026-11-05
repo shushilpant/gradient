@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { EvidenceSources, SourceCitation, InspectEvidence, SourceEvidence } from './SourceCitation.js';
+import { PacketShare } from './PacketShare.js';
+import type { StudySource } from '../assistantTypes.js';
 import { renderToString } from 'katex';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
@@ -60,12 +63,13 @@ function MathFormula({tex, display = false}: {tex:string; display?:boolean}) {
 }
 function inline(text: string): ComponentChildren[] {
   const nodes: ComponentChildren[] = [];
-  const pattern = /\[([^\]]+)\]\(([^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\\\(([^]*?)\\\)|\$([^$\n]+)\$/g;
+  const pattern = /\[([^\]]+)\]\(([^\s)]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|\\\(([^]*?)\\\)|\$([^$\n]+)\$|\[(S\d+)\]/g;
   let start = 0;
   for (const match of text.matchAll(pattern)) {
     const index = match.index ?? 0;
     if (index > start) nodes.push(text.slice(start, index));
-    if (match[1] !== undefined) {
+    if (match[7] !== undefined) nodes.push(<SourceCitation sourceId={match[7]}/>);
+    else if (match[1] !== undefined) {
       const href = safeUrl(match[2] ?? '');
       nodes.push(href ? <a href={href} target="_blank" rel="noopener noreferrer">{match[1]}</a> : match[1]);
     } else if (match[3] !== undefined) nodes.push(<strong>{match[3]}</strong>);
@@ -86,7 +90,7 @@ function embeddedDiagram(text:string): StudyDiagram | null {
   try { const parsed = embeddedDiagramSchema.safeParse(JSON.parse(text)); return parsed.success ? parsed.data : null; } catch { return null; }
 }
 /** Markdown stays in Preact text nodes; model output cannot inject HTML or scripts. */
-export function AssistantMarkdown({ text }: { text: string }) {
+export function AssistantMarkdown({ text, sources = [] }: { text: string; sources?: StudySource[] }) {
   const blocks: ComponentChildren[] = [];
   const lines = text.replace(/\r/g, '').split('\n');
   for (let i = 0; i < lines.length; i++) {
@@ -146,7 +150,13 @@ export function AssistantMarkdown({ text }: { text: string }) {
     while (i + 1 < lines.length && (lines[i + 1] ?? '').trim() && !/^(?:#{1,6}\s|```|\s*[-*+]\s|\s*\d+[.)]\s|>|\s*\{|\s*(?:\$\$|\\\[))/.test(lines[i + 1] ?? '')) paragraph.push(lines[++i] ?? '');
     blocks.push(<p>{inline(paragraph.join('\n'))}</p>);
   }
-  return <div class="ja-prose">{blocks}</div>;
+  return <EvidenceSources.Provider value={sources}><div class="ja-prose">{blocks}</div></EvidenceSources.Provider>;
+}
+export function GroundedMarkdown({text,sources}:{text:string;sources:StudySource[]}) {
+  const [source,setSource]=useState<StudySource|null>(null);
+  const previousText=useRef(text);
+  useEffect(()=>{if(previousText.current!==text){setSource(null);previousText.current=text;}},[text]);
+  return <InspectEvidence.Provider value={setSource}><div class="pv-layout" data-inspecting={!!source}><div><AssistantMarkdown text={text} sources={sources}/></div>{source&&<aside class="pv-side" role="region" aria-label={`Evidence ${source.id}`}><div class="jc-section-head"><strong>Source evidence</strong><button class="jc-btn" onClick={()=>setSource(null)}>Close</button></div><SourceEvidence source={source}/></aside>}</div></InspectEvidence.Provider>;
 }
 function download(content: string, name: string, type: string) {
   const url = URL.createObjectURL(new Blob([content], { type }));
@@ -298,7 +308,7 @@ export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, 
         <div hidden={autopilot} class="ja-mode" role="group" aria-label="Assistant output type"><button class={`ja-btn ${mode === 'explain' ? 'active' : ''}`} aria-pressed={mode === 'explain'} disabled={generating} onClick={() => setMode('explain')}>Study</button><button class={`ja-btn ${mode === 'sample' ? 'active' : ''}`} aria-pressed={mode === 'sample'} disabled={generating} onClick={() => setMode('sample')}>Sample assignment</button></div>
       </section>
 
-      {packet && <section aria-label="Generated study packet"><article class="ja-result" ref={resultRef}><header class="ja-result-header"><h2>{packet.title}</h2><p>{packet.summary}</p></header><div class="ja-result-body"><AssistantMarkdown text={packet.markdown}/><ComputedVisuals packet={packet}/><WorkEvidence packet={packet}/>{packet.images.filter(image => safeUrl(image.url) && safeUrl(image.sourceUrl)).map((image, i) => <figure class="ja-visual" key={i}><figcaption>{image.title}</figcaption><img src={safeUrl(image.url)} alt={image.alt} loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }}/><a href={safeUrl(image.sourceUrl)} target="_blank" rel="noopener noreferrer">View image source</a></figure>)}{packet.sampleMarkdown && <section class="ja-sample"><AssistantMarkdown text={packet.sampleMarkdown}/></section>}{!!packet.checklist?.length && <section class="ja-sample"><h3>Before you finish</h3><ul class="ja-checklist">{packet.checklist.map((item, i) => <li key={i}>{item}</li>)}</ul></section>}{packet.warnings.map((warning, i) => <p class="ja-note" key={i} style={{ marginTop: '10px' }}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3>{packet.sources.length ? <ol>{packet.sources.map((source, i) => <li key={source.id || i}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{source.excerpt && <p>{source.excerpt}</p>}</li>)}</ol> : <p class="ja-note">No verified sources returned.</p>}</section></div></article><div class="ja-export"><button class="ja-btn" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated HTML</button><button class="ja-btn" onClick={() => download(packetMarkdown(packet), `${filename(packet.title)}.md`, 'text/markdown;charset=utf-8')}><Icon name="download" size={16}/>Markdown</button></div></section>}
+      {packet && <section aria-label="Generated study packet"><article class="ja-result" ref={resultRef}><header class="ja-result-header"><h2>{packet.title}</h2><p>{packet.summary}</p></header><div class="ja-result-body"><GroundedMarkdown text={packet.markdown} sources={packet.sources}/><ComputedVisuals packet={packet}/><WorkEvidence packet={packet}/>{packet.images.filter(image => safeUrl(image.url) && safeUrl(image.sourceUrl)).map((image, i) => <figure class="ja-visual" key={i}><figcaption>{image.title}</figcaption><img src={safeUrl(image.url)} alt={image.alt} loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }}/><a href={safeUrl(image.sourceUrl)} target="_blank" rel="noopener noreferrer">View image source</a></figure>)}{packet.sampleMarkdown && <section class="ja-sample"><GroundedMarkdown text={packet.sampleMarkdown} sources={packet.sources}/></section>}{!!packet.checklist?.length && <section class="ja-sample"><h3>Before you finish</h3><ul class="ja-checklist">{packet.checklist.map((item, i) => <li key={i}>{item}</li>)}</ul></section>}{packet.warnings.map((warning, i) => <p class="ja-note" key={i} style={{ marginTop: '10px' }}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3>{packet.sources.length ? <ol>{packet.sources.map((source, i) => <li key={source.id || i}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{source.excerpt && <p>{source.excerpt}</p>}</li>)}</ol> : <p class="ja-note">No verified sources returned.</p>}</section></div></article><PacketShare key={packet.generatedAt ?? packet.markdown} packet={packet}/><div class="ja-export"><button class="ja-btn" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated HTML</button><button class="ja-btn" onClick={() => download(packetMarkdown(packet), `${filename(packet.title)}.md`, 'text/markdown;charset=utf-8')}><Icon name="download" size={16}/>Markdown</button></div></section>}
 
       <details class="ja-settings" open={!ready}><summary><Icon name="settings" size={16}/>Models</summary><div class="ja-fields">
         <label><span class="ja-label">Local assistant service</span><input class="ja-control" aria-label="Local assistant service URL" type="url" value={settings.backendUrl} disabled={generating} onChange={e => updateSettings({ backendUrl: e.currentTarget.value })} placeholder="http://127.0.0.1:8765"/></label>

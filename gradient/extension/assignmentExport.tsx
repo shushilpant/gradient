@@ -3,6 +3,7 @@ import {AssistantMarkdown} from './ui/AssistantView.js';
 import {renderAssignmentPdf} from './assistantClient.js';
 import type {AssistantSettings,StudyPacket} from './assistantTypes.js';
 export function assignmentDocument(packet:StudyPacket):string {
+ if(/(?:omitted\s+for\s+brevity|(?:derivation|proof|solution|steps?|calculations?)[^\n.]{0,90}\bomitted\b|see\s+(?:the\s+)?attached\s+(?:pdf|document))/i.test(packet.sampleMarkdown))throw new Error('This sample still contains omitted work or a nonexistent attachment. Regenerate it to expand the missing derivations before exporting.');
  const host=document.createElement('div');
  // Remove duplicate model-written disclosures and process commentary sections.
  const sample=packet.sampleMarkdown.replace(/[\u2010-\u2015]/g,'-').replace(/(?<!\*)\*([A-Za-z][^*\n]{0,100})\*(?!\*)/g,'**$1**').replace(/^#{1,6}\s+.*(?:AI assistance disclosure|AI disclosure|notes to verify|coverage review|before you submit)[^\n]*\n[\s\S]*?(?=^#{1,6}\s|$(?![\s\S]))/gim,'').replace(/^.*(?:AI-generated sample|AI generated sample|sample for review|verify:).*$/gim,'').trim();
