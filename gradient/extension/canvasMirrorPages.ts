@@ -56,7 +56,8 @@ async function boundedPage(response: Response, budget: ReadBudget): Promise<stri
 }
 
 /** Explicit staging only: capture already-discovered course pages, never crawl links or download files. */
-export async function hydrateCanvasMirrorPages(snapshot: CanvasSnapshot): Promise<CanvasMirrorSnapshot> {
+export async function hydrateCanvasMirrorPages(snapshot: CanvasSnapshot, signal?: AbortSignal): Promise<CanvasMirrorSnapshot> {
+  signal?.throwIfAborted();
   const source = new URL(snapshot.origin);
   if (source.protocol !== 'https:' || source.origin !== snapshot.origin || source.username || source.password ||
       (typeof window !== 'undefined' && window.location.origin !== source.origin)) {
@@ -103,6 +104,7 @@ export async function hydrateCanvasMirrorPages(snapshot: CanvasSnapshot): Promis
   let next = 0;
   async function worker(): Promise<void> {
     while (next < pending.length) {
+      signal?.throwIfAborted();
       const target = pending[next++];
       if (!target) break;
       if (budget.exhausted) {
@@ -110,6 +112,7 @@ export async function hydrateCanvasMirrorPages(snapshot: CanvasSnapshot): Promis
         continue;
       }
       const controller = new AbortController();
+      const abort=()=>controller.abort();signal?.addEventListener('abort',abort,{once:true});
       const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
       try {
         const response = await fetch(target.url, {
@@ -128,13 +131,15 @@ export async function hydrateCanvasMirrorPages(snapshot: CanvasSnapshot): Promis
         if (typeof page.body !== 'string') throw new Error('Canvas did not return the page body.');
         for (const resource of target.resources) resource.bodyHtml = page.body;
       } catch (error) {
+        signal?.throwIfAborted();
         const detail = error instanceof Error && error.name === 'AbortError'
           ? 'The page request timed out after 10 seconds.'
           : error instanceof Error ? error.message : 'Canvas access was unavailable.';
         warnings.push(`${target.title}: body not copied (${detail}) Its link remains a reference.`);
-      } finally { clearTimeout(timer); }
+      } finally { clearTimeout(timer);signal?.removeEventListener('abort',abort); }
     }
   }
   await Promise.all(Array.from({ length: Math.min(CONCURRENCY, pending.length) }, worker));
+  signal?.throwIfAborted();
   return result;
 }

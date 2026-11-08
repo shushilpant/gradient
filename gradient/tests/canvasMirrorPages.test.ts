@@ -8,6 +8,13 @@ function snapshot(resources:any[]):CanvasSnapshot {
 }
 afterEach(()=>vi.unstubAllGlobals());
 describe('Explicit Canvas page staging',()=>{
+  it('aborts capture on account changes rather than returning a partial copy',async()=>{
+    const controller=new AbortController();
+    const fetch=vi.fn<typeof globalThis.fetch>(async()=>{controller.abort();throw new DOMException('Aborted','AbortError');});
+    vi.stubGlobal('fetch',fetch);
+    await expect(hydrateCanvasMirrorPages(snapshot([{id:'1',type:'page',title:'Guide',url:origin+'/courses/2/pages/guide'}]),controller.signal)).rejects.toMatchObject({name:'AbortError'});
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it('copies unlocked discovered page bodies once, with cookie-authenticated read-only requests',async()=>{
     const fetch=vi.fn<typeof globalThis.fetch>(async()=>new Response(JSON.stringify({body:'<p>Original guide with a formula.</p>',published:true})));
     vi.stubGlobal('fetch',fetch);

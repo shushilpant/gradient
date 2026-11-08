@@ -11,12 +11,13 @@ export function launchBrowser(): Promise<Browser> {
 }
 
 export function bundle(name = 'content'): string {
-  const file = path.resolve(__dirname, `../dist/extension/${name}.js`);
+  const file = path.resolve(__dirname, `${name === 'legacy' ? '../.test-build/legacy.js' : `../dist/extension/${name}.js`}`);
   if (!fs.existsSync(file)) throw new Error(`Build missing: ${file}. Run npm run build first.`);
   return fs.readFileSync(file, 'utf8');
 }
 
 export interface MockCanvasOptions {
+  legacy?: boolean;
   workflowMode?: 'manual' | 'auto' | null;
   url?: string;
   denied?: boolean;
@@ -74,8 +75,8 @@ export async function mockCanvas(browser: Browser, options: MockCanvasOptions = 
     return route.fulfill({ status: 404, json: { errors: [{ message: 'Unsupported mocked endpoint' }] } });
   });
   await page.goto(options.url ?? `${CANVAS_ORIGIN}/courses/99001`);
-  await page.evaluate(bundle());
-  if (options.workflowMode !== null && !/\/quizzes\/.*\/take/.test(options.url || '') && !/quiz_timer|submit_quiz_form/.test(options.html || '') && !options.url?.includes('notinstructure')) {
+  await page.evaluate(bundle(options.legacy ? 'legacy' : 'content'));
+  if (options.legacy && options.workflowMode !== null && !/\/quizzes\/.*\/take/.test(options.url || '') && !/quiz_timer|submit_quiz_form/.test(options.html || '') && !options.url?.includes('notinstructure')) {
     await page.getByRole('button', {name: options.workflowMode === 'auto' ? 'Use auto mode' : 'Use manual mode', exact:true}).click({timeout:3000}).catch(()=>{});
   }
   return { page, requests };

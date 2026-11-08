@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { loadCanvasSnapshot, type CanvasSnapshot } from '../liveCanvas.js';
+import { activateAcademicContext } from '../academicContext.js';
 import { Workspace } from './Workspace.js';
 import { syncTrackedDeadlines } from '../deadlineCalendar.js';
 
@@ -19,12 +20,14 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
     if (activeRequest.current) return;
     const controller = new AbortController();
     activeRequest.current = controller;
+    activateAcademicContext(null);
     setLoading(true);
     setSnapshot(null);
     setError(null);
     loadCanvasSnapshot({ courseId: launchCourseId.current, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } })
       .then((result) => {
         if (!controller.signal.aborted) {
+          activateAcademicContext(result);
           setSnapshot(result);
           void syncTrackedDeadlines(result).catch(() => { /* The tracking view reports reminder errors separately. */ });
         }
@@ -43,7 +46,7 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
 
   useEffect(() => {
     refresh();
-    return () => activeRequest.current?.abort();
+    return () => { activeRequest.current?.abort(); activateAcademicContext(null); };
   }, [refresh]);
 
   return <Workspace snapshot={snapshot} loading={loading} error={error} progress={progress}

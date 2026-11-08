@@ -40,14 +40,14 @@ export function DeadlineTracker({ snapshot, preview = false }: { snapshot: Canva
       </button>
       <button class="g-secondary" disabled={!selected.length} onClick={() => downloadDeadlineCalendar(selected)}><Icon name="download" size={14}/>Download calendar (.ics)</button>
     </div>
-    {state?.enabled && <p class="g-small" role="status" style={{ marginTop: '10px', color: '#0c9b88' }}>{canNotify ? 'Reminders on' : 'Reminders saved'}</p>}
+    {state?.enabled && <p class="g-small" role="status" style={{ marginTop: '10px', color: 'var(--g-success)' }}>{canNotify ? 'Reminders on' : 'Reminders saved'}</p>}
     {error && <p class="g-notice" role="alert" style={{ marginTop: '12px' }}>{error}</p>}
     {!!overdue.length && <label class="g-small" style={{ display: 'flex', gap: '7px', alignItems: 'center', marginTop: '14px', cursor: 'pointer' }}><input type="checkbox" checked={showPast} onChange={e => setShowPast(e.currentTarget.checked)}/>Show past-due work</label>}
     <div style={{ marginTop: '12px', maxHeight: '350px', overflowY: 'auto' }}>
       {visible.map(deadline => {
         const past = Date.parse(deadline.dueAt) <= Date.now();
         return <div key={deadline.id} class="g-task" style={{ alignItems: 'flex-start' }}>
-          <input type="checkbox" aria-label={`Include ${deadline.title} in reminders and calendar export`} disabled={busy || !state || preview || past} checked={!past && !excluded.has(deadline.id)} style={{ marginTop: '4px', accentColor: '#ff4a12' }} onChange={e => {
+          <input type="checkbox" aria-label={`Include ${deadline.title} in reminders and calendar export`} disabled={busy || !state || preview || past} checked={!past && !excluded.has(deadline.id)} style={{ marginTop: '4px', accentColor: 'var(--g-accent)' }} onChange={e => {
             const next = new Set(excluded);
             if (e.currentTarget.checked) next.delete(deadline.id); else next.add(deadline.id);
             update(state?.enabled ?? false, [...next]);

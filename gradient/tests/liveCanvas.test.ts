@@ -230,6 +230,18 @@ describe('Authenticated live Canvas sync', () => {
     expect(second.courses).toHaveLength(0);
     expect(mock).toHaveBeenCalled();
   });
+  it('rejects a mixed snapshot when the signed-in account switches during sync', async () => {
+    let profiles = 0;
+    const mock = mockApi(url => url.pathname.endsWith('/profile')
+      ? json({ id: ++profiles === 1 ? 7 : 123, name: 'Current student' }) : undefined);
+    await expect(loadCanvasSnapshot({ origin })).rejects.toThrow('account changed during sync');
+    expect(mock.mock.calls.filter(([url]) => new URL(url).pathname.endsWith('/profile'))).toHaveLength(2);
+  });
+  it('rejects a session that expires before the final identity check', async () => {
+    let profiles = 0;
+    mockApi(url => url.pathname.endsWith('/profile') && ++profiles > 1 ? json({errors:['expired']}, 401) : undefined);
+    await expect(loadCanvasSnapshot({ origin })).rejects.toBeInstanceOf(CanvasAuthenticationError);
+  });
   it('caps concurrent requests while syncing multiple courses', async () => {
     const base = mockApi(url => url.pathname === '/api/v1/courses'
       ? json([course, { ...course, id: 43 }, { ...course, id: 44 }]) : undefined);
@@ -256,7 +268,7 @@ describe('Authenticated live Canvas sync', () => {
       return undefined;
     });
     const result = await loadCanvasSnapshot({ origin });
-    expect(attempts).toBe(3);
+    expect(attempts).toBe(4); // two retries at start, followed by the identity recheck
     expect(result.user.id).toBe('7');
   });
 

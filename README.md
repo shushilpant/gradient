@@ -1,119 +1,56 @@
-# GRADIENT: Canvas LMS Grade Model, Effort Optimiser, and Grounded Study Companion
+# GRADIENT
 
-> **Live Canvas extension:** Build with `make build`, then load `gradient/dist` using Chrome’s **Load unpacked** at `chrome://extensions`. Sign in to your real Canvas tab and refresh. No API token or backend is needed for the live workspace. See [extension installation and capabilities](gradient/docs/EXTENSION.md). The localhost demo is a synthetic preview, not your Canvas account.
+An intelligent academic workspace inside Canvas: **Academics, AI Workspace, Automation, and Research** share the student's accessible coursework.
 
-**Homework autopilot:** The Assistant can now parse homework requirements, research, draft a complete labeled sample, compute figures with Python, and review coverage. The redesigned academic workbench uses locally bundled typography and a forest/graphite palette. See [autopilot](gradient/docs/AUTOPILOT.md), [grounded figures](gradient/docs/VISUALS.md), and [design system](gradient/docs/DESIGN.md).
+GRADIENT is a Chrome Manifest V3 extension with optional local services. It reads the existing signed-in Canvas session without API tokens. Live Canvas stays read-only; ordinary coursework and deterministic grade planning work without AI.
 
-**Local AI copilot:** The Assistant tab discovers models already installed in Ollama. This Mac's defaults are `gpt-oss:20b` for efficient reasoning and `gemma4:e4b` for screenshot understanding. It reads Canvas briefs and accessible PDF/DOCX/page contents, researches public sources, and creates illustrated study packets or labeled sample assignments at **A bit / A bit more / Go all in** depth. Export HTML or Markdown; print HTML to PDF. Deadline tracking adds Chrome reminders, Google event links, and Apple/Google calendar imports.
+## Run the extension
 
-Run `make assistant` after installing backend dependencies, then build/reload the extension. Model downloads are unnecessary when the installed inventory is used. See [local AI setup and supported capabilities](gradient/docs/LOCAL_AI.md) and [extension installation](gradient/docs/EXTENSION.md).
+```sh
+cd gradient
+npm ci
+npm run typecheck
+npm run build
+```
 
-[![Acceptance Tests](https://img.shields.io/badge/Acceptance_Tests-100%25_Passing-16a34a.svg)](tests/)
-[![Grade Model Oracle](https://img.shields.io/badge/Canvas_Grade_Diff-0.00%25-2563eb.svg)](docs/EVAL_REPORT.md)
-[![Zero Network Replay](https://img.shields.io/badge/Replay_Mode-Air--Gapped-blue.svg)](docs/DEMO.md)
-[![Architecture](https://img.shields.io/badge/Chrome_MV3-Shadow--DOM-purple.svg)](extension/)
+In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `gradient/dist`. Sign in to Canvas and refresh. Instructure domains connect automatically; grant other supported Canvas domains explicitly in extension settings. `npm run package` also produces `gradient/gradient-extension.zip`.
 
-GRADIENT is an academically honest pair programming companion and decision-support extension for students using Canvas LMS. It pairs a **Chrome Manifest V3 Shadow-DOM side panel** with a **pure TypeScript core** and an optional **stateless FastAPI backend**.
+- **Academics:** synced coursework, rubrics, feedback, announcements and resources; search and status filters; Canvas weighted grades and drop rules; what-if scenarios; Grade Lab; study allocation; change tracking; calendar exports and reminders.
+- **AI Workspace:** course and assignment assistance through installed Ollama models; three explanation depths; source excerpts and citations; optional public research; Homework Autopilot; cancellation; HTML and Markdown exports.
+- **Automation:** approved context staging to the existing isolated local Canvas replica, browser-agent execution, screenshots, logs, artifacts and stop controls. No live assessment completion or submission.
+- **Research:** editable interests derived from courses, syllabi and readable materials; coursework evidence; demonstrated and inferred skill distinctions; explainable REU ranking; programme-source excerpts and links. A match does not establish current availability or eligibility.
 
----
+Study Studio, audio, Photo Check, QR sharing, focus timers and command-centre utilities are isolated from the primary interface. Their implementations remain available for maintenance.
 
-**Command center:** Voice or typed commands now connect Canvas briefings, course-link search, multi-step revision, page explanations, teach-back, focus sessions, interruptible replanning, change alerts, and editable on-device academic memory. Open **Command center** in either workspace mode, or press **Ctrl/Cmd+Shift+Space**. See [commands, requirements, and demo](gradient/docs/COMMAND_CENTER.md).
+## Optional local AI
 
-**Study studio:** Select readable course sources, inspect exact evidence quotes, generate flashcards and interactive practice, explore concepts, listen to revision chapters, read passages with questions, research and import web excerpts, and schedule spaced reviews. See [study studio](gradient/docs/STUDY_STUDIO.md).
+Install Python 3.11 or 3.12 and Ollama, then run from this repository root:
 
-**Signature demos:** Grade Lab adds live GPA uncertainty sliders and grade-contribution waterfalls. Photo Check reads handwriting for student-confirmed rubric critique. Packet citations open side-by-side evidence, and generated packets can be shared to a phone through a temporary, revocable LAN QR link. See [demo walkthrough](gradient/docs/SIGNATURE_DEMO.md).
-
-## Key Capabilities
-
-1. **Exact Canvas Grade Model (Stage 3)**: Reproduces Canvas LMS gradebook math down to 0.00% difference, including weighted assignment groups, drop-lowest, drop-highest, never-drop exclusions, and unposted scores.
-2. **Effort Optimizer (Stage 4)**: Allocates limited study hours across competing courses to maximize expected semester GPA using Common Random Numbers (CRN) Monte Carlo simulation with 1-opt local search.
-3. **Shadow-DOM Panel UI (Stage 5)**: Securely mounted in an open Shadow DOM, completely isolating extension styling from Canvas LMS stylesheets.
-4. **Syllabus AI-Policy Gate (Stage 6)**: Extracts and enforces syllabus AI collaboration policies (prohibited, permitted with disclosure, permitted for named uses), with strict verbatim grounding and cautious defaults.
-5. **Rubric-Aware Pre-Submit Critique (Stage 7)**: Provides qualitative descriptor alignment and weakest-first pointers. **Strictly zero rewritten prose and zero predicted numeric grades**.
-6. **Course-Grounded Retrieval (Stage 8)**: Ranks course slides, modules, and open textbook chunks with Canvas deep links, accompanied by pure vector inline `<svg>` concept diagrams (zero web images).
-7. **Socratic Hint Ladder & Leak Guard (Stage 9)**: 5-rung cognitive ladder (R0-R4) with mandatory 15-character friction gates and SymPy / Python subprocess sandbox verification on isomorphic variants to prevent answer leaks.
-8. **Academic Study Scheduler & Change Radar (Stage 10)**: Places study blocks in 30-minute intervals around calendar busy blocks, sleep windows, and deadline buffers using OR-Tools CP-SAT with greedy fallback. Generates RFC 5545 `.ics` calendar files with stable UIDs. Detects deadline extensions in announcements with a mandatory human confirmation gate.
-
----
-
-## Plain Statements of Limits & Boundaries (What GRADIENT Cannot Do)
-
-*See full details in [docs/LIMITS.md](docs/LIMITS.md).*
-
-- **Effort curves are mathematical assumptions**: Pacing time constants ($\tau$) and mastery ceilings ($\text{cap}$) are configurable empirical priors, not guarantees of academic success.
-- **Syllabus policy extraction can err**: Complex or contradictory syllabus wording requires human confirmation before features adapt.
-- **Critique is not a grade prediction**: Pre-submit checks critique qualitative criteria alignment; they never output predicted scores or grades.
-- **Answer-leak guard scope**: Formal verification guarantees apply to mathematical formulas (via SymPy) and code tasks (via test execution in a subprocess). Essay writing uses heuristic rubric structural checks.
-- **LLM calls send content off-device**: Live mode transmits draft text over TLS to the backend (with an ephemeral RAM-only zero-retention guarantee). Replay mode runs 100% locally from recorded fixtures.
-- **Institutional API restrictions**: If an institution blocks Canvas API tokens, live sync cannot operate.
-
----
-
-## Quickstart & Demo Modes
-
-### 1. Installation
-```bash
-# Install Node dependencies and setup Python 3.12 virtualenv
+```sh
 make install
-
-# Build Chrome MV3 extension bundle
-make build
+make assistant
 ```
 
-### 2. Demo Modes (Stage 11)
-```bash
-# Replay Mode: Boots the full demo environment air-gapped from recorded fixtures with zero network calls
+Choose an installed completion model in **AI Workspace → Models**. Browser automation also needs a vision model and the separately configured local Canvas replica. See [local AI setup](gradient/docs/LOCAL_AI.md) and [local Canvas setup](gradient/docs/LOCAL_CANVAS.md). Selected course content goes to the loopback backend and local Ollama. Public research sends editable search keywords to external search services only when enabled.
+
+## Synthetic demonstration
+
+```sh
 make demo-replay
-
-# Live Mode: Boots against live/sandbox Canvas API and backend with timeout fallbacks
-make demo-live
-```
-Open `http://127.0.0.1:8085/courses/99001` in your browser. The mock Canvas page will mount the GRADIENT Shadow DOM panel.
-
-To rehearse the 4-minute demo script, consult [docs/DEMO.md](docs/DEMO.md).
-
-### 3. Generate Evaluation Report
-```bash
-# Produce comprehensive multi-stage audit report (saved to docs/EVAL_REPORT.md)
-make report
 ```
 
-### 4. Run Test Suites
-```bash
-# Run all TypeScript (Vitest) and Python (Pytest) test suites
-make test
+Open [the synthetic preview](http://127.0.0.1:8085/courses/99001). It contains three courses, posted grades, explicit homework briefs and overlapping deadlines relative to the demo day. It needs no backend for grades, planning or calendar exports. Model generation and browser runs require their actual services; completed runs are never simulated.
 
-# Run Playwright UI acceptance tests
-make test-ui
+Use `make demo-live` to start the same synthetic preview with the local backend. “Live” here means an actual optional service, never a real student account. The preview and the separate Canvas OSS replica are clearly distinguished. [Demo runbook and fallback](gradient/docs/DEMO.md) · [Architecture, inventory and 150-second pitch](gradient/docs/HACKATHON.md)
 
-# Run Scheduler and Change Radar benchmarks
-make test-schedule
+## Validate
+
+```sh
+cd gradient
+npm run typecheck
+npm run build
+npm test
+backend/.venv/bin/pytest backend -q
 ```
 
----
-
-## Project Structure
-
-```
-├── Makefile                 # Top-level makefile delegating to gradient/
-└── gradient/
-    ├── Makefile             # Main build, test, and demo targets
-    ├── backend/             # Stateless FastAPI service (OR-Tools, SymPy, Policy, Rubric)
-    ├── core/                # Pure TypeScript core (Grade Model, Optimiser, Scheduler)
-    ├── docs/
-    │   ├── ASSUMPTIONS.md   # Mathematical modeling specifications
-    │   ├── DEMO.md          # Timed 4-minute run of show & fallback plans
-    │   ├── EVAL_REPORT.md   # Generated audit and evaluation report
-    │   └── LIMITS.md        # Explicit limits and non-goals
-    ├── eval/                # Benchmark evaluation suites for all stages
-    ├── extension/           # Chrome MV3 Content Script & Shadow-DOM Preact UI
-    ├── sandbox/             # Synthetic Canvas sandbox seeder and API fixtures
-    ├── scripts/             # Demo runner, report generator, and build tooling
-    └── tests/               # 18 Vitest test suites (168 tests) + Playwright UI
-```
-
----
-
-## License
-
-MIT License. Designed and built with strict academic integrity standards for student learning.
+No separate lint command is configured. Browser tests use controlled synthetic Canvas responses. See [validation notes](gradient/docs/VALIDATION.md) for recorded results and limitations; these checks do not authenticate to an institutional account.

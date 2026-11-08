@@ -27,6 +27,13 @@ describe('CanvasAdapter Acceptance Test against Verified Sandbox Fixtures', () =
     expect(validated.gradingScheme.length).toBeGreaterThan(0);
   });
 
+  it('preserves fractional grading cutoffs instead of rounding a student into another letter grade', () => {
+    const parsed = adapter.parseCourse({ id: 42, name: 'Systems', grading_scheme: [{ name: 'A', value: 0.925 }, { name: 'B', value: 0.825 }, { name: 'F', value: 0 }] }, 3);
+    expect(parsed.gradingScheme.map(item => item.minPct)).toEqual([92.5, 82.5, 0]);
+    const legacy = adapter.parseCourse({ id: 42, name: 'Systems', grading_standard: [['A', 0.925], ['F', 0]] }, 3);
+    expect(legacy.gradingScheme[0]?.minPct).toBe(92.5);
+  });
+
   it('correctly maps assignment_groups.json to neutral AssignmentGroupSchema', () => {
     const rawGroups = JSON.parse(fs.readFileSync(path.join(fixturesDir, 'assignment_groups.json'), 'utf8'));
     const parsed = adapter.parseAssignmentGroups(rawGroups);

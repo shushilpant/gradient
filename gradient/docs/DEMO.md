@@ -1,115 +1,84 @@
-# GRADIENT: 4-Minute Live & Replay Demo Guide
+# Hackathon demo runbook
 
-*Target Audience: Hackathon Judges, Academic Reviewers & Pair Programmers*  
-*Demonstration Time: Exactly 4 minutes (240 seconds)*  
-*Modes Supported: Replay (`make demo-replay`) & Live Sandbox (`make demo-live`)*
+All commands below run from `gradient/`. The presentation uses **synthetic student data**. Model responses and browser traces are shown only when their real local services have run.
 
----
+## Reliable core preview
 
-## 1. Demo Cast, Sandbox Accounts & Environment
-
-- **LMS Instance**: Synthetic Canvas LMS (REST API)
-- **Student Persona**: Alex Chen (Student ID `99001`, enrolled in CS 101, MATH 201, BIO 110)
-- **Teacher Account**: Prof. Ada Lovelace (Token: `test_teacher_token`)
-- **Key Pain Point**: Complex syllabus rules (weighted assignment groups, drop-lowest, drop-highest, never-drop, unposted grades) create opaque academic standing. Students cannot determine where to invest limited study time across multiple competing courses.
-
----
-
-## 2. Timed Run of Show (4:00 Total)
-
-```
-0:00 ─── 0:40 : Safety Guard & Assessment Hard Stop (Default-Deny)
-0:40 ─── 1:20 : Canvas Grade Model Exact Match Oracle
-1:20 ─── 2:00 : Multi-Course Effort Optimizer & Robustness Rating
-2:00 ─── 2:40 : Socratic Hint Ladder with Friction Gate & Leak Guard
-2:40 ─── 3:20 : Pre-Submit Rubric Critique & Ephemeral Privacy
-3:20 ─── 4:00 : Academic Study Scheduler, RFC 5545 Sync & Change Radar
+```sh
+npm ci
+npm run typecheck
+npm run build
+python3 scripts/demo_runner.py --mode replay --open-browser
 ```
 
----
+Open [http://127.0.0.1:8085/courses/99001](http://127.0.0.1:8085/courses/99001). If the port is busy, the script reports its actual fallback port. `make demo-replay` runs the build and starts the same preview.
 
-### Act 1: Safety Guard & Quiz-Taking Hard Stop (0:00 - 0:40)
+The preview is localhost-only and says **Synthetic demo**. Alex has algorithms, discrete mathematics and molecular biology courses. The scenario adds Graph traversal planning, Probability study outline and Enzyme experiment tasks. The first two are due one day after the server's selected UTC demo day at 23:59 UTC; the third is due two days later at 23:59 UTC. The original historical fixtures remain intact. Refresh reconstructs the same scenario for that server day.
 
-- **Exact Click 1**: Open browser to `http://127.0.0.1:8085/courses/99001`.
-  - *Show*: GRADIENT panel mounts cleanly on the right inside an isolated **Shadow DOM**; zero CSS bleed.
-- **Exact Click 2**: Click the red button: **"Simulate Quiz Take Page (Hard Stop Test)"** (`/quizzes/501/take`).
-  - *Show*: The side panel **disappears instantly / refuses to inject**.
-  - *Say*: *"Rule 2 is non-negotiable. GRADIENT strictly refuses to run on quiz-taking and timed exam pages. Notice that even if the student wants assistance, the panel defaults to deny with zero user bypass."*
-- **Exact Click 3**: Click `← Return to Course Dashboard`.
+To freeze fixture dates, pass `--date 2026-11-09`. This embeds that day into the page and produces identical deadlines in the preview and served brief APIs. It freezes synthetic data, not the browser's wall clock or timezone. Use today's default for a presentation so due labels and study eligibility reflect the current clock. Dates render in the user's timezone; UTC 23:59 is 17:59 Chicago standard time. Browser tests can additionally fix their clock.
 
----
+The three new assignment briefs, rubrics and graph notes have actual readable local URLs. Existing posted grades use the same deterministic grade engine as the extension. No coursework comes from a university account. The preview bundle and its sample corpus are excluded from the install archive.
 
-### Act 2: Exact Canvas Grade Model Reproduction (0:40 - 1:20)
+1. In **Academics → Overview**, show three courses and overlapping tasks. Open **Coursework**, choose CS-101, inspect Graph traversal planning and its rubric.
+2. Move a what-if score, enter available study hours and build an allocation. Explain that weighted grades and drop rules are deterministic; study-hour/GPA ranges depend on explicit learning assumptions. Download deadlines as `.ics`.
+3. Open **Grade Lab** to compare an effort scenario and inspect counted/dropped work. Do not call the modeled interval a guaranteed grade prediction.
+4. Use the assignment's AI action to carry its course and rubric into **AI Workspace**. Show the requirements/source context even if generation is unavailable.
+5. In **Research**, inspect coursework-derived interests, evidence and editable topics. Read available course materials to enrich the shared context, then search if network and the local service are ready. Results are programme-page evidence, never assumed-open applications.
 
-- **Exact Click 4**: In the GRADIENT panel, look at the **"Official Course Grades"** card.
-  - *Show*: **CS 101: 90.71% Current / 58.90% Final Projection** with the green `✓ Matches Canvas` badge.
-  - *Say*: *"Notice the green badge: GRADIENT reproduces Canvas's exact gradebook math across all weighted groups, dropping HW 2 (72%) while preserving HW 1 (95%) via never-drop, and correctly handling unposted scores. The difference between Canvas and our model is 0.00%."*
+## Actual local model run
 
----
+Install backend dependencies and start Ollama beforehand:
 
-### Act 3: Multi-Course Effort Optimizer & Pacing Robustness (1:20 - 2:00)
-
-- **Exact Click 5**: Drag the **Study Capacity slider** from 8 hours to **12 hours**.
-  - *Show*: Projected GPA updates dynamically from `2.61` to `2.85` (+0.79 pts), with top recommendation allocated to `Final Project Implementation & Report (CS 101)` followed by `Final Exam (MATH 201)`.
-  - *Hover*: Hover over any number to show the **Assumption tooltip**.
-  - *Show*: Point to the green `ROBUSTNESS: high` badge.
-  - *Say*: *"GRADIENT maximizes expected term GPA weighted by credit hours using Common Random Numbers Monte Carlo. The robustness badge proves that even if this student learns 30% slower or faster than assumed, the priority ordering does not change."*
-
----
-
-### Act 4: Socratic Hint Ladder & Answer-Leak Guard (2:00 - 2:40)
-
-- **Exact Click 6**: Click the **Assignment** tab, and navigate to the **Socratic Hint Ladder**.
-- **Exact Click 7**: Click **R0 (Task Restatement)** $\to$ **R1 (Nudging Question)** $\to$ **R2 (Name Technique)**.
-- **Exact Click 8**: Click **R3 (Worked Example)** without typing in the attempt box.
-  - *Show*: Yellow friction gate alert: *"Friction Gate: Please explain your attempt or what you tried first (minimum 15 characters)."*
-- **Exact Click 9**: Type in the box: `"I tried setting up two equations and subtracted y from both sides."` and click R3.
-  - *Show*: R3 unlocks with an **Isomorphic Variant** verified by **SymPy**. The badge displays `SymPy Verified`.
-  - *Say*: *"Zero answer leaks. For math and code, we solve the assigned problem and verify an isomorphic problem with changed constants. The student never gets the solution to their assigned problem."*
-
----
-
-### Act 5: Pre-Submit Rubric Critique & Ephemeral Privacy (2:40 - 3:20)
-
-- **Exact Click 10**: Under **Pre-Submit Rubric Critique**, click **"Analyze Draft Against Rubric"**.
-  - *Show*: Weakest-first criteria order (`crit_fp_1` $\to$ `crit_fp_2` $\to$ `crit_fp_3`). Verbatim quoted evidence from the draft.
-  - *Say*: *"Rule 12: Zero predicted numeric grades. Notice there is no '85/100' or letter grade. Rule 5: Zero ghostwriting. We highlight what is missing, but never rewrite sentences or generate prose for the student."*
-- **Exact Click 11**: Click the **Settings** tab and view the **"Canvas Read-Only Invariant"** audit log.
-  - *Say*: *"Transparent privacy: We certify ephemeral memory. No student draft or score is ever retained on disk or in a database."*
-
----
-
-### Act 6: Study Scheduler, RFC 5545 Sync & Change Radar (3:20 - 4:00)
-
-- **Exact Click 12**: Return to the **Dashboard** and scroll to **Study Schedule & Crunch Radar**.
-  - *Show*: 30-minute study blocks scheduled around busy blocks, sleep window, and deadline buffers.
-  - *Show*: Point to the **Change Radar Alert**: *"⚠️ Change Radar: Due Date Change Detected: Professor announced deadline moved to Friday, Nov 14 at 11:59 PM."*
-- **Exact Click 13**: Click **"✓ Confirm & Replan"**.
-  - *Show*: Schedule instantly re-solves, moving study blocks to accommodate the extension.
-- **Exact Click 14**: Click **"📥 Export .ICS"**.
-  - *Show*: Downloads standard `.ics` file with stable UIDs (`gradient-99001-1004-b0@gradient.app`) and `SEQUENCE: 1` for seamless Apple Calendar / Google Calendar sync.
-  - *Conclude*: *"GRADIENT: Transparent, grounded, and academically honest pair programming for students."*
-
----
-
-## 3. Fallback Plan for Every Step
-
-| Demo Step | Potential Failure Mode | Built-in Fallback Action |
-| :--- | :--- | :--- |
-| **Step 1: Panel Injection** | Browser extension reload error | Open `http://127.0.0.1:8085/courses/99001` which loads pre-bundled MV3 content script directly into mock page. |
-| **Step 2: Quiz Hard Stop** | DOM query delay | Test page `/quizzes/501/take` has hardcoded `#quiz_timer` triggering synchronous instant default-deny. |
-| **Step 3: Grade Model** | Sandbox Canvas API rate limit / 429 | Extension operates in `isFixtureMode: true`, loading verified fixtures from disk with zero network delay. |
-| **Step 4: Optimizer Slider** | High CPU load during Monte Carlo | Optimizer runs 800 CRN samples in $\approx 1.4$s; step size clamped to 0.5h. |
-| **Step 5: Hint Ladder / SymPy**| Backend FastAPI connection refused | Client-side fallback templates immediately render verified isomorphic variant and friction gate. |
-| **Step 6: Change Radar Confirm**| Replan timeout | Deterministic greedy fallback activates instantly if OR-Tools CP-SAT exceeds 5.0s. |
-
----
-
-## 4. Verification Commands
-
-```bash
-# Rehearsal & Verification Suite
-make test-schedule
-make test-ui
-make report
+```sh
+make install
+make assistant
 ```
+
+In another terminal start `python3 scripts/demo_runner.py --mode replay`; or use `make demo-live` to start the backend with the preview. Both modes use synthetic coursework. In **AI Workspace → Models**, refresh installed-model discovery and select a usable completion model. Disable public research for an offline source-grounded example.
+
+Select **Homework: Graph traversal planning**, choose **Homework Autopilot**, inspect its readable instructions and rubric, and start. The synthetic brief permits labeled learning examples on a different graph; final work stays student-authored. Watch the real parse/research/draft/review/revision stages, open a source excerpt, inspect unresolved coverage gaps, and export HTML or Markdown. The MATH syllabus intentionally retains its restriction on AI-written proof submissions; do not use that course to demonstrate permitted generation. Do not promise a fixed generation time: model size, hardware and context change latency.
+
+## Existing local Canvas browser workflow
+
+The preview at 8085 is **not** the actual Canvas replica. The official Canvas OSS development application runs separately on loopback 8080 with its own synthetic student and credentials. It must be built before the presentation; first setup is substantial.
+
+```sh
+python3 sandbox/canvas_local/setup.py checkout
+python3 sandbox/canvas_local/setup.py configure
+python3 sandbox/canvas_local/setup.py build
+python3 sandbox/canvas_local/setup.py initialize
+python3 sandbox/canvas_local/setup.py seed
+python3 sandbox/canvas_local/setup.py up
+python3 sandbox/canvas_local/setup.py status
+```
+
+Use [the Canvas replica](http://127.0.0.1:8080/login/canvas) and the local student credentials from `sandbox/canvas_local/.runtime/credentials.json`; do not print or place them in pitch slides. The seed provides actual synthetic homework and its guide. Full details and staging/import instructions are in [LOCAL_CANVAS.md](LOCAL_CANVAS.md).
+
+In **Automation**, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and start. The browser uses a fresh isolated context, reads observed local links, and records actual screenshots and logs. Inspect its generated artifact and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
+
+The synthetic preview cannot stage itself through the live HTTPS Canvas mirror endpoint. That boundary is retained. Use the separately seeded replica for the synthetic automation demonstration; approved live coursework staging remains a separate explicit workflow.
+
+The optional `sandbox.rehearsal` service on 8086 remains a **synthetic rehearsal fixture**, not the Canvas application. Only enable it explicitly through `GRADIENT_SANDBOX_ORIGINS=http://127.0.0.1:8086`. Its identity is shown before a run. It is useful for controlled browser tests; it is not proof of institutional Canvas parity.
+
+## Honest fallback
+
+| Unavailable capability | Presentation fallback |
+| --- | --- |
+| Ollama or completion model | Continue with source instructions, rubric, deterministic what-if grades, allocation, calendar export and coursework-derived Research interests. Show the actual connection error; do not display an invented answer. |
+| Slow generation | Start before the pitch, then show the actual in-progress state or cancel. A previously exported packet may be shown only as a clearly labeled earlier local run with synthetic context. |
+| Browser service, vision model or Canvas replica | Show Automation's actual availability state and configured boundary. Explain the permitted workflow using the runbook. A saved screenshot/log is a prior run only; never label it current execution. |
+| Public search or programme page | Show editable interests and course evidence. Open the NSF directory link if accessible. Missing deadlines, funding or eligibility remain unknown. |
+| All optional services | The complete Academics demo and local interest extraction still run. Explicitly identify AI and browser execution as unavailable. |
+
+Stop the preview with Ctrl+C. The launcher stops a backend it started itself; an already running backend is left running. `setup.py down` stops the local Canvas Compose project without deleting volumes.
+
+## 150-second sequence
+
+| Time | Screen and message |
+| --- | --- |
+| 0–15 s | **Academics overview:** “GRADIENT turns the Canvas context students already have into academic action. This is a synthetic student.” Show the three courses and overlapping deadlines. |
+| 15–45 s | **Coursework / Grade Lab:** inspect the homework rubric, move a what-if value and show allocation. “Grade rules are deterministic; study-hour scenarios disclose their assumptions.” |
+| 45–85 s | **AI Workspace:** show a real completed or in-progress Autopilot run, requirements, one source excerpt, and coverage gaps. “Reference material supports learning; the student authors the submission.” |
+| 85–110 s | **Automation:** show a real local replica run with screenshot and log evidence, or clearly name its unavailable state. “Permission is bounded to the synthetic replica, with review and stop controls.” |
+| 110–140 s | **Research:** show course-derived interests, one ranked sourced opportunity and its course/skill evidence. “The same syllabus context helps students discover a research direction. Deadlines and eligibility come from source pages.” |
+| 140–150 s | Return to the four-section navigation. “One academic context: understand the work, plan the effort, inspect automation, and discover what comes next.” |

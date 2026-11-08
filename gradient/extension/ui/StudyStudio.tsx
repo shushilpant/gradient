@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { CanvasSnapshot } from '../liveCanvas.js';
 import { readCanvasMaterials } from '../canvasMaterials.js';
 import { generateStudyPacket, generateSpeech, getAssistantHealth, loadAssistantSettings, safeBrowserUrl } from '../assistantClient.js';
@@ -45,14 +45,38 @@ export function StudyStudio({ snapshot, active }: { snapshot: CanvasSnapshot; ac
   const deck = data.deck;
   const card = deck?.cards.find(item => item.id === queue[index]);
   const source = data.sources.find(item => item.id === readingId) ?? data.sources[0];
-  const paragraphs = source?.text.split(/\n\s*\n|(?<=\.)\s+(?=[A-Z])/).filter(text => text.trim().length > 30) ?? [];
+  const paragraphs = source?.text.split(/\n\s*\n|(?<=\.)\s+(?=[A-Z])/).map(text => text.trim()).filter(Boolean) ?? [];
   const passage = paragraphs[section] ?? '';
   const node = deck?.concepts.find(item => item.id === nodeId);
   const audio = deck?.cards.map(item => `${item.topic}. ${item.question} ${item.answer}. ${item.explanation}`) ?? [];
-  useEffect(() => { const currentLoad = ++loadEpoch.current; alive.current = true; persistence.current = false; setLoaded(false); setData(emptyStudio()); setSelected([]); loadStudio(key).then(saved => { if (alive.current && currentLoad === loadEpoch.current) { setData(saved); setSelected(saved.sources.map(source => source.id)); persistence.current = true; setLoaded(true); } }).catch(() => { if (alive.current) { setError('Saved study materials could not be loaded. Reload before making changes.'); } }); return () => { loadEpoch.current++; alive.current = false; run.current?.abort(); speechRun.current?.abort(); audioRef.current?.pause(); for (const url of audioCache.current.values()) URL.revokeObjectURL(url); audioCache.current.clear(); }; }, [key]);
+  // Reset course-bound state before the form is interactive, so a delayed
+  // first effect cannot erase a topic the student has already typed.
+  useLayoutEffect(() => {
+    const currentLoad = ++loadEpoch.current;
+    alive.current = true; persistence.current = false;
+    setLoaded(false); setData(emptyStudio()); setSelected([]); setQueue([]);
+    setIndex(0); setFlipped(false); setChoice(null); setEvidenceId(''); setNodeId('');
+    setReadingId(''); setSection(0); setAudioIndex(0); setAudioUrl('');
+    setBusy(false); setSpeechBusy(false); setPlaying(false); setPaused(false);
+    setStatus(''); setError(''); setCandidates([]); setTopic('');
+    loadStudio(key).then(saved => {
+      if (alive.current && currentLoad === loadEpoch.current) {
+        setData(saved); setSelected(saved.sources.map(source => source.id));
+        setQueue(saved.deck ? practiceOrder(saved.deck, saved.reviews) : []);
+        persistence.current = true; setLoaded(true);
+      }
+    }).catch(() => {
+      if (alive.current && currentLoad === loadEpoch.current) setError('Saved study materials could not be loaded. Reload before making changes.');
+    });
+    return () => {
+      loadEpoch.current++; alive.current = false; run.current?.abort(); run.current = null;
+      speechRun.current?.abort(); audioRef.current?.pause();
+      for (const url of audioCache.current.values()) URL.revokeObjectURL(url);
+      audioCache.current.clear();
+    };
+  }, [key]);
   useEffect(() => { if (loaded && persistence.current) saveStudio(key, data).catch(() => { if (alive.current) setError('Could not save study materials. They remain available this session.'); }); }, [data, loaded]);
   useEffect(() => { if (!active) stopAudio(); }, [active]);
-  useEffect(() => { setSelected([]); }, [courseId]);
   function stopAudio() { speechRun.current?.abort(); audioRef.current?.pause(); setAudioUrl(''); setSpeechBusy(false); setPlaying(false); setPaused(false); }
   function evidence(id: string) { setEvidenceId(id); }
   function startPractice(next: Mode, missed = false) {
@@ -156,7 +180,7 @@ export function StudyStudio({ snapshot, active }: { snapshot: CanvasSnapshot; ac
     <select class="g-select" aria-label="Studio course" value={courseId} onChange={event => { stopAudio(); setCourseId(event.currentTarget.value); }} disabled={busy}>{snapshot.courses.map(item => <option value={item.id} key={item.id}>{item.code}</option>)}</select>
     <nav class="jc-examples" aria-label="Study tools">{(['sources', 'cards', 'practice', 'map', 'listen', 'read'] as Mode[]).map(item => <button key={item} aria-pressed={mode === item} onClick={() => { stopAudio(); if (loaded) setError(''); if (busy) { run.current?.abort(); setBusy(false); setStatus(''); } if (item === 'cards' || item === 'practice') startPractice(item); else setMode(item); }}>{({ sources: 'Sources', cards: 'Flashcards', practice: 'Practice', map: 'Concept map', listen: 'Listen', read: 'Guided reading' })[item]}</button>)}</nav>
     {error && <p class="jc-error" role="alert">{error}</p>}{busy && <div class="jc-alert" role="status">{status || 'Reading sources…'} <button class="jc-btn" onClick={() => { run.current?.abort(); setBusy(false); setStatus(''); }}>Cancel</button></div>}
-    {mode === 'sources' && <><section class="jc-section"><h2>Course library</h2><p class="jc-muted">Import up to 12 readable Canvas resources. Locked or unreadable files stay excluded.</p><div class="ss-library">{course?.resources.slice(0, 40).map(item => <label key={item.id} class="jc-block"><input type="checkbox" checked={selected.includes(item.url)} onChange={event => { const checked = event.currentTarget.checked; setSelected(previous => checked ? [...previous, item.url] : previous.filter(id => id !== item.url)); }}/><span>{item.title}</span></label>)}</div><button class="jc-btn" disabled={busy || !loaded} onClick={() => void work(async signal => {
+    {mode === 'sources' && <><section class="jc-section"><h2>Course library</h2><p class="jc-muted">Import up to 12 readable Canvas resources. Locked or unreadable files stay excluded.</p><div class="ss-library">{course?.resources.filter(item => item.type !== 'module').slice(0, 40).map(item => <label key={item.id} class="jc-block"><input type="checkbox" checked={selected.includes(item.url)} disabled={busy || !loaded} onChange={event => { const checked = event.currentTarget.checked; setSelected(previous => checked ? [...previous, item.url] : previous.filter(id => id !== item.url)); }}/><span>{item.title}</span></label>)}</div><button class="jc-btn" disabled={busy || !loaded || !selected.length} onClick={() => void work(async signal => {
       await importSelected(signal);
     })}>Import selected material</button></section>
     <section class="jc-section"><h2>Selected evidence</h2>{data.sources.map(item => <label class="jc-block" key={item.id}><input type="checkbox" checked={selected.includes(item.id)} onChange={event => { const checked = event.currentTarget.checked; setSelected(previous => checked ? [...previous, item.id] : previous.filter(id => id !== item.id)); }}/><span class="jc-block-main">{item.title}<small>{item.kind === 'web' ? 'Web excerpt · not the complete page' : 'Readable Canvas text'} · {item.text.length.toLocaleString()} characters</small></span><button class="jc-btn" onClick={event => { event.preventDefault(); setReadingId(item.id); setSection(0); setMode('read'); }}>Read</button></label>)}{!data.sources.length && <p class="jc-muted">Import a source to begin. Your study tools will use only the sources you select.</p>}<input class="g-select" aria-label="Study topic" value={topic} onInput={event => setTopic(event.currentTarget.value)} placeholder="Focus topic or research question"/><button class="jc-btn primary" disabled={busy || !selected.some(id => data.sources.some(item => item.id === id))} onClick={() => void work(signal => generate(signal))}>Build study set</button><p class="jc-muted">Generation replaces the current set and its review history. Exact quotes are checked; answers still require your judgment.</p></section>

@@ -12,7 +12,7 @@ export function MaterialAccess({ courses, compact = false }: { courses: CanvasCo
     <div style={{ display: 'grid', gap: '12px' }}>
       {sections.map(({ course, access }) => <div key={`${course.id}-${access.section}`} style={{ borderTop: '1px solid #f0e6d8', paddingTop: '11px' }}>
         {!compact && <div class="g-small" style={{ marginBottom: '4px' }}>{course.code}</div>}
-        <strong style={{ display: 'block', fontSize: '15px', color: access.count ? '#0c9b88' : '#7a6f64' }}>
+        <strong style={{ display: 'block', fontSize: '15px', color: access.count ? 'var(--g-success)' : '#7a6f64' }}>
           {access.section} · {access.count > 0 ? `${access.count} linked ${access.count === 1 ? 'resource' : 'resources'}` : 'Not available in this course'}
         </strong>
         <p class="g-small" style={{ marginTop: '4px' }}>{access.reason}</p>

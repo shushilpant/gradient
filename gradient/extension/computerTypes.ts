@@ -14,6 +14,7 @@ export interface ComputerSessionRequest {
   reasoningModel: string;
   visionModel: string;
   maxSteps?: number;
+  webResearch?: boolean;
 }
 export interface ComputerStep {
   number: number;

@@ -1,4 +1,3 @@
-import {resumePageAutopilot} from './pageAutopilot.js';
 import { h, render } from 'preact';
 import { shouldRunOnPage } from './safetyGuard.js';
 import { loadOptions } from './options/optionsStorage.js';
@@ -58,7 +57,7 @@ async function reconcilePage(): Promise<void> {
   mounting = true;
   try {
     const result = await initPanel();
-    if (result.injected) {lastUrl = window.location.href; void resumePageAutopilot();}
+    if (result.injected) {lastUrl = window.location.href;}
   } finally { mounting = false; }
 }
 

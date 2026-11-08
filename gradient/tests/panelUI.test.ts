@@ -9,8 +9,10 @@ describe('GRADIENT Canvas workspace', () => {
   afterAll(async () => { await browser?.close(); });
 
   async function tab(page: Page, name: string): Promise<void> {
-    await page.getByRole('tab', { name, exact: true }).click();
-    expect(await page.getByRole('tab', { name, exact: true }).getAttribute('aria-selected')).toBe('true');
+    if (name === 'Settings') name = 'Preferences';
+    await page.getByRole('tab', { name: 'Academics', exact: true }).click();
+    await page.getByRole('button', { name, exact: true }).click();
+    expect(await page.getByRole('button', { name, exact: true }).getAttribute('aria-pressed')).toBe('true');
   }
 
   it('supports course navigation, real coursework search, and what-if simulation', async () => {
@@ -107,7 +109,6 @@ describe('GRADIENT Canvas workspace', () => {
       await page.getByRole('button', { name: 'Build my study plan', exact: true }).click();
       await page.locator('.g-plan-result').waitFor({ timeout: 15000 });
       expect(await page.locator('.g-plan-result').innerText()).toContain('hours allocated');
-      await tab(page, 'Settings');
       const downloaded = page.waitForEvent('download');
       await page.getByRole('button', { name: 'Download calendar (.ics)', exact: true }).click();
       const file = await downloaded;
@@ -138,9 +139,9 @@ describe('GRADIENT Canvas workspace', () => {
       await wide.click();
       await page.getByRole('button', { name: 'Minimize GRADIENT', exact: true }).click();
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).click();
-      await page.getByRole('tab', { name: 'Overview', exact: true }).waitFor();
+      await page.getByRole('tab', { name: 'Academics', exact: true }).waitFor();
       await page.setViewportSize({ width: 375, height: 812 });
-      const bounds = await page.getByRole('tab', { name: 'Overview', exact: true }).boundingBox();
+      const bounds = await page.getByRole('tab', { name: 'Academics', exact: true }).boundingBox();
       expect(bounds).not.toBeNull();
       expect(bounds!.x).toBeGreaterThanOrEqual(0);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(375);
@@ -168,7 +169,7 @@ describe('GRADIENT Canvas workspace', () => {
     try {
       await waitForLoaded(page);
       await tab(page, 'Coursework');
-      const todayRow = page.locator('.g-task').filter({ hasText: 'Due later today' });
+      const todayRow = page.locator('.g-task').filter({ has: page.locator('.g-task-meta') }).filter({ hasText: 'Due later today' });
       expect(await todayRow.innerText()).toContain('Due today');
       expect(await todayRow.innerText()).not.toContain('Tomorrow');
       expect(await page.locator('.g-task').filter({ hasText: 'Hidden instructor score' }).count()).toBe(0);
@@ -186,7 +187,7 @@ describe('GRADIENT Canvas workspace', () => {
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).waitFor();
       expect(await page.locator('#gradient-workspace').isVisible()).toBe(false);
       await page.evaluate(() => window.dispatchEvent(new Event('gradient:toggle')));
-      await page.getByRole('tab', { name: 'Overview', exact: true }).waitFor();
+      await page.getByRole('tab', { name: 'Academics', exact: true }).waitFor();
       expect(await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).count()).toBe(0);
     } finally { await page.close(); }
   }, 20000);
@@ -243,7 +244,7 @@ describe('GRADIENT Canvas workspace', () => {
     const { page } = await mockCanvas(browser, { url: 'https://canvas.instructure.com/courses/99001/assignments/1008' });
     try {
       await page.getByLabel('Assignment to simulate').waitFor({ timeout: 15000 });
-      expect(await page.getByRole('tab', { name: 'Coursework', exact: true }).getAttribute('aria-selected')).toBe('true');
+      expect(await page.getByRole('button', { name: 'Coursework', exact: true }).getAttribute('aria-pressed')).toBe('true');
       expect(await page.getByLabel('Choose a course').inputValue()).toBe('99001');
       expect(await page.getByLabel('Assignment to simulate').inputValue()).toBe('1008');
     } finally { await page.close(); }

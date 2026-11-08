@@ -165,6 +165,10 @@ def test_assignment_source_read_uses_actual_brief_and_does_not_submit(monkeypatc
     monkeypatch.setattr(agent,'_json_get',get)
     result=agent._assignment_request(None,'http://127.0.0.1:8086','http://127.0.0.1:8086/courses/1/assignments/2','Complete the homework','gpt-oss:20b')
     assert result.autopilot and result.assignment.description=='Plot f(t)=t*exp(-t).'
+    assert result.webResearch is False
+    with_web=agent._assignment_request(None,'http://127.0.0.1:8086','http://127.0.0.1:8086/courses/1/assignments/2','Learn concepts','gpt-oss:20b',web_research=True)
+    assert with_web.webResearch is True
+    assert agent.SessionRequest(origin='http://127.0.0.1:8086',goal='Read homework').webResearch is False
     assert not any('submit' in call for call in calls)
     monkeypatch.setattr(agent,'_json_get',lambda *_:{'name':'Exam 2','description':'<p>Take this exam.</p>','submission_types':['online_quiz']})
     with pytest.raises(HTTPException):

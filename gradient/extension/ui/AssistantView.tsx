@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { EvidenceSources, SourceCitation, InspectEvidence, SourceEvidence } from './SourceCitation.js';
-import { PacketShare } from './PacketShare.js';
 import type { StudySource } from '../assistantTypes.js';
 import { renderToString } from 'katex';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
@@ -9,7 +8,8 @@ import type { CanvasSnapshot, CanvasLiveAssignment } from '../liveCanvas.js';
 import type { AssistantHealth, AssistantSettings, BrowserPlan, DetailLevel, StudyDiagram, StudyPacket, StudyProgress } from '../assistantTypes.js';
 import { enableBrowserSearch, applyBrowserAction, captureBrowserContext, generateStudyPacket, getAssistantHealth, loadAssistantSettings, planBrowserAction, saveAssistantSettings } from '../assistantClient.js';
 import { Icon } from './Icons.js';
-import { homeworkAutopilotBlock } from '../homeworkAutopilot.js';
+import { getAcademicContext } from '../academicContext.js';
+import { assessmentAssistanceBlock, homeworkAutopilotBlock } from '../homeworkAutopilot.js';
 import { AutopilotProgress, WorkEvidence, ComputedVisuals } from './WorkEvidence.js';
 import { ASSISTANT_STYLES } from './assistantStyles.js';
 
@@ -168,8 +168,8 @@ function escapeHtml(value: string): string { return value.replace(/&/g, '&amp;')
 export function packetMarkdown(packet: StudyPacket): string {
   const figures = (packet.renderedVisuals ?? []).map(figure => `## ${figure.title}\n\n![${figure.title.replace(/[\[\]]/g, '')}](data:image/png;base64,${figure.data})\n\n${figure.caption}\n\nEvidence [${figure.provenance.sourceId}]: ${figure.provenance.quote}`);
   const requirements = packet.brief ? `## Assignment requirements\n\n${packet.brief.requirements.map(item => `- ${item.text}\n  - Instruction: ${item.evidence}\n  - Review: ${packet.review?.coverage.find(check => check.requirementId === item.id)?.status ?? 'not reviewed'}`).join('\n')}` : '';
-  return [`# ${packet.title}`, packet.summary, packet.markdown,
-    packet.sampleMarkdown ? `## Sample assignment for review\n\n${packet.sampleMarkdown}` : '',
+  return [`# ${packet.title}`, 'AI-generated reference material. Review sources, resolve gaps, and write your own submission.', packet.summary, packet.markdown,
+    packet.sampleMarkdown ? `## Reference example for learning\n\n${packet.sampleMarkdown}` : '',
     ...figures, requirements,
     ...(packet.images.filter(image => safeUrl(image.url) && safeUrl(image.sourceUrl)).map(image => `![${image.alt.replace(/[\[\]]/g, '')}](${safeUrl(image.url)})\n[Image source](${safeUrl(image.sourceUrl)})`)),
     `## Sources\n\n${packet.sources.filter(source => safeUrl(source.url)).map(source => `- [${source.title.replace(/[\[\]]/g, '')}](${safeUrl(source.url)})${source.excerpt ? `: ${source.excerpt}` : ''}`).join('\n')}`,
@@ -179,28 +179,29 @@ export function packetMarkdown(packet: StudyPacket): string {
 function assignmentBrief(assignment: CanvasLiveAssignment | undefined): string { return assignment ? plain(assignment.descriptionHtml) : ''; }
 
 export interface AssistantFocus { courseId?: string; assignmentId?: string; autopilot?: boolean; nonce?: number }
-export interface AssistantViewProps { snapshot: CanvasSnapshot; preview?: boolean; initialCourseId?: string; initialAssignmentId?: string; focus?: AssistantFocus }
-export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, focus }: AssistantViewProps) {
+export interface AssistantViewProps { snapshot: CanvasSnapshot; preview?: boolean; initialCourseId?: string; initialAssignmentId?: string; focus?: AssistantFocus; onAcademicAction?: (courseId: string, assignmentId: string) => void }
+export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, focus, onAcademicAction }: AssistantViewProps) {
   const [settings, setSettings] = useState<AssistantSettings>(DEFAULTS);
   const [health, setHealth] = useState<AssistantHealth | null>(null);
   const [checking, setChecking] = useState(false);
   const [connectionError, setConnectionError] = useState('');
-  const [courseId, setCourseId] = useState(initialCourseId ?? snapshot.courses[0]?.id ?? '');
+  const [courseId, setCourseId] = useState(focus?.courseId ?? initialCourseId ?? snapshot.courses[0]?.id ?? '');
   const course = snapshot.courses.find(item => item.id === courseId) ?? snapshot.courses[0];
-  const [assignmentId, setAssignmentId] = useState(initialAssignmentId ?? '');
-  const assignment = course?.assignments.find(item => item.id === assignmentId) ?? course?.assignments.find(item => !item.submission?.excused && item.submission?.score == null && !['submitted', 'pending_review', 'graded'].includes(item.submission?.workflowState ?? '')) ?? course?.assignments[0];
+  const [assignmentId, setAssignmentId] = useState(focus?.assignmentId ?? initialAssignmentId ?? '');
+  const assignment = assignmentId === '__course__' ? undefined : course?.assignments.find(item => item.id === assignmentId) ?? course?.assignments.find(item => !item.submission?.excused && item.submission?.score == null && !['submitted', 'pending_review', 'graded'].includes(item.submission?.workflowState ?? '')) ?? course?.assignments[0];
   const [prompt, setPrompt] = useState('');
   const [mode, setMode] = useState<'explain' | 'sample'>('explain');
   const [autopilot, setAutopilot] = useState(false);
   const [homeworkConfirmed, setHomeworkConfirmed] = useState(false);
   const [workProgress, setWorkProgress] = useState<StudyProgress | null>(null);
   const autopilotBlock = homeworkAutopilotBlock(assignment);
+  const assessmentBlock = assessmentAssistanceBlock(assignment);
   useEffect(() => { setHomeworkConfirmed(false); }, [course?.id, assignment?.id]);
   useEffect(() => {
     if (!focus) return;
     if (focus.courseId) setCourseId(focus.courseId);
     if (focus.assignmentId) setAssignmentId(focus.assignmentId);
-    if (focus.autopilot) { setAutopilot(true); setMode('sample'); }
+    setAutopilot(!!focus.autopilot); setMode(focus.autopilot ? 'sample' : 'explain');
   }, [focus?.nonce]);
   const [visuals, setVisuals] = useState({ diagrams: true, graphs: true, images: true });
   const [generating, setGenerating] = useState(false);
@@ -217,11 +218,21 @@ export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, 
   const earlySettingsEdits = useRef<Partial<AssistantSettings>>({});
   const settingsLoaded = useRef(false);
   const healthRequest = useRef(0);
+  const generationRequest = useRef<AbortController | null>(null);
+  const inspectionRequest = useRef(0);
+  const contextKey = `${course?.id ?? ''}:${assignmentId === '__course__' ? '__course__' : assignment?.id ?? ''}`;
+  const currentContext = useRef(contextKey); currentContext.current = contextKey;
+  useEffect(() => {
+    // A packet belongs to the course and assignment that supplied its evidence.
+    generationRequest.current?.abort(); generationRequest.current = null;
+    setGenerating(false); setWorkProgress(null); setPacket(null); setGenerationError('');
+    inspectionRequest.current++; setBrowserBusy(false); setBrowserPlan(null); setBrowserError(''); setActionMessage('');
+  }, [contextKey]);
   const reasoningModels = installedModels(health, 'completion');
   const visionModels = installedModels(health, 'vision');
   const ready = health?.ok && health.ollamaConnected && reasoningModels.includes(settings.reasoningModel);
   const visionReady = health?.ok && health.ollamaConnected && visionModels.includes(settings.visionModel);
-  const brief = assignmentBrief(assignment);
+  const brief = !assignment && course ? getAcademicContext(snapshot).syllabi.get(course.id)?.text ?? '' : assignmentBrief(assignment);
   const resources = useMemo(() => {
     const words = new Set(`${assignment?.name ?? ''} ${brief.slice(0, 1000)}`.toLowerCase().match(/[a-z]{4,}/g) ?? []);
     return (course?.resources ?? []).map(resource => ({ resource, rank: (resource.title.toLowerCase().match(/[a-z]{4,}/g) ?? []).filter(word => words.has(word)).length })).sort((a, b) => b.rank - a.rank).slice(0, 12).map(item => item.resource);
@@ -234,12 +245,13 @@ export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, 
       settingsLoaded.current = true; settingsRef.current = initial; setSettings(initial);
       await checkHealth(initial);
     }).catch(error => { if (mounted.current) setConnectionError(errorMessage(error)); });
-    return () => { mounted.current = false; healthRequest.current++; };
+    return () => { mounted.current = false; healthRequest.current++; inspectionRequest.current++; generationRequest.current?.abort(); };
   }, []);
   const updateSettings = (patch: Partial<AssistantSettings>) => {
     if (!settingsLoaded.current) earlySettingsEdits.current = { ...earlySettingsEdits.current, ...patch };
     settingsRef.current = { ...settingsRef.current, ...patch };
     setSettings(current => ({ ...current, ...patch }));
+    if (patch.backendUrl !== undefined || patch.visionModel !== undefined) { inspectionRequest.current++; setBrowserBusy(false); setBrowserPlan(null); setBrowserError(''); setActionMessage(''); }
     if (patch.backendUrl !== undefined) { healthRequest.current++; setChecking(false); setHealth(null); }
     saveAssistantSettings(patch).catch(error => { if (mounted.current) setConnectionError(errorMessage(error)); });
   };
@@ -262,53 +274,66 @@ export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, 
   };
   const checkConnection = () => checkHealth(settingsRef.current);
   const generate = async () => {
-    if (!course || !assignment || generating) return;
+    if (!course || generating) return;
+    if (!assignment && (autopilot || mode === 'sample')) return;
+    if (assessmentBlock) { setGenerationError(assessmentBlock); return; }
     if (autopilot && (autopilotBlock || !homeworkConfirmed)) { setGenerationError(autopilotBlock || 'Confirm that this is homework before starting autopilot.'); return; }
+    const controller = new AbortController(); generationRequest.current = controller;
     setGenerating(true); setGenerationError(''); setWorkProgress(null);
     try {
       const preferences = `Use only evidence-based Python-rendered figures. No illustrative invented data. Visual preferences: ${visuals.diagrams ? 'include diagrams only when the source explicitly supports the relationships' : 'omit diagrams'}; ${visuals.graphs ? 'plot only explicit equations or source datasets requested by the assignment' : 'omit graphs'}; ${visuals.images ? 'include only relevant, attributed images from retrieved resources when available' : 'omit images'}. Never invent sources, measurements, or image URLs.`;
       const result = await generateStudyPacket(settings, {
         autopilot, assignmentKind: autopilot && homeworkConfirmed ? 'homework' : 'other', visualPreferences: visuals,
         course: { id: course.id, name: course.name, code: course.code },
-        assignment: { id: assignment.id, title: assignment.name, description: brief, url: assignment.htmlUrl, submissionTypes: assignment.submissionTypes, dueAt: assignment.dueAt ?? null, rubric: assignment.rubric?.map(criterion => `${plain(criterion.description)} (${criterion.points} points): ${criterion.ratings.map(rating => plain(rating.description)).join('; ')}`).join('\n') },
+        assignment: { id: assignment?.id ?? `course-${course.id}`, title: assignment?.name ?? `${course.code} course concepts`, description: brief, url: assignment?.htmlUrl ?? course.url, submissionTypes: assignment?.submissionTypes ?? [], dueAt: assignment?.dueAt ?? null, rubric: assignment?.rubric?.map(criterion => `${plain(criterion.description)} (${criterion.points} points): ${criterion.ratings.map(rating => plain(rating.description)).join('; ')}`).join('\n') },
         prompt: `${prompt.trim()}\n\n${preferences}`, level: autopilot ? 'all_in' : settings.detailLevel, mode: autopilot ? 'sample' : mode, model: settings.reasoningModel, webResearch: settings.webResearch,
         resources: resources.map(resource => ({ title: resource.title, url: resource.url })),
-      }, progress => { if (mounted.current) setWorkProgress(progress); });
-      if (mounted.current) setPacket({ ...result, diagrams: [], graphs: [], renderedVisuals: result.renderedVisuals?.filter(figure => figure.kind==='diagram' ? visuals.diagrams : visuals.graphs), images: visuals.images ? result.images : [] });
-    } catch (error) { if (mounted.current) setGenerationError(errorMessage(error)); } finally { if (mounted.current) setGenerating(false); }
+      }, progress => { if (mounted.current && !controller.signal.aborted && currentContext.current === contextKey) setWorkProgress(progress); }, controller.signal);
+      if (mounted.current && !controller.signal.aborted && currentContext.current === contextKey) setPacket({ ...result, diagrams: [], graphs: [], renderedVisuals: result.renderedVisuals?.filter(figure => figure.kind==='diagram' ? visuals.diagrams : visuals.graphs), images: visuals.images ? result.images : [] });
+    } catch (error) { if (mounted.current && !controller.signal.aborted && currentContext.current === contextKey) setGenerationError(errorMessage(error)); }
+    finally { if (mounted.current && generationRequest.current === controller) { generationRequest.current = null; setGenerating(false); } }
   };
   const inspectPage = async () => {
-    setBrowserBusy(true); setBrowserError(''); setActionMessage('');
-    try { const context = await captureBrowserContext(); const plan = await planBrowserAction(settings, { ...context, goal: browserGoal, model: settings.visionModel }); if (mounted.current) setBrowserPlan(plan); }
-    catch (error) { if (mounted.current) setBrowserError(errorMessage(error)); } finally { if (mounted.current) setBrowserBusy(false); }
+    const id = ++inspectionRequest.current, selectedContext = contextKey, selectedSettings = settingsRef.current;
+    const current = () => mounted.current && inspectionRequest.current === id && currentContext.current === selectedContext && settingsRef.current.backendUrl === selectedSettings.backendUrl && settingsRef.current.visionModel === selectedSettings.visionModel;
+    setBrowserBusy(true); setBrowserError(''); setActionMessage(''); setBrowserPlan(null);
+    try {
+      const context = await captureBrowserContext();
+      if (!current()) return;
+      const plan = await planBrowserAction(selectedSettings, { ...context, goal: browserGoal, model: selectedSettings.visionModel });
+      if (current()) setBrowserPlan(plan);
+    } catch (error) { if (current()) setBrowserError(errorMessage(error)); }
+    finally { if (current()) setBrowserBusy(false); }
   };
   const exportHtml = () => {
     if (!packet || !resultRef.current) return;
-    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(packet.title)}</title><style>body{margin:0;background:#fff8f1;font-family:Figtree,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:30px 15px}main{max-width:850px;margin:auto}${ASSISTANT_STYLES}.ja{border:0}.ja-result{border:0}.ja-result-header{padding:30px}.ja-result-body{padding:30px}@media print{body{background:white;padding:0}.ja{border:0}.ja-result{overflow:visible}.ja-result-header,.ja-result-body{padding:15px}.ja-visual{break-inside:avoid}a{overflow-wrap:anywhere}}</style></head><body><main class="ja"><article class="ja-result">${resultRef.current.innerHTML}</article></main></body></html>`, `${filename(packet.title)}.html`, 'text/html;charset=utf-8');
+    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(packet.title)}</title><style>body{margin:0;background:#faf8f5;font-family:Figtree,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:30px 15px}main{max-width:850px;margin:auto}${ASSISTANT_STYLES}.ja{border:0}.ja-result{border:0}.ja-result-header{padding:30px}.ja-result-body{padding:30px}@media print{body{background:white;padding:0}.ja{border:0}.ja-result{overflow:visible}.ja-result-header,.ja-result-body{padding:15px}.ja-visual{break-inside:avoid}a{overflow-wrap:anywhere}}</style></head><body><main class="ja"><article class="ja-result">${resultRef.current.innerHTML}</article></main></body></html>`, `${filename(packet.title)}.html`, 'text/html;charset=utf-8');
   };
 
   return <><style>{ASSISTANT_STYLES}</style><section class="ja" aria-label="Local AI study assistant">
-    <header class="ja-head"><div class="ja-core" aria-hidden="true"><span><Icon name="spark" size={20}/></span></div><h1>Assistant</h1><span class="ja-status"><i class={`ja-led ${ready ? 'ready' : ''}`}/>{checking ? 'Connecting' : ready ? 'Local AI ready' : 'Setup needed'}</span></header>
+    <header class="ja-head"><div class="ja-core" aria-hidden="true"><span><Icon name="spark" size={20}/></span></div><h1>AI Workspace</h1><span class="ja-status" role="status"><i class={`ja-led ${ready ? 'ready' : ''}`}/>{checking ? 'Connecting' : ready ? 'Local AI ready' : 'Setup needed'}</span></header>
     <div class="ja-inner">
       <section class="ja-section"><div class="ja-fields two">
         <label><span class="ja-label">Course</span><select class="ja-control" aria-label="Assistant course" value={course?.id ?? ''} disabled={generating} onChange={e => { setCourseId(e.currentTarget.value); setAssignmentId(''); }}>{snapshot.courses.map(item => <option value={item.id} key={item.id}>{item.code} · {item.name}</option>)}</select></label>
-        <label><span class="ja-label">Assignment</span><select class="ja-control" aria-label="Assistant assignment" value={assignment?.id ?? ''} disabled={generating || !course?.assignments.length} onChange={e => setAssignmentId(e.currentTarget.value)}>{course?.assignments.length ? course.assignments.map(item => <option value={item.id} key={item.id}>{item.name}</option>) : <option value="">No assignments available</option>}</select></label>
+        <label><span class="ja-label">Assignment</span><select class="ja-control" aria-label="Assistant assignment" value={assignmentId === '__course__' ? '__course__' : assignment?.id ?? '__course__'} disabled={generating} onChange={e => { setAssignmentId(e.currentTarget.value); if (e.currentTarget.value === '__course__') { setAutopilot(false); setMode('explain'); } }}><option value="__course__">Course concepts & syllabus</option>{course?.assignments.length ? course.assignments.map(item => <option value={item.id} key={item.id}>{item.name}</option>) : <option value="">No assignments available</option>}</select></label>
       </div>{assignment && brief && <details class="ja-context"><summary>{assignment.dueAt && Number.isFinite(Date.parse(assignment.dueAt)) ? `Due ${new Date(assignment.dueAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}` : 'Brief'}</summary><div class="ja-brief">{brief}</div></details>}</section>
 
+      {assessmentBlock && !autopilot && <div class="ja-notice warning" role="alert">{assessmentBlock} Select Course concepts & syllabus for general course explanations.</div>}
+      {course && assignment && onAcademicAction && <button class="ja-btn" style={{ marginBottom: '14px' }} onClick={() => onAcademicAction(course.id, assignment.id)}>Grade implications, study plan & calendar <Icon name="arrow" size={15}/></button>}
       <section class="ja-autopilot" aria-label="Homework autopilot">
-        <div class="ja-row"><h2>Homework autopilot</h2><button class={`ja-toggle ${autopilot ? 'active' : ''}`} role="switch" aria-checked={autopilot} aria-label="Homework autopilot" disabled={generating} onClick={()=>setAutopilot(!autopilot)}>{autopilot?'On':'Off'}<span/></button></div>
+        <div class="ja-row"><h2>Homework autopilot</h2><button class={`ja-toggle ${autopilot ? 'active' : ''}`} role="switch" aria-checked={autopilot} aria-label="Homework autopilot" disabled={generating || !assignment} onClick={()=>setAutopilot(!autopilot)}>{autopilot?'On':'Off'}<span/></button></div>
         {autopilot && (autopilotBlock ? <div class="ja-notice warning" role="alert">{autopilotBlock}</div> : <label class="ja-switch ja-homework-confirm"><input type="checkbox" checked={homeworkConfirmed} disabled={generating} onChange={e=>setHomeworkConfirmed(e.currentTarget.checked)}/>This is homework, not an exam, quiz, or timed assessment.</label>)}
       </section>
-      <section class="ja-section"><label class="ja-label" for="ja-prompt">Anything you want me to focus on?</label><textarea id="ja-prompt" class="ja-control" rows={2} value={prompt} disabled={generating} onInput={e => setPrompt(e.currentTarget.value)} placeholder="Hard parts, diagrams, a full sample…"/>
-        <button class="ja-btn primary full" style={{ marginTop: '14px' }} disabled={!ready || !assignment || generating || (autopilot && (!!autopilotBlock || !homeworkConfirmed))} onClick={generate}>{generating ? <><Icon name="refresh" size={18} className="g-spinner"/>Working…</> : <><Icon name="spark" size={18}/>{autopilot ? 'Run homework autopilot' : mode === 'sample' ? 'Create my sample assignment' : 'Build my study packet'}</>}</button>
-        {generating && <AutopilotProgress progress={workProgress}/>}
+      <section class="ja-section"><label class="ja-label" for="ja-prompt">Anything you want me to focus on?</label><textarea id="ja-prompt" class="ja-control" rows={2} value={prompt} disabled={generating} onInput={e => setPrompt(e.currentTarget.value)} placeholder="Concepts, requirements, or a worked reference example…"/>
+        <button class="ja-btn primary full" style={{ marginTop: '14px' }} disabled={!ready || !course || !!assessmentBlock || generating || (autopilot && (!!autopilotBlock || !homeworkConfirmed))} onClick={generate}>{generating ? <><Icon name="refresh" size={18} className="g-spinner"/>Working…</> : <><Icon name="spark" size={18}/>{autopilot ? 'Run homework autopilot' : mode === 'sample' ? 'Create reference example' : 'Build my study packet'}</>}</button>
+        {generating && <><AutopilotProgress progress={workProgress}/><button class="ja-btn" onClick={() => { generationRequest.current?.abort(); generationRequest.current = null; setGenerating(false); setWorkProgress(null); }}>Cancel</button></>}
         {generationError && <div class="ja-notice error" role="alert" style={{ marginTop: '10px' }}>{generationError}</div>}
       </section>
       <section class="ja-section"><div class="ja-detail" hidden={autopilot} role="group" aria-label="Response detail level">{LEVELS.map(level => <button key={level.id} class={settings.detailLevel === level.id ? 'active' : ''} aria-pressed={settings.detailLevel === level.id} disabled={generating} onClick={() => updateSettings({ detailLevel: level.id })}><strong>{level.title}</strong></button>)}</div>
-        <div hidden={autopilot} class="ja-mode" role="group" aria-label="Assistant output type"><button class={`ja-btn ${mode === 'explain' ? 'active' : ''}`} aria-pressed={mode === 'explain'} disabled={generating} onClick={() => setMode('explain')}>Study</button><button class={`ja-btn ${mode === 'sample' ? 'active' : ''}`} aria-pressed={mode === 'sample'} disabled={generating} onClick={() => setMode('sample')}>Sample assignment</button></div>
+        <div hidden={autopilot} class="ja-mode" role="group" aria-label="Assistant output type"><button class={`ja-btn ${mode === 'explain' ? 'active' : ''}`} aria-pressed={mode === 'explain'} disabled={generating} onClick={() => setMode('explain')}>Study</button><button class={`ja-btn ${mode === 'sample' ? 'active' : ''}`} aria-pressed={mode === 'sample'} disabled={generating || !assignment} onClick={() => setMode('sample')}>Reference example</button></div>
       </section>
 
-      {packet && <section aria-label="Generated study packet"><article class="ja-result" ref={resultRef}><header class="ja-result-header"><h2>{packet.title}</h2><p>{packet.summary}</p></header><div class="ja-result-body"><GroundedMarkdown text={packet.markdown} sources={packet.sources}/><ComputedVisuals packet={packet}/><WorkEvidence packet={packet}/>{packet.images.filter(image => safeUrl(image.url) && safeUrl(image.sourceUrl)).map((image, i) => <figure class="ja-visual" key={i}><figcaption>{image.title}</figcaption><img src={safeUrl(image.url)} alt={image.alt} loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }}/><a href={safeUrl(image.sourceUrl)} target="_blank" rel="noopener noreferrer">View image source</a></figure>)}{packet.sampleMarkdown && <section class="ja-sample"><GroundedMarkdown text={packet.sampleMarkdown} sources={packet.sources}/></section>}{!!packet.checklist?.length && <section class="ja-sample"><h3>Before you finish</h3><ul class="ja-checklist">{packet.checklist.map((item, i) => <li key={i}>{item}</li>)}</ul></section>}{packet.warnings.map((warning, i) => <p class="ja-note" key={i} style={{ marginTop: '10px' }}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3>{packet.sources.length ? <ol>{packet.sources.map((source, i) => <li key={source.id || i}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{source.excerpt && <p>{source.excerpt}</p>}</li>)}</ol> : <p class="ja-note">No verified sources returned.</p>}</section></div></article><PacketShare key={packet.generatedAt ?? packet.markdown} packet={packet}/><div class="ja-export"><button class="ja-btn" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated HTML</button><button class="ja-btn" onClick={() => download(packetMarkdown(packet), `${filename(packet.title)}.md`, 'text/markdown;charset=utf-8')}><Icon name="download" size={16}/>Markdown</button></div></section>}
+      {packet && <section aria-label="Generated study packet"><article class="ja-result" ref={resultRef}><header class="ja-result-header"><h2>{packet.title}</h2><p class="ja-note">AI-generated reference material for learning. Review sources, resolve gaps, and write your own submission.</p><p>{packet.summary}</p></header><div class="ja-result-body"><GroundedMarkdown text={packet.markdown} sources={packet.sources}/><ComputedVisuals packet={packet}/><WorkEvidence packet={packet}/>{packet.images.filter(image => safeUrl(image.url) && safeUrl(image.sourceUrl)).map((image, i) => <figure class="ja-visual" key={i}><figcaption>{image.title}</figcaption><img src={safeUrl(image.url)} alt={image.alt} loading="lazy" referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }}/><a href={safeUrl(image.sourceUrl)} target="_blank" rel="noopener noreferrer">View image source</a></figure>)}{packet.sampleMarkdown && <section class="ja-sample"><GroundedMarkdown text={packet.sampleMarkdown} sources={packet.sources}/></section>}{!!packet.checklist?.length && <section class="ja-sample"><h3>Before you finish</h3><ul class="ja-checklist">{packet.checklist.map((item, i) => <li key={i}>{item}</li>)}</ul></section>}{packet.warnings.map((warning, i) => <p class="ja-note" key={i} style={{ marginTop: '10px' }}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3>{packet.sources.length ? <ol>{packet.sources.map((source, i) => <li key={source.id || i}>{safeUrl(source.url) ? <a href={safeUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title}</a> : <strong>{source.title}</strong>}{source.excerpt && <p>{source.excerpt}</p>}</li>)}</ol> : <p class="ja-note">No verified sources returned.</p>}</section></div></article><div class="ja-export"><button class="ja-btn" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated HTML</button><button class="ja-btn" onClick={() => download(packetMarkdown(packet), `${filename(packet.title)}.md`, 'text/markdown;charset=utf-8')}><Icon name="download" size={16}/>Markdown</button></div></section>}
 
       <details class="ja-settings" open={!ready}><summary><Icon name="settings" size={16}/>Models</summary><div class="ja-fields">
         <label><span class="ja-label">Local assistant service</span><input class="ja-control" aria-label="Local assistant service URL" type="url" value={settings.backendUrl} disabled={generating} onChange={e => updateSettings({ backendUrl: e.currentTarget.value })} placeholder="http://127.0.0.1:8765"/></label>

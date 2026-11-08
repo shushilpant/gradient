@@ -5,7 +5,7 @@ describe('Signature demo flows',()=>{
  let browser:Browser;
  beforeAll(async()=>{browser=await launchBrowser();});afterAll(async()=>{await browser?.close();});
  it('updates the GPA chart locally and explains the grade with actual group math',async()=>{
-  const {page,requests}=await mockCanvas(browser,{fixedTime:'2026-11-05T15:00:00Z'});page.setDefaultTimeout(6000);
+  const {page,requests}=await mockCanvas(browser,{legacy:true,fixedTime:'2026-11-05T15:00:00Z'});page.setDefaultTimeout(6000);
   try{
    await page.getByRole('button',{name:/^Grade lab/}).click();
    const chart=page.getByRole('img',{name:/Modeled GPA fan chart/});await chart.waitFor();
@@ -23,7 +23,7 @@ describe('Signature demo flows',()=>{
   }finally{await page.close();}
  },20000);
  it('requires transcription review before photo critique and supports typed work',async()=>{
-  const {page}=await mockCanvas(browser);page.setDefaultTimeout(6000);let phase='';
+  const {page}=await mockCanvas(browser, { legacy: true });page.setDefaultTimeout(6000);let phase='';
   await page.route('**/api/v1/assistant/**',route=>{
    const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS'};
    if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers});
@@ -49,7 +49,7 @@ describe('Signature demo flows',()=>{
   }finally{await page.close();}
  },15000);
  it('opens cited evidence and produces a revocable QR code for a generated packet',async()=>{
-  const {page}=await mockCanvas(browser);page.setDefaultTimeout(6000);let revoked=false;
+  const {page}=await mockCanvas(browser, { legacy: true });page.setDefaultTimeout(6000);let revoked=false;
   await page.route('**/api/v1/assistant/**',route=>{
    const headers={'Access-Control-Allow-Origin':'*','Access-Control-Allow-Headers':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS'};const path=new URL(route.request().url()).pathname;
    if(route.request().method()==='OPTIONS')return route.fulfill({status:204,headers});

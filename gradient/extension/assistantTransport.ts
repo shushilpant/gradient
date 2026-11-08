@@ -13,7 +13,7 @@ export function validateAssistantPath(path: string, method: string): void {
   const computerGet = method === 'GET' && /^\/api\/v1\/computer\/(config|sessions\/[a-zA-Z0-9_-]{1,80})$/.test(path);
   const computerPost = method === 'POST' && /^\/api\/v1\/computer\/(mirror|sessions|sessions\/[a-zA-Z0-9_-]{1,80}\/cancel)$/.test(path);
   const get = method === 'GET' && (/^\/api\/v1\/assistant\/health$/.test(path) || /^\/api\/v1\/assistant\/jobs\/[a-zA-Z0-9_-]{1,80}$/.test(path));
-  const post = method === 'POST' && /^\/api\/v1\/assistant\/(shares(?:\/[a-zA-Z0-9_-]{32}\/revoke)?|export\/pdf|models\/pull|generate|browser\/plan|materials\/extract|jobs)$/.test(path);
+  const post = method === 'POST' && /^\/api\/v1\/assistant\/(shares(?:\/[a-zA-Z0-9_-]{32}\/revoke)?|export\/pdf|models\/pull|reu\/search|generate|browser\/plan|materials\/extract|jobs)$/.test(path);
   if (!get && !post && !computerGet && !computerPost) throw new Error('This local assistant operation is not supported.');
 }
 
@@ -38,7 +38,7 @@ export async function localAssistantFetch(backendUrl: string, path: string, meth
   const origin = validateBackendUrl(backendUrl);
   validateAssistantPath(path, method);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 24000);
+  const timeout = setTimeout(() => controller.abort(), path === "/api/v1/assistant/reu/search" ? 90000 : 24000);
   try {
     const response = await fetch(origin + path, {
       method, headers: { 'Content-Type': 'application/json', 'X-Gradient-Client': 'gradient-extension' },

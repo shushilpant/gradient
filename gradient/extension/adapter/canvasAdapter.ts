@@ -104,11 +104,11 @@ export class CanvasAdapter implements LMSAdapter {
         if (Array.isArray(entry) && entry.length >= 2) {
           letter = String(entry[0]);
           const val = Number(entry[1]);
-          minPct = val <= 1.0 ? Math.round(val * 100) : val;
+          minPct = val <= 1.0 ? val * 100 : val;
         } else if (typeof entry === 'object' && entry !== null) {
           letter = String(entry.name ?? 'F');
           const val = Number(entry.value ?? 0);
-          minPct = val <= 1.0 ? Math.round(val * 100) : val;
+          minPct = val <= 1.0 ? val * 100 : val;
         }
 
         return { letter, minPct };

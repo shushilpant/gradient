@@ -13,7 +13,7 @@ describe('Each Studio tool starts directly from its own screen', () => {
   ['Listen', 'Create audio lesson', 'Play chapter'],
   ['Guided reading', 'Open selected material', 'Next passage'],
  ])('%s imports and opens material without visiting Sources', async (tool, action, result) => {
-  const { page } = await mockCanvas(browser);
+  const { page } = await mockCanvas(browser, { legacy: true });
   page.setDefaultTimeout(6000);
   const passage = 'Recursion solves problems by reducing them to smaller instances. A base case stops the recursion.';
   let jobs = 0;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { CanvasSnapshot } from '../extension/liveCanvas.js';
-import { createDeadlineCalendar, deliverDeadlineAlarm, getSnapshotDeadlines, googleCalendarUrl, handleDeadlineMessage, initializeDeadlineReminders, planDeadlineReminders, type DeadlineTrackingState, type TrackedDeadline } from '../extension/deadlineCalendar.js';
+import { createDeadlineCalendar, deliverDeadlineAlarm, getSnapshotDeadlines, googleCalendarUrl, handleDeadlineMessage, initializeDeadlineReminders, openDeadlineNotification, planDeadlineReminders, type DeadlineTrackingState, type TrackedDeadline } from '../extension/deadlineCalendar.js';
 
 const NOW = Date.parse('2026-11-02T18:00:00Z');
 const HOUR = 3600000;
@@ -13,6 +13,7 @@ const sender = { tab: { id: 1, url: 'https://school.instructure.com/courses/10' 
 function browserMock() {
   const values: Record<string, unknown> = {};
   const alarms = new Map<string, { name: string; scheduledTime: number }>();
+  const notifications = new Set<string>();
   const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
   const browser = {
     storage: { local: {
@@ -24,12 +25,16 @@ function browserMock() {
       clear: vi.fn(async (name: string) => alarms.delete(name)),
       create: vi.fn(async (name: string, options: { when: number }) => { alarms.set(name, { name, scheduledTime: options.when }); }),
     },
-    notifications: { create: vi.fn(async () => 'notification'), clear: vi.fn(async () => true) },
+    notifications: {
+      create: vi.fn(async (name: string) => { notifications.add(name); return name; }),
+      clear: vi.fn(async (name: string) => notifications.delete(name)),
+      getAll: vi.fn((callback: (value: object) => void) => callback(Object.fromEntries([...notifications].map(name => [name, {}])))),
+    },
     runtime: { id: 'extension-id', getURL: (path: string) => `chrome-extension://extension-id/${path}` },
     tabs: { create: vi.fn(async () => ({})) },
   };
   vi.stubGlobal('chrome', browser);
-  return { browser, alarms, values };
+  return { browser, alarms, notifications, values };
 }
 function trackingMessage(deadlines = [deadline()], extra: Record<string, unknown> = {}) {
   return { type: 'GRADIENT_TRACK_DEADLINES', origin: deadline().origin, userId: '42', enabled: true, deadlines, ...extra };
@@ -116,16 +121,71 @@ describe('background reminder scheduling', () => {
     expect(alarms.size).toBe(0);
   });
 
-  it('preserves other accounts when one account pauses reminders', async () => {
+  it('preserves independently active institutions when one account pauses reminders', async () => {
     vi.useFakeTimers(); vi.setSystemTime(NOW);
     const { alarms } = browserMock();
     await handleDeadlineMessage(trackingMessage(), sender);
-    const other = deadline({ userId: '43', id: 'https://school.instructure.com|43|10|100' });
-    await handleDeadlineMessage(trackingMessage([other], { userId: '43' }), sender);
+    const origin = 'https://other-school.instructure.com';
+    const other = deadline({ origin, userId: '43', id: `${origin}|43|10|100`, url: `${origin}/courses/10/assignments/100` });
+    const otherSender = { tab: { url: `${origin}/courses/10` } } as chrome.runtime.MessageSender;
+    await handleDeadlineMessage(trackingMessage([other], { userId: '43', origin }), otherSender);
     expect(alarms.size).toBe(4);
     await handleDeadlineMessage(trackingMessage([deadline()], { enabled: false }), sender);
     expect(alarms.size).toBe(2);
     expect([...alarms.keys()].every(key => key.includes(encodeURIComponent(other.id)))).toBe(true);
+  });
+
+  it('suppresses prior student alarms and visible notifications even when the newly synced account has tracking disabled', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(NOW);
+    const { alarms, notifications, browser } = browserMock();
+    await handleDeadlineMessage(trackingMessage(), sender);
+    const previousAlarm = [...alarms.values()][0]!;
+    vi.setSystemTime(previousAlarm.scheduledTime);
+    await deliverDeadlineAlarm(previousAlarm);
+    expect(notifications.has(previousAlarm.name)).toBe(true);
+    const other = deadline({ userId: '43', id: 'https://school.instructure.com|43|10|100' });
+    const switched = await handleDeadlineMessage(trackingMessage([other], { userId: '43', type: 'GRADIENT_SYNC_DEADLINES' }), sender);
+    expect(switched.state?.enabled).toBe(false);
+    expect(alarms.size).toBe(0); expect(notifications.size).toBe(0);
+    // Late callbacks and already queued notification clicks cannot reveal the previous student's work.
+    await deliverDeadlineAlarm(previousAlarm); await openDeadlineNotification(previousAlarm.name);
+    expect(browser.notifications.create).toHaveBeenCalledTimes(1); expect(browser.tabs.create).not.toHaveBeenCalled();
+    const saved = await handleDeadlineMessage({ ...trackingMessage(), type: 'GRADIENT_GET_TRACKING' }, sender);
+    expect(saved.state?.enabled).toBe(true); expect(saved.state?.deadlines).toEqual([deadline()]);
+    expect(alarms.size).toBe(0); // Reading an inactive account's preferences never reactivates it.
+    await handleDeadlineMessage({ ...trackingMessage(), type: 'GRADIENT_SYNC_DEADLINES' }, sender);
+    expect(alarms.size).toBe(1); // The original configuration resumes when this student syncs again.
+  });
+
+  it('keeps same-origin account preferences while scheduling only the last validated student', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(NOW);
+    const { alarms, browser } = browserMock();
+    await handleDeadlineMessage(trackingMessage(), sender);
+    const oldAlarm = [...alarms.values()][0]!;
+    const other = deadline({ userId: '43', id: 'https://school.instructure.com|43|10|100' });
+    await handleDeadlineMessage(trackingMessage([other], { userId: '43' }), sender);
+    expect(alarms.size).toBe(2); expect([...alarms.keys()].every(name => name.includes(encodeURIComponent(other.id)))).toBe(true);
+    await initializeDeadlineReminders(); await deliverDeadlineAlarm(oldAlarm); await openDeadlineNotification(oldAlarm.name);
+    expect(browser.notifications.create).not.toHaveBeenCalled(); expect(browser.tabs.create).not.toHaveBeenCalled();
+    const activeAlarm = [...alarms.values()][0]!;
+    await deliverDeadlineAlarm(activeAlarm); await openDeadlineNotification(activeAlarm.name);
+    expect(browser.tabs.create).toHaveBeenCalledWith({ url: other.url });
+    await handleDeadlineMessage(trackingMessage([other], { userId: '43', enabled: false }), sender);
+    const saved = await handleDeadlineMessage({ ...trackingMessage(), type: 'GRADIENT_GET_TRACKING' }, sender);
+    expect(saved.state?.enabled).toBe(true); expect(alarms.size).toBe(0);
+  });
+
+  it('retains legacy preferences but waits for identity validation before restoring reminders', async () => {
+    vi.useFakeTimers(); vi.setSystemTime(NOW);
+    const { alarms, notifications, values } = browserMock();
+    values.gradient_deadline_tracking_v1 = { accounts: { 'https://school.instructure.com|42': tracking() }, delivered: {} };
+    const legacy = planDeadlineReminders(tracking(), NOW)[0]!;
+    alarms.set(legacy.name, { name: legacy.name, scheduledTime: legacy.when }); notifications.add(legacy.name);
+    await initializeDeadlineReminders(); expect(alarms.size).toBe(0); expect(notifications.size).toBe(0);
+    const saved = await handleDeadlineMessage({ ...trackingMessage(), type: 'GRADIENT_GET_TRACKING' }, sender);
+    expect(saved.state?.enabled).toBe(true);
+    await handleDeadlineMessage({ ...trackingMessage(), type: 'GRADIENT_SYNC_DEADLINES' }, sender);
+    expect(alarms.size).toBe(2);
   });
 
   it('rejects cross-origin tab requests and links outside the Canvas assignment', async () => {

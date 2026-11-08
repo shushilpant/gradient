@@ -21,6 +21,8 @@ export interface DeadlineTrackingState {
 interface TrackingStore {
   accounts: Record<string, DeadlineTrackingState>;
   delivered: Record<string, number>;
+  /** Last successfully synced student per Canvas origin; preferences for other students remain saved. */
+  activeAccounts: Record<string, string>;
 }
 export interface DeadlineReminder {
   name: string;
@@ -32,7 +34,7 @@ export interface DeadlineReminder {
 const STORAGE_KEY = 'gradient_deadline_tracking_v1';
 const ALARM_PREFIX = 'gradient-deadline:';
 const HOUR = 60 * 60 * 1000;
-const emptyStore = (): TrackingStore => ({ accounts: {}, delivered: {} });
+const emptyStore = (): TrackingStore => ({ accounts: {}, delivered: {}, activeAccounts: {} });
 const emptyState = (): DeadlineTrackingState => ({ enabled: false, excludedIds: [], deadlines: [], updatedAt: '' });
 const scope = (origin: string, userId: string) => `${origin}|${userId}`;
 const extensionAvailable = () => typeof chrome !== 'undefined' && !!chrome.runtime?.id;
@@ -139,7 +141,9 @@ async function readStore(): Promise<TrackingStore> {
   }
   if (!stored || typeof stored !== 'object') return emptyStore();
   const value = stored as Partial<TrackingStore>;
-  return { accounts: value.accounts && typeof value.accounts === 'object' ? value.accounts : {}, delivered: value.delivered && typeof value.delivered === 'object' ? value.delivered : {} };
+  return { accounts: value.accounts && typeof value.accounts === 'object' ? value.accounts : {}, delivered: value.delivered && typeof value.delivered === 'object' ? value.delivered : {},
+    // Legacy data has no reliable current identity. Keep its configuration, but wait for a validated sync before scheduling.
+    activeAccounts: value.activeAccounts && typeof value.activeAccounts === 'object' ? value.activeAccounts : {} };
 }
 async function writeStore(store: TrackingStore): Promise<void> {
   if (typeof chrome !== 'undefined' && chrome.storage?.local) await chrome.storage.local.set({ [STORAGE_KEY]: store });
@@ -164,7 +168,7 @@ export async function setDeadlineTracking(snapshot: CanvasSnapshot, enabled: boo
   const key = scope(snapshot.origin, snapshot.user.id);
   const previous = store.accounts[key] ?? emptyState();
   const state = { ...previous, enabled, deadlines: message.deadlines, excludedIds: excludedIds ?? previous.excludedIds, updatedAt: new Date().toISOString() };
-  store.accounts[key] = state; await writeStore(store);
+  store.accounts[key] = state; store.activeAccounts[snapshot.origin] = snapshot.user.id; await writeStore(store);
   return state;
 }
 
@@ -210,12 +214,25 @@ function validateDeadlines(raw: unknown, origin: string, userId: string): Tracke
 export async function scheduleDeadlineReminders(states?: DeadlineTrackingState[]): Promise<void> {
   if (typeof chrome === 'undefined' || !chrome.alarms) return;
   const store = await readStore();
-  const planned = (states ?? Object.values(store.accounts)).flatMap(state => planDeadlineReminders(state));
+  const trackingStates = states ?? Object.values(store.accounts);
+  const active = (deadline: TrackedDeadline) => store.activeAccounts[deadline.origin] === deadline.userId;
+  const planned = trackingStates.flatMap(state => planDeadlineReminders(state)).filter(item => active(item.deadline));
   const desired = new Map(planned.filter(item => !store.delivered[item.name]).map(item => [item.name, item]));
   const existing = await chrome.alarms.getAll();
   for (const alarm of existing) if (alarm.name.startsWith(ALARM_PREFIX) && !desired.has(alarm.name)) await chrome.alarms.clear(alarm.name);
   const names = new Set(existing.map(alarm => alarm.name));
   for (const reminder of desired.values()) if (!names.has(reminder.name)) await chrome.alarms.create(reminder.name, { when: reminder.when });
+  // Remove already-visible alerts when their student is no longer active, or tracking is paused.
+  const visible = new Set(trackingStates.flatMap(state => state.enabled ? state.deadlines.filter(deadline => active(deadline) && !state.excludedIds.includes(deadline.id) && Date.parse(deadline.dueAt) > Date.now())
+    .flatMap(deadline => [reminderName(deadline, 24), reminderName(deadline, 1)]) : []));
+  if (chrome.notifications?.getAll) {
+    const notifications = await new Promise<object>((resolve, reject) => chrome.notifications.getAll(result => {
+      const error = chrome.runtime.lastError;
+      if (error) reject(new Error(error.message || 'Visible deadline reminders could not be refreshed.'));
+      else resolve(result);
+    }));
+    for (const name of Object.keys(notifications)) if (name.startsWith(ALARM_PREFIX) && !visible.has(name)) await chrome.notifications.clear(name);
+  }
 }
 
 /** Return this response from the runtime listener; only accept messages from the same Canvas origin. */
@@ -227,7 +244,6 @@ export function handleDeadlineMessage(message: Record<string, unknown>, sender: 
       const previous = store.accounts[key] ?? emptyState();
       if (message.type === 'GRADIENT_GET_TRACKING') return { ok: true, state: previous };
       if (!['GRADIENT_TRACK_DEADLINES', 'GRADIENT_SYNC_DEADLINES'].includes(String(message.type))) throw new Error('Unknown deadline request.');
-      if (message.type === 'GRADIENT_SYNC_DEADLINES' && !previous.enabled) return { ok: true, state: previous };
       const deadlines = validateDeadlines(message.deadlines, origin, userId);
       if (message.type === 'GRADIENT_TRACK_DEADLINES' && typeof message.enabled !== 'boolean') throw new Error('Choose whether to enable deadline reminders.');
       const excludedIds = message.excludedIds === undefined ? previous.excludedIds : message.excludedIds;
@@ -235,6 +251,7 @@ export function handleDeadlineMessage(message: Record<string, unknown>, sender: 
       const state: DeadlineTrackingState = { enabled: message.type === 'GRADIENT_TRACK_DEADLINES' ? message.enabled as boolean : previous.enabled,
         excludedIds, deadlines, updatedAt: new Date().toISOString() };
       store.accounts[key] = state;
+      store.activeAccounts[origin] = userId;
       store.delivered = Object.fromEntries(Object.entries(store.delivered).filter(([, timestamp]) => Number(timestamp) > Date.now() - 90 * 24 * HOUR));
       await writeStore(store);
       await scheduleDeadlineReminders();
@@ -256,6 +273,7 @@ export function deliverDeadlineAlarm(alarm: chrome.alarms.Alarm): Promise<void> 
     for (const state of Object.values(store.accounts)) {
       if (!state.enabled) continue;
       for (const deadline of state.deadlines) {
+        if (store.activeAccounts[deadline.origin] !== deadline.userId) continue;
         if (state.excludedIds.includes(deadline.id) || Date.parse(deadline.dueAt) <= Date.now()) continue;
         for (const leadHours of [24, 1] as const) if (alarm.name === reminderName(deadline, leadHours)) {
           await chrome.notifications.create(alarm.name, { type: 'basic', iconUrl: chrome.runtime.getURL('extension/icons/icon128.png'),
@@ -269,12 +287,16 @@ export function deliverDeadlineAlarm(alarm: chrome.alarms.Alarm): Promise<void> 
   });
 }
 
-export async function openDeadlineNotification(notificationId: string): Promise<void> {
-  if (!notificationId.startsWith(ALARM_PREFIX)) return;
-  const store = await readStore();
-  for (const state of Object.values(store.accounts)) for (const deadline of state.deadlines) {
-    if ([24, 1].some(hours => notificationId === reminderName(deadline, hours as 24 | 1))) {
-      await chrome.tabs.create({ url: deadline.url }); await chrome.notifications.clear(notificationId); return;
+export function openDeadlineNotification(notificationId: string): Promise<void> {
+  if (!notificationId.startsWith(ALARM_PREFIX)) return Promise.resolve();
+  return serialized(async () => {
+    const store = await readStore();
+    for (const state of Object.values(store.accounts)) for (const deadline of state.deadlines) {
+      if (!state.enabled || state.excludedIds.includes(deadline.id) || store.activeAccounts[deadline.origin] !== deadline.userId) continue;
+      if ([24, 1].some(hours => notificationId === reminderName(deadline, hours as 24 | 1))) {
+        await chrome.tabs.create({ url: deadline.url }); await chrome.notifications.clear(notificationId); return;
+      }
     }
-  }
+    await chrome.notifications.clear(notificationId);
+  });
 }

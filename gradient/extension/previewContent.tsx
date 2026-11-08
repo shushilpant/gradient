@@ -3,29 +3,16 @@ import { render } from 'preact';
 import { useState } from 'preact/hooks';
 import { Workspace } from './ui/Workspace.js';
 import { shouldRunOnPage } from './safetyGuard.js';
-import { getFixtureCourses } from './fixtureData.js';
-import { currentGrade, finalGrade } from '../core/gradeModel.js';
-import type { CanvasSnapshot } from './liveCanvas.js';
+import { createDemoSnapshot } from './demoScenario.js';
+import { activateAcademicContext } from './academicContext.js';
 import { FONT_STYLES } from './ui/fontStyles.js';
 
-function previewSnapshot(): CanvasSnapshot {
-  return {
-    origin: window.location.origin,
-    syncedAt: new Date().toISOString(),
-    user: { id: 'preview', name: 'Alex Chen', shortName: 'Alex' },
-    issues: [],
-    courses: getFixtureCourses().map((input) => ({
-      id: input.course.id, name: input.course.name, code: input.course.name.split(':')[0] ?? input.course.id,
-      url: `/courses/${input.course.id}`, syllabusHtml: '', input,
-      currentScore: currentGrade(input).percentage, finalScore: finalGrade(input).percentage,
-      assignments: input.assignments.map(a => ({ ...a,
-        htmlUrl: `/courses/${input.course.id}/assignments/${a.id}`, descriptionHtml: '',
-        submission: input.submissions.find(s => s.assignmentId === a.id) ?? null,
-      })),
-      resources: [{id: `${input.course.id}-module`, type: 'module', title: 'Course overview & study materials', url: `/courses/${input.course.id}/modules`}],
-      announcements: [], calendarEvents: [], issues: [],
-    })),
-  };
+function previewSnapshot() {
+  const selectedDay = document.documentElement.dataset.gradientDemoDate;
+  const now = selectedDay ? new Date(`${selectedDay}T12:00:00Z`) : new Date();
+  const snapshot = createDemoSnapshot(window.location.origin, Number.isFinite(now.getTime()) ? now : new Date());
+  activateAcademicContext(snapshot);
+  return snapshot;
 }
 function Preview() {
   const [snapshot, setSnapshot] = useState(previewSnapshot);

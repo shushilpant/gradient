@@ -73,6 +73,20 @@ def test_health_uses_real_ollama_tags_and_reports_unavailable(monkeypatch):
     assert "offline" in data["message"]
 
 
+def test_health_deduplicates_names_and_keeps_useful_local_metadata(monkeypatch):
+    monkeypatch.setattr(ai, 'ollama_request', lambda *a, **k: {'models': [{'name':'gpt-oss:20b','variant':'remote'}, {'name':'gpt-oss:20b','variant':'local'}, {'name':'gpt-oss:20b','variant':'sparse'}, {'name':'gemma4:e4b','variant':'local'}]})
+    def details(tag):
+        return {'name':tag['name'], 'remote':tag['variant']=='remote', 'capabilities':[] if tag['variant']=='sparse' else ['completion', 'vision'], 'size':0 if tag['variant']=='sparse' else 100, 'parameterSize':'20B'}
+    monkeypatch.setattr(ai, 'model_details', details)
+    data = client.get('/api/v1/assistant/health').json()
+    assert data['models'] == ['gpt-oss:20b', 'gemma4:e4b']
+    assert len(data['modelDetails']) == 2
+    assert data['modelDetails'][0]['remote'] is False
+    assert data['modelDetails'][0]['capabilities'] == ['completion', 'vision']
+    assert data['recommended']['reasoningModel'] == 'gpt-oss:20b'
+    assert data['recommended']['visionModel'] == 'gemma4:e4b'
+
+
 def test_drive_by_origin_and_missing_client_header_are_rejected(monkeypatch):
     mock_ollama(monkeypatch)
     assert client.post("/api/v1/assistant/generate", json=study_request()).status_code == 403
@@ -99,7 +113,7 @@ def test_generate_grounded_sources_diagrams_and_no_external_research(monkeypatch
     chat = next(body for path, body in calls if path == "/api/chat")
     assert chat["stream"] is False and chat["keep_alive"] == "30s"
     assert "ATP and NADPH" in chat["messages"][1]["content"]
-    assert chat["options"]["num_ctx"] == 100_000
+    assert chat["options"]["num_ctx"] == ai.MIN_CONTEXT_TOKENS
 
 
 def test_detail_levels_change_actual_generation_budgets(monkeypatch):
@@ -670,6 +684,16 @@ def test_model_json_accepts_complete_object_with_preamble_and_literal_newlines(m
     assert result.markdown == 'First line\nSecond line'
 
 
+@pytest.mark.parametrize('raw', ['[]', 'null', '"incomplete response"', '42'])
+def test_malformed_model_json_returns_retryable_error_without_crashing(monkeypatch, raw):
+    monkeypatch.setattr(ai, 'installed_model', lambda *_a, **_k: {'capabilities': []})
+    monkeypatch.setattr(ai, 'ollama_request', lambda *_a, **_k: {'message': {'content': raw}})
+    with pytest.raises(ai.HTTPException) as failure:
+        ai.model_json('gpt-oss:20b', [], ai.ModelStudyOutput, 2000)
+    assert failure.value.status_code == 502
+    assert 'Retry' in failure.value.detail
+
+
 def test_supported_canvas_preflight_is_allowed_but_arbitrary_sites_are_not():
     response = client.options('/api/v1/assistant/jobs', headers={'Origin':'https://usm.instructure.com','Access-Control-Request-Method':'POST','Access-Control-Request-Headers':'content-type,x-gradient-client'})
     assert response.status_code == 200
@@ -678,12 +702,55 @@ def test_supported_canvas_preflight_is_allowed_but_arbitrary_sites_are_not():
     assert response.status_code == 400
 
 
-@pytest.mark.parametrize('requested,expected', [(None,100_000),(32768,100_000),(131072,131072)])
+@pytest.mark.parametrize('requested,expected', [(None,16384),(8192,16384),(32768,32768),(131072,131072)])
 def test_model_context_minimum_preserves_larger_windows(monkeypatch,requested,expected):
     calls=[]
+    monkeypatch.setattr(ai, 'MIN_CONTEXT_TOKENS', 16384)
     mock_ollama(monkeypatch,captures=calls)
     ai.model_json('gpt-oss:20b', [{'role':'user','content':'Explain'}], ai.ModelStudyOutput, 1000, context_length=requested)
     assert next(body for path,body in calls if path=='/api/chat')['options']['num_ctx']==expected
+
+
+@pytest.mark.parametrize('configured,expected', [(None,16384),('32768',32768),('100000',100000),('invalid',16384),('8192',16384),('9999999',131072)])
+def test_context_configuration_uses_a_bounded_laptop_default(monkeypatch, configured, expected):
+    monkeypatch.delenv('GRADIENT_CONTEXT_TOKENS', raising=False)
+    if configured is not None:
+        monkeypatch.setenv('GRADIENT_CONTEXT_TOKENS', configured)
+    assert ai.configured_context_tokens() == expected
+
+
+def test_oversized_direct_prompt_is_rejected_before_generation(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ai, 'MIN_CONTEXT_TOKENS', 16384)
+    mock_ollama(monkeypatch, captures=calls)
+    with pytest.raises(ai.HTTPException) as failure:
+        ai.model_json('gpt-oss:20b', [{'role':'user','content':'x' * 60000}], ai.ModelStudyOutput, 2000)
+    assert failure.value.status_code == 413
+    assert 'GRADIENT_CONTEXT_TOKENS' in failure.value.detail
+    assert not any(path == '/api/chat' for path, _ in calls)
+
+
+def test_source_excerpts_preserve_full_assignment_and_student_request(monkeypatch):
+    monkeypatch.setattr(ai, 'MIN_CONTEXT_TOKENS', 16384)
+    description = 'Complete every subpart. ' * 350
+    prompt = 'Explain each step. ' * 250
+    rubric = 'Show the method and units. ' * 100
+    payload = ai.StudyRequest.model_validate(study_request(prompt=prompt, assignment={**study_request()['assignment'], 'description':description, 'rubric':rubric}))
+    documents = [{'id':'S2', 'title':'Lecture', 'text':'Reference detail. ' * 3000}]
+    context, _, shortened = ai.bounded_study_context(payload, [], documents, 'System instructions', 2200)
+    assert context['assignment']['description'] == description
+    assert context['assignment']['rubric'] == rubric
+    assert context['studentRequest'] == prompt
+    assert shortened
+
+
+def test_oversized_assignment_brief_is_rejected_instead_of_cut(monkeypatch):
+    monkeypatch.setattr(ai, 'MIN_CONTEXT_TOKENS', 16384)
+    payload = ai.StudyRequest.model_validate(study_request(assignment={**study_request()['assignment'], 'description':'x' * 50000}))
+    with pytest.raises(ai.HTTPException) as failure:
+        ai.bounded_study_context(payload, [], [], 'System instructions', 8000)
+    assert failure.value.status_code == 413
+    assert 'assignment brief' in failure.value.detail
 
 
 def test_sample_expands_omitted_derivation_by_section(monkeypatch):
@@ -707,3 +774,26 @@ def test_sample_rejects_expansion_that_still_omits_work(monkeypatch):
     with pytest.raises(ai.HTTPException,match='') as error:
         ai.complete_sample_sections(payload,output,[])
     assert error.value.status_code==502
+
+
+@pytest.mark.parametrize('mode', ['sample', 'explain'])
+@pytest.mark.parametrize('assignment', [
+    {'id':'2','title':'Exam 2','description':'Solve the assessed problem.'},
+    {'id':'2','title':'Homework','description':'Solve it.','submissionTypes':['online_quiz']},
+    {'id':'2','title':'Homework','description':'Solve it.','url':'https://school.instructure.com/courses/1/quizzes/2'},
+    {'id':'2','title':'Homework','description':'Do not use outside assistance.'},
+])
+def test_assessment_generation_cannot_bypass_restrictions_by_disabling_autopilot(monkeypatch, mode, assignment):
+    monkeypatch.setattr(ai, 'installed_model', lambda *_: pytest.fail('Assessment rejected before model discovery'))
+    monkeypatch.setattr(ai, 'collect_sources', lambda *_: pytest.fail('Assessment rejected before source or web research'))
+    request=study_request(autopilot=False, mode=mode, assignment=assignment)
+    direct=client.post('/api/v1/assistant/generate', headers=HEADERS, json=request)
+    queued=client.post('/api/v1/assistant/jobs', headers=HEADERS, json={'type':'generate','request':request})
+    assert direct.status_code == queued.status_code == 422
+    assert 'course concepts' in direct.json()['detail']
+
+
+@pytest.mark.parametrize('mode', ['sample', 'explain'])
+def test_ordinary_homework_retains_non_autopilot_assistance_without_confirmation(mode):
+    payload=ai.StudyRequest.model_validate(study_request(autopilot=False, mode=mode))
+    ai.homework_eligible(payload)

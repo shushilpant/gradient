@@ -1,29 +1,35 @@
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { CanvasSnapshot } from '../liveCanvas.js';
 import { createGpaSimulator } from '../../core/optimiser.js';
 import { currentGrade, finalGrade } from '../../core/gradeModel.js';
 import { loadOptions } from '../options/optionsStorage.js';
 
-export function GradeLab({ snapshot }: { snapshot: CanvasSnapshot }) {
+export interface GradeLabProps {
+  snapshot: CanvasSnapshot;
+  credits?: Record<string, number>;
+  gradePointScale?: Record<string, number>;
+}
+
+export function GradeLab({ snapshot, credits: parentCredits, gradePointScale: parentScale }: GradeLabProps) {
   const [hours, setHours] = useState<Record<string, number>>({});
-  const [credits, setCredits] = useState<Record<string, number>>({});
+  const [savedCredits, setCredits] = useState<Record<string, number>>({});
+  const [savedScale, setGradePointScale] = useState<Record<string, number> | undefined>();
+  const credits = parentCredits ?? savedCredits;
+  const gradePointScale = parentScale ?? savedScale;
   const [courseId, setCourseId] = useState(snapshot.courses[0]?.id ?? '');
   const [scenario, setScenario] = useState<Record<string, number>>({});
-  useEffect(() => { let mounted = true; loadOptions().then(options => { if (mounted) setCredits(options.courseCreditHours); }).catch(() => {}); return () => { mounted = false; }; }, []);
-  useEffect(() => { const frame = requestAnimationFrame(() => setScenario(hours)); return () => cancelAnimationFrame(frame); }, [hours]);
-  const inputs = useMemo(() => snapshot.courses.map(course => ({ ...course.input, course: { ...course.input.course, creditHours: credits[course.id] ?? 3 } })), [snapshot, credits]);
+  useEffect(() => {
+    if (parentCredits && parentScale) return;
+    let mounted = true;
+    loadOptions().then(options => { if (mounted) { setCredits(options.courseCreditHours); setGradePointScale(options.gradePointScale); } }).catch(() => {});
+    return () => { mounted = false; };
+  }, [parentCredits, parentScale]);
+  useEffect(() => { const timer = setTimeout(() => setScenario(hours), 70); return () => clearTimeout(timer); }, [hours]);
+  const inputs = useMemo(() => snapshot.courses.map(course => ({ ...course.input, course: { ...course.input.course, creditHours: credits[course.id] ?? 3, gradePointScale: gradePointScale ?? course.input.course.gradePointScale } })), [snapshot, credits, gradePointScale]);
   const simulate = useMemo(() => createGpaSimulator(inputs, { seed: 42, numSamples: 500, currentTime: snapshot.syncedAt }), [inputs]);
   const chart = useMemo(() => Array.from({ length: 9 }, (_, i) => {
     const scale = i / 8; return { scale, ...simulate(Object.fromEntries(snapshot.courses.map(course => [course.id, (scenario[course.id] ?? 4) * scale]))) };
   }), [simulate, scenario]);
-  const [renderedChart,setRenderedChart]=useState(chart);
-  const displayed=useRef(chart);
-  useEffect(()=>{
-    if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){displayed.current=chart;setRenderedChart(chart);return;}
-    const from=displayed.current;const started=performance.now();let frame=0;
-    const animate=(now:number)=>{const fraction=Math.min(1,(now-started)/160);const t=1-Math.pow(1-fraction,3);const next=chart.map((point,i)=>{const old=from[i]??point;return {scale:point.scale,mean:old.mean+(point.mean-old.mean)*t,p10:old.p10+(point.p10-old.p10)*t,p25:old.p25+(point.p25-old.p25)*t,median:old.median+(point.median-old.median)*t,p75:old.p75+(point.p75-old.p75)*t,p90:old.p90+(point.p90-old.p90)*t};});displayed.current=next;setRenderedChart(next);if(fraction<1)frame=requestAnimationFrame(animate);};
-    frame=requestAnimationFrame(animate);return()=>cancelAnimationFrame(frame);
-  },[chart]);
   const last = chart[8]!;
   const totalHours = snapshot.courses.reduce((sum, course) => sum + (hours[course.id] ?? 4), 0);
   const course = snapshot.courses.find(item => item.id === courseId) ?? snapshot.courses[0];
@@ -33,7 +39,7 @@ export function GradeLab({ snapshot }: { snapshot: CanvasSnapshot }) {
   const x = (scale: number) => 40 + scale * 330;
   const maxGpa = Math.max(4, ...inputs.flatMap(input => Object.values(input.course.gradePointScale)));
   const y = (gpa: number) => 205 - gpa / maxGpa * 175;
-  const band = (low: 'p10' | 'p25', high: 'p90' | 'p75') => [...renderedChart.map(point => `${x(point.scale)},${y(point[high])}`), ...[...renderedChart].reverse().map(point => `${x(point.scale)},${y(point[low])}`)].join(' ');
+  const band = (low: 'p10' | 'p25', high: 'p90' | 'p75') => [...chart.map(point => `${x(point.scale)},${y(point[high])}`), ...[...chart].reverse().map(point => `${x(point.scale)},${y(point[low])}`)].join(' ');
   const activeGroups = grade?.groups.filter(group => group.percentage !== null && group.pointsPossible > 0) ?? [];
   const activeWeight = activeGroups.reduce((sum, group) => sum + group.weight, 0);
   let cumulative = 0;
@@ -42,14 +48,14 @@ export function GradeLab({ snapshot }: { snapshot: CanvasSnapshot }) {
 
     <div class="gl-scenario"><div class="gl-live"><div class="gl-summary" aria-live="polite"><strong>{last.mean.toFixed(2)}<small>mean GPA</small></strong><span>{last.p10.toFixed(2)}–{last.p90.toFixed(2)}<small>10th–90th percentile</small></span><span>{totalHours.toFixed(1)}<small>hours available</small></span></div>
     <svg class="gl-chart" viewBox="0 0 410 250" role="img" aria-label={`Modeled GPA fan chart. Mean ${last.mean.toFixed(2)}. 80 percent interval ${last.p10.toFixed(2)} to ${last.p90.toFixed(2)}.`}>
-      {Array.from({length: Math.ceil(maxGpa)+1},(_,i)=>i).map(tick => <g key={tick}><line x1="40" x2="370" y1={y(tick)} y2={y(tick)} stroke="#e6d9c8"/><text x="24" y={y(tick)+4}>{tick}</text></g>)}
-      <polygon class="gl-band" points={band('p10','p90')} fill="#ffe7da"/><polygon class="gl-band" points={band('p25','p75')} fill="#f7b694"/>
-      <polyline class="gl-line" points={renderedChart.map(point => `${x(point.scale)},${y(point.median)}`).join(' ')} fill="none" stroke="#9a3412" stroke-width="3"/>
+      {Array.from({length: Math.ceil(maxGpa)+1},(_,i)=>i).map(tick => <g key={tick}><line x1="40" x2="370" y1={y(tick)} y2={y(tick)} stroke="var(--g-line-2)"/><text x="24" y={y(tick)+4}>{tick}</text></g>)}
+      <polygon class="gl-band" points={band('p10','p90')} fill="var(--g-accent-soft)"/><polygon class="gl-band" points={band('p25','p75')} fill="var(--g-accent-mid)"/>
+      <polyline class="gl-line" points={chart.map(point => `${x(point.scale)},${y(point.median)}`).join(' ')} fill="none" stroke="var(--g-accent)" stroke-width="3"/>
       {[0,.5,1].map(scale => <text key={scale} x={x(scale)} y="227" text-anchor="middle">{Math.round(scale*100)}%</text>)}<text x="205" y="246" text-anchor="middle">Share of selected study budget applied</text>
     </svg></div>
-    <div class="gl-sliders">{snapshot.courses.map(item => <label class="gl-slider" key={item.id}><span><strong>{item.code}</strong><output>{hours[item.id] ?? 4} hours</output></span><input aria-label={`Study hours for ${item.code}`} type="range" min="0" max="24" step=".5" value={hours[item.id] ?? 4} onInput={event => { const value = Number(event.currentTarget.value); setHours(previous => ({ ...previous, [item.id]: value })); }}/><small>{credits[item.id] ?? 3} credit hours · editable in Settings</small></label>)}</div></div>
+    <div class="gl-sliders">{snapshot.courses.map(item => <label class="gl-slider" key={item.id}><span><strong>{item.code}</strong><output>{hours[item.id] ?? 4} hours</output></span><input aria-label={`Study hours for ${item.code}`} type="range" min="0" max="24" step=".5" value={hours[item.id] ?? 4} onInput={event => { const value = Number(event.currentTarget.value); setHours(previous => ({ ...previous, [item.id]: value })); }}/><small>{credits[item.id] ?? 3} credit hours · editable in Preferences</small></label>)}</div></div>
 
-    <details><summary>See the numbers and assumptions</summary><p class="jc-muted">Dark line: median · inner band: middle 50% · outer band: middle 80%. 500 samples, fixed seed and common random numbers keep comparisons stable. No timeline is implied.</p><table class="gl-table"><thead><tr><th>Budget</th><th>10%</th><th>Median</th><th>90%</th></tr></thead><tbody>{chart.map(point => <tr key={point.scale}><td>{Math.round(point.scale*100)}%</td><td>{point.p10.toFixed(2)}</td><td>{point.median.toFixed(2)}</td><td>{point.p90.toFixed(2)}</td></tr>)}</tbody></table><p class="jc-muted">Hours are divided equally across eligible assignments; they are remaining hours, not a weekly schedule. Learning ceilings, study pace, Gaussian score noise, and equal time allocation are model assumptions. Past-due work receives no new effort. Unknown/unposted work is not treated as a known earned score. Credits default to 3 unless entered in Settings.</p></details></section>
+    <details><summary>See the numbers and assumptions</summary><p class="jc-muted">Dark line: median · inner band: middle 50% · outer band: middle 80%. 500 samples, fixed seed and common random numbers keep comparisons stable. No timeline is implied.</p><table class="gl-table"><thead><tr><th>Budget</th><th>10%</th><th>Median</th><th>90%</th></tr></thead><tbody>{chart.map(point => <tr key={point.scale}><td>{Math.round(point.scale*100)}%</td><td>{point.p10.toFixed(2)}</td><td>{point.median.toFixed(2)}</td><td>{point.p90.toFixed(2)}</td></tr>)}</tbody></table><p class="jc-muted">Hours are divided equally across eligible assignments; they are remaining hours, not a weekly schedule. Learning ceilings, study pace, Gaussian score noise, and equal time allocation are model assumptions. Past-due work receives no new effort. Unknown/unposted work is not treated as a known earned score. Credits default to 3 unless entered in Preferences.</p></details></section>
     <section class="jc-section"><h2>Why is my grade this?</h2><select class="g-select" aria-label="Grade breakdown course" value={course?.id} onChange={event => setCourseId(event.currentTarget.value)}>{snapshot.courses.map(item => <option key={item.id} value={item.id}>{item.code}</option>)}</select>
     {grade?.percentage != null ? <><div class="gl-summary"><strong>{grade.percentage.toFixed(2)}%<small>current computed grade</small></strong><span>{final?.percentage?.toFixed(2) ?? '—'}%<small>if unfinished work scores zero</small></span></div>
     <div class="gl-waterfall" aria-label="Grade contribution waterfall">{activeGroups.map(group => {

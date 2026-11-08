@@ -1,9 +1,9 @@
 .PHONY: all install test test-ts test-py build probe sandbox-check clean assistant
 
 SHELL := /bin/bash
-UV ?= $(HOME)/.local/bin/uv
 PYTHON ?= backend/.venv/bin/python
 PYTEST ?= backend/.venv/bin/pytest
+BOOTSTRAP_PYTHON ?= python3
 
 all: build test
 
@@ -12,20 +12,9 @@ assistant:
 
 install:
 	@echo "==> Installing Node.js dependencies..."
-	npm install
-	@echo "==> Setting up Python 3.12 virtual environment and backend dependencies..."
-	@if [ ! -d "backend/.venv" ]; then \
-		if command -v uv >/dev/null 2>&1; then \
-			uv venv backend/.venv --python /opt/homebrew/bin/python3.12; \
-			uv pip install --python backend/.venv/bin/python -e "./backend[dev]"; \
-		elif [ -x "$(UV)" ]; then \
-			$(UV) venv backend/.venv --python /opt/homebrew/bin/python3.12; \
-			$(UV) pip install --python backend/.venv/bin/python -e "./backend[dev]"; \
-		else \
-			python3 -m venv backend/.venv; \
-			backend/.venv/bin/pip install -e "./backend[dev]"; \
-		fi \
-	fi
+	npm ci
+	@echo "==> Installing local service dependencies..."
+	$(BOOTSTRAP_PYTHON) scripts/setup_backend.py
 
 test: test-ts test-py
 
@@ -82,7 +71,7 @@ build:
 
 demo-replay: build
 	@echo "==> Starting GRADIENT Demo Server in REPLAY Mode (Zero External Network)..."
-	$(PYTHON) scripts/demo_runner.py --mode replay --open-browser
+	$(BOOTSTRAP_PYTHON) scripts/demo_runner.py --mode replay --open-browser
 
 demo-live: build
 	@echo "==> Starting GRADIENT Demo Server in LIVE Sandbox Mode..."

@@ -17,7 +17,8 @@ async function buildExtension() {
   const extDistDir = path.join(distDir, 'extension');
   const optionsDistDir = path.join(extDistDir, 'options');
 
-  // Create clean directory tree
+  // Remove obsolete build artifacts before creating the release tree.
+  fs.rmSync(distDir, { recursive: true, force: true });
   fs.mkdirSync(optionsDistDir, { recursive: true });
 
   console.log('==> Bundling Chrome MV3 Extension...');
@@ -30,7 +31,7 @@ async function buildExtension() {
     format: 'iife',
     target: 'chrome110',
     sourcemap: false,
-    minify: false,
+    minify: true,
     jsx: 'automatic',
     jsxImportSource: 'preact',
   });
@@ -39,12 +40,18 @@ async function buildExtension() {
   await esbuild.build({
     entryPoints: [path.join(rootDir, 'extension/background.ts')],
     bundle: true, outfile: path.join(extDistDir, 'background.js'),
-    format: 'esm', target: 'chrome110',
+    format: 'esm', target: 'chrome110', minify: true,
   });
   await esbuild.build({
     entryPoints: [path.join(rootDir, 'extension/previewContent.tsx')],
     bundle: true, outfile: path.join(extDistDir, 'preview.js'),
     format: 'iife', target: 'chrome110', jsx: 'automatic', jsxImportSource: 'preact',
+  });
+  // Experimental tools retain browser regression coverage outside the installable release tree.
+  await esbuild.build({
+    entryPoints: [path.join(rootDir, 'tests/legacyContent.tsx')], bundle: true,
+    outfile: path.join(rootDir, '.test-build/legacy.js'), format: 'iife', target: 'chrome110',
+    jsx: 'automatic', jsxImportSource: 'preact', minify: true,
   });
   // 2. Options Script Bundle
   await esbuild.build({
@@ -54,7 +61,7 @@ async function buildExtension() {
     format: 'iife',
     target: 'chrome110',
     sourcemap: false,
-    minify: false,
+    minify: true,
     jsx: 'automatic',
     jsxImportSource: 'preact',
   });

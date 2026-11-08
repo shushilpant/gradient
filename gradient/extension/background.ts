@@ -1,3 +1,5 @@
+import { registerCanvasHosts } from './canvasHosts.js';
+import { loadOptions } from './options/optionsStorage.js';
 import { browserSearch } from './browserSearch.js';
 import { localAssistantFetch } from './assistantTransport.js';
 import { isDeadlineMessage, handleDeadlineMessage, initializeDeadlineReminders, deliverDeadlineAlarm, openDeadlineNotification } from './deadlineCalendar.js';
@@ -51,5 +53,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 chrome.alarms.onAlarm.addListener(alarm => { void deliverDeadlineAlarm(alarm).catch(console.error); });
 chrome.notifications.onClicked.addListener(id => { void openDeadlineNotification(id).catch(console.error); });
-chrome.runtime.onStartup.addListener(() => { void initializeDeadlineReminders().catch(console.error); });
-chrome.runtime.onInstalled.addListener(() => { void initializeDeadlineReminders().catch(console.error); });
+chrome.runtime.onStartup.addListener(() => {
+  void initializeDeadlineReminders().catch(console.error);
+  void loadOptions().then(registerCanvasHosts).catch(console.error);
+});
+chrome.runtime.onInstalled.addListener(() => {
+  void initializeDeadlineReminders().catch(console.error);
+  void loadOptions().then(registerCanvasHosts).catch(console.error);
+});

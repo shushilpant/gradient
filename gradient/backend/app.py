@@ -14,6 +14,11 @@ from pydantic import BaseModel, Field
 import sympy as sp
 
 try:
+    from safe_math import parse_expression
+except ImportError:
+    from backend.safe_math import parse_expression
+
+try:
     from computer_agent import router as computer_agent_router
 except ImportError:
     from backend.computer_agent import router as computer_agent_router
@@ -130,8 +135,8 @@ class HealthResponse(BaseModel):
 
 
 class SymPyVerifyRequest(BaseModel):
-    expression: str = Field(..., description="Mathematical or algebraic formula to verify")
-    expected_equivalent: Optional[str] = Field(None, description="Optional target equivalence formula")
+    expression: str = Field(..., min_length=1, max_length=1000, description="Mathematical or algebraic formula to verify")
+    expected_equivalent: Optional[str] = Field(None, min_length=1, max_length=1000, description="Optional target equivalence formula")
 
 
 class SymPyVerifyResponse(BaseModel):
@@ -192,13 +197,13 @@ def verify_algebra(payload: SymPyVerifyRequest) -> SymPyVerifyResponse:
     SymPy algebraic verification for grade formulas, weighting sums, or student proofs.
     """
     try:
-        expr = sp.sympify(payload.expression, evaluate=True)
+        expr = parse_expression(payload.expression)
         simplified = sp.simplify(expr)
         latex_str = sp.latex(simplified)
 
         is_equiv: Optional[bool] = None
         if payload.expected_equivalent:
-            target = sp.sympify(payload.expected_equivalent, evaluate=True)
+            target = parse_expression(payload.expected_equivalent)
             diff = sp.simplify(expr - target)
             is_equiv = bool(diff == 0)
 
@@ -208,8 +213,8 @@ def verify_algebra(payload: SymPyVerifyRequest) -> SymPyVerifyResponse:
             is_equivalent=is_equiv,
             latex=latex_str,
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"SymPy parse error: {str(e)}")
+    except (ValueError, TypeError, SyntaxError, OverflowError, RecursionError) as exc:
+        raise HTTPException(status_code=400, detail="Could not parse this expression. Use numbers, variables, arithmetic and standard math functions.") from exc
 
 
 @app.post("/extract-policy", response_model=ExtractPolicyResponse)
@@ -399,3 +404,9 @@ try:
 except ImportError:
     from backend.packet_share import router as packet_share_router
 app.include_router(packet_share_router)
+
+try:
+    from reu_finder import router as reu_router
+except ImportError:
+    from backend.reu_finder import router as reu_router
+app.include_router(reu_router)

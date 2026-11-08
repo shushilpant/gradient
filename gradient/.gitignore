@@ -18,3 +18,6 @@ build/
 *.local
 .DS_Store
 
+
+# Legacy browser regression bundle (never installed)
+.test-build/

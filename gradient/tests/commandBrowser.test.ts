@@ -31,7 +31,7 @@ describe('Command center browser integration', () => {
   afterAll(async () => { await browser?.close(); });
 
   it('opens without choosing a mode, briefs real Canvas data, finds sources, and remembers notes across reload', async () => {
-    const { page, requests } = await mockCanvas(browser, { workflowMode: null, fixedTime: '2026-11-05T15:00:00Z' });
+    const { page, requests } = await mockCanvas(browser, { legacy: true, workflowMode: null, fixedTime: '2026-11-05T15:00:00Z' });
     try {
       await openCommand(page);
       await command(page, 'Brief me for today');
@@ -43,7 +43,7 @@ describe('Command center browser integration', () => {
       await page.locator('.jc-notes summary').click();
       expect(await page.getByRole('textbox', { name: 'Edit saved academic memory' }).inputValue()).toBe('I prefer visual explanations');
       await page.waitForFunction(() => Object.keys(localStorage).some(key => key.startsWith('gradient_command_v1:') && localStorage.getItem(key)?.includes('I prefer visual explanations')));
-      await page.reload(); await page.evaluate(bundle()); await openCommand(page);
+      await page.reload(); await page.evaluate(bundle('legacy')); await openCommand(page);
       await page.locator('.jc-notes summary').click();
       expect(await page.getByRole('textbox', { name: 'Edit saved academic memory' }).inputValue()).toBe('I prefer visual explanations');
       await page.getByRole('button', { name: 'Forget all notes', exact: true }).click();
@@ -53,7 +53,7 @@ describe('Command center browser integration', () => {
   }, 25000);
 
   it('executes a revision workflow and sends the requested time budget to the model', async () => {
-    const { page } = await mockCanvas(browser, { fixedTime: '2026-11-05T15:00:00Z' });
+    const { page } = await mockCanvas(browser, { legacy: true, fixedTime: '2026-11-05T15:00:00Z' });
     try {
       const bodies = await mockAssistant(page);
       await openCommand(page);
@@ -69,7 +69,7 @@ describe('Command center browser integration', () => {
   }, 20000);
 
   it('interrupts inference, replans without losing completed work, and starts a pausable focus timer', async () => {
-    const { page } = await mockCanvas(browser, { fixedTime: '2026-11-05T15:00:00Z' });
+    const { page } = await mockCanvas(browser, { legacy: true, fixedTime: '2026-11-05T15:00:00Z' });
     try {
       await mockAssistant(page, true);
       await openCommand(page);
@@ -98,7 +98,7 @@ describe('Command center browser integration', () => {
 
   it('detects changed instructions after refresh and preserves the active command workspace', async () => {
     let mutableCourses: Array<Record<string, any>> = [];
-    const { page } = await mockCanvas(browser, { fixedTime: '2026-11-05T15:00:00Z', configureData: courses => { mutableCourses = courses; } });
+    const { page } = await mockCanvas(browser, { legacy: true, fixedTime: '2026-11-05T15:00:00Z', configureData: courses => { mutableCourses = courses; } });
     try {
       await openCommand(page);
       await command(page, 'Remember I learn by doing');
@@ -115,7 +115,7 @@ describe('Command center browser integration', () => {
   }, 15000);
 
   it('takes a voice transcript and supports keyboard access', async () => {
-    const { page } = await mockCanvas(browser, { workflowMode: null });
+    const { page } = await mockCanvas(browser, { legacy: true, workflowMode: null });
     try {
       page.setDefaultTimeout(4000);
       await page.evaluate(() => {

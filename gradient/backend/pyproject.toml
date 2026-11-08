@@ -1,8 +1,12 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "gradient-backend"
 version = "0.1.0"
 description = "Stateless FastAPI service for GRADIENT: SymPy verification, OR-Tools optimization, and schema-constrained LLM proxy"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "fastapi==0.115.4",
     "uvicorn==0.32.0",
@@ -25,4 +29,12 @@ dev = [
 
 [tool.pytest.ini_options]
 pythonpath = [".", ".."]
+
+[tool.setuptools]
+py-modules = [
+    "app", "assignment_pdf", "change_radar", "computer_agent", "leak_guard",
+    "local_assistant", "packet_share", "photo_check", "policy_extractor",
+    "public_search", "retrieval_service", "reu_finder", "rubric_feedback", "safe_math",
+    "sandbox_mirror", "scheduler_service", "speech_service", "visual_renderer",
+]
 

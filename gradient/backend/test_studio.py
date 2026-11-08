@@ -87,3 +87,19 @@ def test_smaller_verified_set_survives_failed_supplementary_repair(monkeypatch):
     result = json.loads(ai.generate_studio_packet(request()).markdown)
     assert len(result['cards']) == 2
     assert all(card['quote'] == request().resources[0].text for card in result['cards'])
+
+
+def test_large_study_set_fits_laptop_context_and_discloses_passage_selection(monkeypatch):
+    monkeypatch.setattr(ai, 'MIN_CONTEXT_TOKENS', 16384)
+    payload = request()
+    payload.resources = [ai.MaterialContext(title=f'Lecture {index}', text='Recursion reduces problems to smaller instances. ' * 300, url='https://canvas.example/lecture') for index in range(12)]
+    def generate(model, messages, output_type, tokens, **kwargs):
+        context = json.loads(messages[1]['content'])
+        assert {passage['sourceId'] for passage in context['passages'].values()} == {f'S{index + 1}' for index in range(12)}
+        assert sum(len(message['content']) for message in messages) / 3 + tokens + 1024 < 16384
+        assert len(context['passages']) < 72
+        return make_deck()
+    monkeypatch.setattr(ai, 'model_json', generate)
+    packet = ai.generate_studio_packet(payload)
+    assert packet.warnings and 'selected passages' in packet.warnings[0]
+    assert len(json.loads(packet.markdown)['cards']) == 3

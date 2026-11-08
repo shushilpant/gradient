@@ -394,6 +394,13 @@ export async function loadCanvasSnapshot(options: LoadCanvasOptions = {}): Promi
     const batch = await Promise.all(studentCourses.slice(offset, offset + 3).map(loadCourse));
     courses.push(...batch.filter((c): c is CanvasCourseSnapshot => c !== null));
   }
+  // Requests use the browser's session. Reject a mixed snapshot if the student
+  // signs out or switches accounts while the course requests are in flight.
+  const currentProfile = (await get('/api/v1/users/self/profile')).data as RecordData;
+  if (!currentProfile?.id) throw new CanvasAuthenticationError();
+  if (String(currentProfile.id) !== String(profile.id)) {
+    throw new Error('Your Canvas account changed during sync. Refresh GRADIENT to load the current account.');
+  }
   return {
     origin, syncedAt: new Date().toISOString(),
     user: { id: String(profile.id), name: String(profile.name ?? 'Canvas student'), shortName: String(profile.short_name ?? profile.name ?? 'Student'), avatarUrl: typeof profile.avatar_url === 'string' ? profile.avatar_url : undefined },

@@ -41,7 +41,7 @@ async function mockAssistant(page: Page, received: Record<string, any>[], failur
 
 async function connect(page: Page) {
   page.setDefaultTimeout(5000);
-  await page.getByRole('tab', { name: 'Assistant', exact: true }).click();
+  await page.getByRole('tab', { name: 'AI Workspace', exact: true }).click();
   await page.getByText('Local AI ready', { exact: true }).waitFor();
 }
 
@@ -49,6 +49,51 @@ describe('Local study assistant browser flow', () => {
   let browser: Browser;
   beforeAll(async () => { browser = await launchBrowser(); });
   afterAll(async () => { await browser?.close(); });
+
+
+  it('cancels a pending packet and lets a new request finish without accepting the old result', async () => {
+    const { page } = await mockCanvas(browser);
+    let completed = false;
+    let jobCount = 0;
+    try {
+      await waitForLoaded(page);
+      await mockAssistant(page, []);
+      await page.route('http://127.0.0.1:8765/api/v1/assistant/jobs**', route => {
+        const headers = { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': 'GET,POST,OPTIONS' };
+        if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+        if (route.request().method() === 'POST') return route.fulfill({ headers, json: { id: `cancel-${++jobCount}` } });
+        return route.fulfill({ headers, json: completed ? { status: 'complete', result: packet } : { status: 'running', stage: 'drafting', label: 'Writing the packet' } });
+      });
+      await connect(page);
+      await page.getByRole('button', { name: 'Build my study packet', exact: true }).click();
+      await page.getByText('Writing the packet', { exact: true }).waitFor();
+      await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+      expect(await page.getByRole('button', { name: 'Build my study packet', exact: true }).isEnabled()).toBe(true);
+      expect(await page.getByRole('region', { name: 'Generated study packet' }).count()).toBe(0);
+      completed = true;
+      await page.getByRole('button', { name: 'Build my study packet', exact: true }).click();
+      await page.getByRole('heading', { name: packet.title, exact: true }).waitFor();
+      expect(jobCount).toBe(2);
+    } finally { await page.close(); }
+  }, 20000);
+
+
+  it('clears assignment-specific output when the student selects another course', async () => {
+    const { page } = await mockCanvas(browser);
+    try {
+      await waitForLoaded(page);
+      await mockAssistant(page, []);
+      await connect(page);
+      await page.getByRole('button', { name: 'Build my study packet', exact: true }).click();
+      await page.getByRole('heading', { name: packet.title, exact: true }).waitFor();
+      const coursePicker = page.getByLabel('Assistant course', { exact: true });
+      const ids = await coursePicker.locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value));
+      await coursePicker.selectOption(ids[1]!);
+      await page.getByRole('region', { name: 'Generated study packet' }).waitFor({ state: 'detached' });
+      await page.getByLabel('Assistant assignment', {exact:true}).selectOption('__course__');
+      expect(await page.getByRole('button', { name: 'Build my study packet', exact: true }).isEnabled()).toBe(true);
+    } finally { await page.close(); }
+  }, 15000);
 
   it('renders display equations directly after prose without requiring a blank line',async()=>{
     const {page}=await mockCanvas(browser);
@@ -79,9 +124,9 @@ describe('Local study assistant browser flow', () => {
       const choices = await page.locator('#ja-reasoning-model option').allTextContents();
       expect(choices.join(' ')).not.toMatch(/remote-model|llamacpp/);
       await page.getByRole('button', { name: 'Go all in', exact: false }).click();
-      await page.getByRole('button', { name: 'Sample assignment', exact: true }).click();
+      await page.getByRole('button', { name: 'Reference example', exact: true }).click();
       await page.getByLabel('Anything you want me to focus on?').fill('Explain each step and include the diagram.');
-      await page.getByRole('button', { name: 'Create my sample assignment' }).click();
+      await page.getByRole('button', { name: 'Create reference example' }).click();
       await page.getByRole('heading', { name: packet.title, exact: true }).waitFor({ timeout: 10000 });
       expect(received[0]?.type).toBe('generate');
       expect(received[0]?.request).toMatchObject({ level: 'all_in', mode: 'sample', model: 'gpt-oss:20b' });
@@ -102,12 +147,14 @@ describe('Local study assistant browser flow', () => {
       const html = readFileSync(file!, 'utf8');
       expect(html).toContain('data:image/png;base64,');
       expect(html).toContain('Verified course guide');
+      expect(html).toContain('AI-generated reference material for learning.');
       expect(html).not.toContain('<script>window.injected=true</script>');
-      await page.getByRole('tab', { name: 'Overview', exact: true }).click();
-      await page.getByRole('tab', { name: 'Assistant', exact: true }).click();
+      await page.getByRole('tab', { name: 'Academics', exact: true }).click();
+      await page.getByRole('tab', { name: 'AI Workspace', exact: true }).click();
       expect(await page.getByRole('heading', { name: packet.title, exact: true }).isVisible()).toBe(true);
       await page.getByRole('button', { name: 'Refresh Canvas data', exact: true }).click();
-      await page.getByRole('heading', { name: packet.title, exact: true }).waitFor();
+      await page.getByText('Local AI ready', { exact: true }).waitFor();
+      expect(await page.getByRole('heading', { name: packet.title, exact: true }).count()).toBe(0);
       expect(received).toHaveLength(1);
       await page.screenshot({ path: '/private/tmp/gradient-assistant.png', fullPage: true });
       await page.setViewportSize({ width: 390, height: 844 });
@@ -159,6 +206,11 @@ describe('Local study assistant browser flow', () => {
       expect(await page.getByRole('button',{name:'Run homework autopilot'}).isDisabled()).toBe(true);
       expect(await page.getByRole('alert').filter({hasText:'homework only'}).count()).toBe(1);
       expect(received).toHaveLength(1);
+      await page.getByRole('switch', {name:'Homework autopilot',exact:true}).click();
+      await page.getByRole('button', {name:'Reference example',exact:true}).click();
+      expect(await page.getByRole('button', {name:'Create reference example',exact:true}).isDisabled()).toBe(true);
+      await assignmentSelect.selectOption('__course__');
+      expect(await page.getByRole('button', {name:'Build my study packet',exact:true}).isEnabled()).toBe(true);
       for (const width of [375,768,1024,1440]) {
         await page.setViewportSize({width,height:900});
         expect(await page.locator('#gradient-workspace').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true);
@@ -200,5 +252,58 @@ describe('Local study assistant browser flow', () => {
       expect(received[1]?.request.webSources[0].title).toBe('Laplace guide');
     } finally {await page.close();}
   },20000);
+
+  it('explains course concepts from the shared syllabus without requiring an assignment', async () => {
+    const { page } = await mockCanvas(browser, { configureData: courses => { courses[0]!.course.syllabus_body = '<p>Learning objectives: analyse algorithms and compare complexity.</p>'; } });
+    const received: Record<string, any>[] = [];
+    try {
+      await waitForLoaded(page); await mockAssistant(page, received); await connect(page);
+      await page.getByLabel('Assistant assignment', { exact:true }).selectOption('__course__');
+      expect(await page.getByRole('switch', { name:'Homework autopilot', exact:true }).isDisabled()).toBe(true);
+      await page.getByRole('button', { name:'Build my study packet', exact:true }).click();
+      await page.getByRole('heading', { name:packet.title, exact:true }).waitFor();
+      expect(received[0]?.request.assignment.title).toBe('LIVE-101 course concepts');
+      expect(received[0]?.request.assignment.description).toContain('analyse algorithms');
+      expect(received[0]?.request.autopilot).toBe(false);
+    } finally { await page.close(); }
+  });
+
+  it('uses the course syllabus by default when no assignments are available', async () => {
+    const { page } = await mockCanvas(browser, { configureData: courses => { courses[0]!.assignments = []; courses[0]!.course.syllabus_body = '<p>Course objective: analyse recursive algorithms.</p>'; } });
+    const received: Record<string, any>[] = [];
+    try {
+      await waitForLoaded(page); await mockAssistant(page, received); await connect(page);
+      await page.getByRole('button', { name:'Build my study packet', exact:true }).click();
+      await page.getByRole('heading', { name:packet.title, exact:true }).waitFor();
+      expect(received[0]?.request.assignment.description).toContain('recursive algorithms');
+    } finally { await page.close(); }
+  });
+
+  it('discards a browser inspection when its course changes before the response arrives', async () => {
+    const { page } = await mockCanvas(browser);
+    let started!: () => void, release!: () => void;
+    const pending = new Promise<void>(resolve => { started = resolve; });
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    try {
+      await waitForLoaded(page); await mockAssistant(page, []);
+      await page.route('http://127.0.0.1:8765/api/v1/assistant/jobs**', async route => {
+        const headers = { 'access-control-allow-origin':'*', 'access-control-allow-headers':'*', 'access-control-allow-methods':'GET,POST,OPTIONS' };
+        if (route.request().method() === 'OPTIONS') return route.fulfill({ status:204, headers });
+        if (route.request().method() === 'POST') return route.fulfill({ headers, json:{id:'inspect-test'} });
+        started(); await gate;
+        return route.fulfill({ headers, json:{status:'complete',result:{summary:'STALE inspection for previous course',actions:[],warnings:[]}} });
+      });
+      await connect(page);
+      await page.locator('.ja-more > summary').click();
+      await page.getByRole('button', { name:'Inspect this Canvas page', exact:true }).click();
+      await pending;
+      const courses = page.getByLabel('Assistant course', { exact:true });
+      const ids = await courses.locator('option').evaluateAll(options => options.map(option => (option as HTMLOptionElement).value));
+      await courses.selectOption(ids[1]!); release();
+      await page.waitForResponse(response => response.url().endsWith('inspect-test'));
+      expect(await page.getByText('STALE inspection for previous course').count()).toBe(0);
+      expect(await page.getByRole('button', { name:'Inspect this Canvas page', exact:true }).isEnabled()).toBe(true);
+    } finally { release?.(); await page.close(); }
+  });
 
 });

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AssistantSettings, AssistantHealth, StudyRequest, StudyPacket, BrowserPlanRequest, BrowserPlan, BrowserAction, StudyProgress } from './assistantTypes.js';
 import { assistantRequest, invalidatedExtension, validateBackendUrl } from './assistantTransport.js';
 import { readCanvasMaterials } from './canvasMaterials.js';
+import { getActiveAcademicContext, readAcademicMaterials } from './academicContext.js';
 export type * from './assistantTypes.js';
 
 export const DEFAULT_ASSISTANT_SETTINGS: AssistantSettings = {
@@ -105,8 +106,11 @@ export async function generateStudyPacket(settings: AssistantSettings, input: St
   signal?.throwIfAborted();
   const origin = typeof window !== 'undefined' ? window.location.origin : new URL(input.assignment.url).origin;
   onProgress?.({stage:'reading',label:'Reading the assignment and accessible course documents'});
-  const materials = await readCanvasMaterials(input.resources, origin, input.course.id,
-    file => request(settings, 'materials/extract', 'POST', file), signal);
+  const context = getActiveAcademicContext();
+  const extract = (file: {title:string;mimeType:string;data:string}) => request(settings, 'materials/extract', 'POST', file);
+  const materials = context && context.snapshot.origin === origin && !input.studio
+    ? await readAcademicMaterials(context, input.course.id, input.resources, extract, signal)
+    : await readCanvasMaterials(input.resources, origin, input.course.id, extract, signal);
   signal?.throwIfAborted();
   const enriched = {...input, resources: materials.resources};
   let webSources: {title:string;url:string;snippet:string}[] = [];

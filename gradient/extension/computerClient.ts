@@ -29,8 +29,10 @@ export async function cancelComputerSession(settings:AssistantSettings,id:string
   if(!/^[a-zA-Z0-9_-]{1,80}$/.test(id))throw new Error('Invalid browser session.');
   return sessionSchema.parse(await request(settings,`sessions/${id}/cancel`,'POST',{}));
 }
-export async function stageCanvasMirror(settings:AssistantSettings,snapshot:CanvasSnapshot) {
-  const captured=await hydrateCanvasMirrorPages(snapshot);
+export async function stageCanvasMirror(settings:AssistantSettings,snapshot:CanvasSnapshot,signal?:AbortSignal) {
+  signal?.throwIfAborted();
+  const captured=await hydrateCanvasMirrorPages(snapshot,signal);
+  signal?.throwIfAborted();
   const styles=getComputedStyle(document.documentElement);
   const navigation=document.querySelector('#header, .ic-app-header');
   const nav=navigation?getComputedStyle(navigation):null;

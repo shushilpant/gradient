@@ -1,13 +1,3 @@
-/**
- * Options Storage for GRADIENT Extension
- * 
- * Persists:
- * - Canvas host(s) list
- * - Credit hours per course
- * - Grade-point scale
- * - Selected detail level
- */
-
 import { DEFAULT_GRADE_POINT_SCALE } from '../../core/schema.js';
 
 export interface GradientOptions {
@@ -18,65 +8,106 @@ export interface GradientOptions {
 }
 
 export const DEFAULT_GRADIENT_OPTIONS: GradientOptions = {
-  canvasHosts: [
-    '*.instructure.com',
-    'localhost',
-    '127.0.0.1',
-    'canvas.usm.edu',
-  ],
-  courseCreditHours: {
-    'CS-101': 4.0,
-    'MATH-201': 3.0,
-    'BIO-110': 4.0,
-  },
+  canvasHosts: ['*.instructure.com', 'localhost', '127.0.0.1', 'canvas.usm.edu'],
+  courseCreditHours: {},
   gradePointScale: { ...DEFAULT_GRADE_POINT_SCALE },
   detailLevel: 'a_bit_more',
 };
 
-const STORAGE_KEY = 'gradient_user_options';
+export const OPTIONS_STORAGE_KEY = 'gradient_user_options';
+let memoryOptions: GradientOptions | undefined;
+
+/** Hostnames only. A preference never grants a browser host permission. */
+export function normalizeCanvasHost(value: string): string | null {
+  const host = value.trim().toLowerCase().replace(/\.$/, '');
+  if (host === '*.instructure.com' || host === 'localhost' || host === '127.0.0.1') return host;
+  if (host.length > 253 || !host.includes('.') || !/^[a-z0-9.-]+$/.test(host)) return null;
+  if (host.split('.').some(part => !part || part.length > 63 || part.startsWith('-') || part.endsWith('-'))) return null;
+  // Private addresses and ports are not custom HTTPS Canvas domains.
+  if (/^\d+(?:\.\d+){3}$/.test(host)) return null;
+  return host;
+}
+
+function numericRecord(value: unknown, maximum: number, minimum = 0): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(Object.entries(value).filter(([key, number]) =>
+    key.length > 0 && key.length <= 200 && typeof number === 'number' && Number.isFinite(number) && number >= minimum && number <= maximum));
+}
+
+/** Saved preferences may come from an older version or a damaged browser store. */
+export function normalizeOptions(value: unknown): GradientOptions {
+  const saved = value && typeof value === 'object' && !Array.isArray(value) ? value as Partial<GradientOptions> : {};
+  const hosts = Array.isArray(saved.canvasHosts)
+    ? saved.canvasHosts.filter((host): host is string => typeof host === 'string').map(normalizeCanvasHost).filter((host): host is string => !!host)
+    : DEFAULT_GRADIENT_OPTIONS.canvasHosts;
+  const scale = numericRecord(saved.gradePointScale, 5);
+  return {
+    canvasHosts: [...new Set(hosts)],
+    courseCreditHours: numericRecord(saved.courseCreditHours, 30, 0.5),
+    gradePointScale: Object.keys(scale).length ? scale : { ...DEFAULT_GRADIENT_OPTIONS.gradePointScale },
+    detailLevel: saved.detailLevel === 'a_bit' || saved.detailLevel === 'all_in' ? saved.detailLevel : 'a_bit_more',
+  };
+}
+
+function readStore(store: chrome.storage.StorageArea): Promise<unknown> {
+  return new Promise(resolve => {
+    try {
+      store.get(OPTIONS_STORAGE_KEY, result => {
+        const error = chrome.runtime?.lastError;
+        resolve(error ? undefined : result?.[OPTIONS_STORAGE_KEY]);
+      });
+    } catch { resolve(undefined); }
+  });
+}
+
+function writeStore(store: chrome.storage.StorageArea, options: GradientOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      store.set({ [OPTIONS_STORAGE_KEY]: options }, () => {
+        const error = chrome.runtime?.lastError;
+        if (error) reject(new Error(error.message || 'Browser storage is unavailable.'));
+        else resolve();
+      });
+    } catch (error) { reject(error); }
+  });
+}
 
 export async function loadOptions(): Promise<GradientOptions> {
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    return new Promise((resolve) => {
-      chrome.storage.sync.get(STORAGE_KEY, (res) => {
-        if (res && res[STORAGE_KEY]) {
-          resolve({ ...DEFAULT_GRADIENT_OPTIONS, ...res[STORAGE_KEY] });
-        } else {
-          resolve({ ...DEFAULT_GRADIENT_OPTIONS });
-        }
-      });
-    });
-  }
-
-  // Fallback to localStorage / in-memory
-  if (typeof localStorage !== 'undefined') {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      try {
-        return { ...DEFAULT_GRADIENT_OPTIONS, ...JSON.parse(raw) };
-      } catch {
-        // Fallback
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    const local = await readStore(chrome.storage.local);
+    if (local !== undefined) return normalizeOptions(local);
+    // Preserve preferences from releases that used Chrome Sync, then keep future writes on this device.
+    if (chrome.storage.sync) {
+      const legacy = await readStore(chrome.storage.sync);
+      if (legacy !== undefined) {
+        const migrated = normalizeOptions(legacy);
+        try {
+          await writeStore(chrome.storage.local, migrated);
+          chrome.storage.sync.remove(OPTIONS_STORAGE_KEY, () => { void chrome.runtime?.lastError; });
+        } catch { /* Reading preferences still works if migration cannot be saved. */ }
+        return migrated;
       }
     }
+    return normalizeOptions(undefined);
   }
-
-  return { ...DEFAULT_GRADIENT_OPTIONS };
+  if (memoryOptions) return normalizeOptions(memoryOptions);
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(OPTIONS_STORAGE_KEY) : null;
+    if (raw) return normalizeOptions(JSON.parse(raw));
+  } catch { /* Storage may be blocked in private browsing or embedded previews. */ }
+  return normalizeOptions(undefined);
 }
 
 export async function saveOptions(options: Partial<GradientOptions>): Promise<GradientOptions> {
-  const current = await loadOptions();
-  const updated: GradientOptions = { ...current, ...options };
-
-  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.sync) {
-    await new Promise<void>((resolve) => {
-      chrome.storage.sync.set({ [STORAGE_KEY]: updated }, () => resolve());
-    });
+  const updated = normalizeOptions({ ...await loadOptions(), ...options });
+  if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+    await writeStore(chrome.storage.local, updated);
+    // Never copy extension preferences into the Canvas site's localStorage.
+    return updated;
   }
-
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }
-
+  memoryOptions = updated;
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(updated));
+  } catch { /* An ephemeral preview can keep its settings for this session. */ }
   return updated;
 }
-
