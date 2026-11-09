@@ -6,7 +6,7 @@ All commands below run from `offcanvas/`. The presentation uses **synthetic stud
 
 Every module has a **Demo** button under the tabs. Each one plays a staged run on the sample courses and then shows a real result:
 
-- **Academics** rebuilds the grades, ranks the top three priorities and plans up to eight hours based on assignment type, deadline and grade impact.
+- **Academics** rebuilds the grades, ranks the top three priorities, asks how many hours you have, and then splits that time by assignment type, deadline and grade impact.
 - **AI Workspace** builds a saved **CE 240 · Homework 2 - Trapezoidal Piecewise-Linear Waveforms** study packet with **Study** mode and **Go all in** selected. Both **Demo AI Workspace** and **Play full tour** show **Build my study packet**, an illustrative trapezoidal waveform with labeled breakpoints and slopes, piecewise and ramp-function explanations, and practice checks.
 - **Automation** loads the saved workflow sequence, assignment and computed plot.
 - **Research** reads interests from the coursework and lists real programmes, each linking to its website. The match scores are illustrative and labelled as such.

@@ -28,7 +28,6 @@ const STUDY_DEMO = {
   level: 'all_in',
 } as const;
 const studyPacket = packetSchema.parse(savedStudyPacket);
-const PLAN_HOURS = 8;
 
 function clock(ms: number): string { return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${Math.floor(ms / 100) % 10}`; }
 
@@ -136,6 +135,14 @@ export function AcademicsDemo({ snapshot, studyCourses, onDone, onReplay, onRest
 }) {
   const [academicsComplete, setAcademicsComplete] = useState(false);
   const [planRun, setPlanRun] = useState(0);
+  const [hoursInput, setHoursInput] = useState('');
+  const [planHours, setPlanHours] = useState<number | null>(null);
+  const submitHours = (event: Event) => {
+    event.preventDefault();
+    const value = Number(hoursInput);
+    if (!Number.isFinite(value) || value <= 0) return;
+    setPlanHours(Math.max(0.5, Math.min(30, value)));
+  };
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   useEffect(() => {
@@ -150,21 +157,23 @@ export function AcademicsDemo({ snapshot, studyCourses, onDone, onReplay, onRest
     const priorities = getAssignmentPriorities(courses).filter(task => task.deadline > now.getTime()).slice(0, 3);
     let plan: StudySplitItem[] = [];
     let planError = false;
-    try {
-      plan = allocateStudySplit(studyCourses, PLAN_HOURS, now);
-    } catch { planError = true; }
+    if (planHours != null) {
+      try {
+        plan = allocateStudySplit(studyCourses, planHours, now);
+      } catch { planError = true; }
+    }
     const allocated = plan.reduce((total, item) => total + item.hours, 0);
-    return { grades, priorities, now, plan, planError, allocated, unused: Math.max(0, PLAN_HOURS - allocated) };
-  }, [snapshot, studyCourses, planRun]);
+    return { grades, priorities, now, plan, planError, allocated, unused: planHours == null ? 0 : Math.max(0, planHours - allocated) };
+  }, [snapshot, studyCourses, planRun, planHours]);
   const steps: DemoStep[] = [
     { title: 'Connecting to Canvas', detail: `Signed in as ${snapshot.user.shortName || snapshot.user.name} · read-only`, ms: 1100, ticks: ['Checking your session…', 'Session verified · read-only access'] },
     { title: 'Syncing your courses', detail: `${courses.length} courses · ${assignments.length} assignments · ${materials} materials`, ms: 2100, ticks: courses.map((c, i) => `Reading ${c.code} (${i + 1} of ${courses.length})…`) },
     { title: 'Rebuilding every grade', detail: 'Weights, drop rules and missing work applied', ms: 1500, ticks: ['Applying assignment-group weights…', 'Checking drop rules…', 'Comparing with Canvas totals…'] },
     { title: 'Ranking what to do next', detail: 'Final course grade impact first, then the deadline', ms: 1300, ticks: ['Estimating grade impact…', 'Comparing deadlines…'] },
-    { title: 'Planning your study time', detail: `Splitting up to ${PLAN_HOURS} hours by effort, deadlines and grade impact`, ms: 1800, ticks: ['Checking how much time fits before each deadline…', 'Checking grade weights and drop rules…', 'Estimating time by assignment type…', 'Choosing the split…'] },
+    { title: 'Planning your study time', detail: planHours == null ? 'Enter how many hours you have' : `Splitting up to ${planHours} hours by effort, deadlines and grade impact`, ms: 1800, ticks: ['Checking how much time fits before each deadline…', 'Checking grade weights and drop rules…', 'Estimating time by assignment type…', 'Choosing the split…'] },
   ];
   return <>
-    <PanicAutomationDemo onReplay={onReplay}/>
+    <PanicAutomationDemo snapshot={snapshot} onReplay={onReplay}/>
     <StagedRun label="Academics" steps={steps} scrollResult={false} onDone={() => setAcademicsComplete(true)}
       onRestart={() => { onRestart?.(); setAcademicsComplete(false); setPlanRun(previous => previous + 1); }}>
       <section class="g-card" aria-label="Rebuilt grades">
@@ -200,19 +209,27 @@ export function AcademicsDemo({ snapshot, studyCourses, onDone, onReplay, onRest
           <span class="g-due">{relativeDue(assignment, result.now)}</span>
         </div>) : <p class="g-small">Nothing is due. Enjoy the breathing room.</p>}
       </section>
-      <section class="g-card soft" aria-label="Suggested study split">
-        <div class="g-section-head"><h2>Study split for up to {PLAN_HOURS} hours</h2><Icon name="clock" size={20}/></div>
+      <section class="g-card soft" aria-label="Study hours">
+        <div class="g-section-head"><h2>Study split</h2><Icon name="clock" size={20}/></div>
+        <p class="g-small">How many hours do you have?</p>
+        <form class="g-plan-controls" onSubmit={submitHours}>
+          <label class="g-hours"><input aria-label="Study hours available" type="number" min=".5" max="30" step=".5" required value={hoursInput} onInput={event => setHoursInput(event.currentTarget.value)}/>hours free</label>
+          <button class="g-primary" type="submit">Build my study plan <Icon name="arrow" size={15}/></button>
+        </form>
+      </section>
+      {planHours != null && <section class="g-card soft" aria-label="Suggested study split">
+        <div class="g-section-head"><h2>Study split for up to {Number.isInteger(planHours) ? planHours : planHours.toFixed(1)} hours</h2><Icon name="clock" size={20}/></div>
         {result.plan.map(item => <div key={item.id} class="g-demo-row">
-          <div class="g-demo-row-main"><strong>{item.name}</strong><small class="g-small">{item.code} · {item.reason}</small><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / PLAN_HOURS * 100}%` }}/></span></div>
+          <div class="g-demo-row-main"><strong>{item.name}</strong><small class="g-small">{item.code} · {item.reason}</small><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / planHours * 100}%` }}/></span></div>
           <span class="g-due normal">{item.hours.toFixed(1)} hrs</span>
         </div>)}
         {result.planError ? <p class="g-notice" role="alert">The study split could not be calculated. Run the demo again.</p> : <>
-          <p class="g-small" role="status">{result.allocated.toFixed(1)} of {PLAN_HOURS.toFixed(1)} hours allocated · {result.unused.toFixed(1)} hours unallocated.</p>
+          <p class="g-small" role="status">{result.allocated.toFixed(1)} of {planHours.toFixed(1)} hours allocated · {result.unused.toFixed(1)} hours unallocated.</p>
           {!result.plan.length && <p class="g-small">No study blocks fit this plan.</p>}
           <p class="g-small">Time estimates depend on the type of work. Blocks fit before deadlines, and undated work gets up to 30 minutes.</p>
           {result.plan.length > 0 && <p class="g-small">Full-credit estimates hold other scores fixed and count ungraded work as zero.</p>}
         </>}
-      </section>
+      </section>}
     </StagedRun>
   </>;
 }

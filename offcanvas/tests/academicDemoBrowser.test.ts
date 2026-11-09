@@ -16,8 +16,13 @@ it('shows every allocation in the eight-hour demo and reconciles the total', asy
     await waitForLoaded(page);
     await page.getByRole('button', { name: 'Present', exact: true }).click();
     await page.getByRole('button', { name: 'Demo Academics', exact: true }).click();
+    const hours = page.getByRole('region', { name: 'Study hours', exact: true });
+    await hours.waitFor({ timeout: 15000 });
+    expect(await page.getByRole('region', { name: 'Suggested study split', exact: true }).count()).toBe(0);
+    await hours.getByLabel('Study hours available', { exact: true }).fill('8');
+    await hours.getByRole('button', { name: 'Build my study plan', exact: true }).click();
     const split = page.getByRole('region', { name: 'Suggested study split', exact: true });
-    await split.waitFor({ timeout: 15000 });
+    await split.waitFor();
     const rows = await split.locator('.g-demo-row').evaluateAll(elements => elements.map(element => ({
       name: element.querySelector('strong')?.textContent ?? '',
       hours: parseFloat(element.querySelector('.g-due')?.textContent ?? ''),

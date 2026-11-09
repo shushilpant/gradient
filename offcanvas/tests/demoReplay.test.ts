@@ -61,8 +61,12 @@ describe('Explicit local demo preview', () => {
 
       await page.getByRole('button', { name: 'Present', exact: true }).click();
       await page.getByRole('button', { name: 'Demo Academics', exact: true }).click();
+      const hours = page.getByRole('region', { name: 'Study hours', exact: true });
+      await hours.waitFor({ timeout: 18000 });
+      await hours.getByLabel('Study hours available', { exact: true }).fill('8');
+      await hours.getByRole('button', { name: 'Build my study plan', exact: true }).click();
       const split = page.getByRole('region', { name: 'Suggested study split', exact: true });
-      await split.waitFor({ timeout: 18000 });
+      await split.waitFor();
       const exam = split.locator('.g-demo-row').filter({ hasText: 'Final Exam' });
       expect(await exam.locator('.g-due').innerText()).toBe('0.5 hrs');
       expect(await exam.innerText()).toContain('Full credit adds 30 percentage points to the final grade');
