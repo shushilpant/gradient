@@ -654,6 +654,30 @@ def test_research_job_infers_topics_and_browser_results_skip_duplicate_inference
     assert any(source.kind=='web' for source in ai.collect_sources(payload)[0])
 
 
+def test_reu_job_preserves_selected_model_candidates_and_dictionary_results(monkeypatch):
+    import reu_finder
+    captured = []
+    def discover(topics, supplied, model):
+        captured.append((topics, supplied, model))
+        ai.report_stage('summarizing', 'Summarizing application details locally')
+        return {'opportunities': [], 'query': 'REU robotics', 'checkedAt': '2026-11-09T00:00:00Z', 'message': ''}
+    monkeypatch.setattr(reu_finder, 'discover', discover)
+    response = client.post('/api/v1/assistant/jobs', headers=HEADERS, json={
+        'type': 'reu', 'request': {'topics':['robotics'], 'model':'qwen3:8b', 'candidates':[{'title':'Robotics REU','url':'https://university.edu/reu'}]},
+    })
+    assert response.status_code == 202, response.text
+    for _ in range(100):
+        state = client.get('/api/v1/assistant/jobs/' + response.json()['id']).json()
+        if state['status'] != 'running':
+            break
+        time.sleep(.01)
+    assert state['status'] == 'complete', state
+    assert state['result']['query'] == 'REU robotics'
+    assert captured == [(['robotics'], [{'title':'Robotics REU','url':'https://university.edu/reu'}], 'qwen3:8b')]
+    invalid = client.post('/api/v1/assistant/jobs', headers=HEADERS, json={'type':'reu','request':{'topics':[],'model':'qwen3:8b'}})
+    assert invalid.status_code == 422
+
+
 def test_review_accepts_only_literal_interior_of_wrapped_quote(monkeypatch):
     brief=ai.AssignmentBrief(summary='Solve',requirements=[ai.Requirement(id='R1',text='Solve',evidence='Solve')])
     monkeypatch.setattr(ai,'model_json',lambda *_a,**_k:ai.AssignmentReview(coverage=[ai.CoverageItem(requirementId='R1',status='covered',evidence='"x = 2"')]))

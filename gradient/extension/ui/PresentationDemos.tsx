@@ -1,6 +1,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import savedDemo from '../../backend/demo_automation.json';
+import savedStudyPacket from '../fixtures/ce240_homework2_study.json';
 import { currentGrade } from '../../core/gradeModel.js';
 import { optimizeEffort } from '../../core/optimiser.js';
 import { DEFAULT_GRADE_POINT_SCALE } from '../../core/schema.js';
@@ -15,7 +16,13 @@ import { ComputedVisuals } from './WorkEvidence.js';
 
 export interface DemoStep { title: string; detail: string; ms: number; ticks?: string[] }
 
-const packet = packetSchema.parse(savedDemo.packet);
+const STUDY_DEMO = {
+  course: { id: 'ce240', code: 'CE 240', name: 'Signals and Systems' },
+  assignment: { id: 'homework-2', name: 'Homework 2 - Trapezoidal Piecewise-Linear Waveforms' },
+  mode: 'explain',
+  level: 'all_in',
+} as const;
+const studyPacket = packetSchema.parse(savedStudyPacket);
 const PLAN_HOURS = 8;
 
 function pending(a: CanvasLiveAssignment): boolean {
@@ -34,7 +41,7 @@ function clock(ms: number): string { return `${Math.floor(ms / 60000)}:${String(
 function clamp(n: number | null | undefined): number { return Math.min(100, Math.max(0, n ?? 0)); }
 
 /** Plays a scripted sequence of steps with varied timings, then reveals the prepared result. */
-export function StagedRun({ label, steps, children, onDone }: { label: string; steps: DemoStep[]; children: ComponentChildren; onDone?: () => void }) {
+export function StagedRun({ label, steps, children, onDone, onRestart }: { label: string; steps: DemoStep[]; children: ComponentChildren; onDone?: () => void; onRestart?: () => void }) {
   const [run, setRun] = useState(0);
   const [index, setIndex] = useState(0);
   const [tick, setTick] = useState(0);
@@ -80,7 +87,7 @@ export function StagedRun({ label, steps, children, onDone }: { label: string; s
         <span class="g-run-pulse" aria-hidden="true"/>
         <strong>{done ? `${label} ready` : `Running ${label.toLowerCase()}…`}</strong>
         <span class="g-run-clock">{clock(done ? times.reduce((a, b) => a + b, 0) : elapsed)}</span>
-        {done && <button class="g-link-btn" onClick={() => setRun(r => r + 1)}>Run again <Icon name="refresh" size={14}/></button>}
+        {done && <button class="g-link-btn" onClick={() => { onRestart?.(); setIndex(0); setRun(r => r + 1); }}>Run again <Icon name="refresh" size={14}/></button>}
       </div>
       <div class="g-run-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={`${label} progress`}><i style={{ width: `${Math.max(4, percent)}%` }}/></div>
       <ol class="g-run-steps">{steps.map((step, i) => {
@@ -150,25 +157,37 @@ export function AcademicsDemo({ snapshot, onDone }: { snapshot: CanvasSnapshot; 
   </StagedRun>;
 }
 
-export function AssistantDemo({ onDone }: { onDone?: () => void }) {
+export function AssistantDemo({ onDone, onRestart }: { onDone?: () => void; onRestart?: () => void }) {
+  const [run, setRun] = useState(0);
   const steps: DemoStep[] = [
-    { title: 'Integrity check', detail: 'Homework, not a quiz or timed assessment', ms: 900, ticks: ['Checking the assignment type…', 'Clear: reference guide only, never submitted'] },
-    { title: 'Reading the assignment', detail: `${savedDemo.courseCode} · ${savedDemo.assignmentName}`, ms: 1300, ticks: ['Opening the instructions…', 'Pulling out what is being asked…'] },
-    { title: 'Gathering course materials', detail: `${packet.sources.length} matching sources found`, ms: 1700, ticks: ['Searching the study guide…', 'Matching lecture notes…', `${packet.sources.length} sources matched`] },
-    { title: 'Drafting with the local model', detail: 'A step-by-step worked guide', ms: 3200, ticks: ['Outlining the approach…', 'Working through part 1…', 'Working through part 2…', 'Plotting the response…'] },
-    { title: 'Checking every step', detail: 'Each claim tied to a course source', ms: 1500, ticks: ['Verifying citations…', 'Rendering the graph…'] },
+    { title: 'Reading the assignment', detail: `${STUDY_DEMO.course.code} · ${STUDY_DEMO.assignment.name}`, ms: 1300, ticks: ['Opening Homework 2…', 'Identifying trapezoidal piecewise-linear waveforms…'] },
+    { title: 'Gathering course materials', detail: `${studyPacket.sources.length} matching sources found`, ms: 1700, ticks: ['Reading the waveform study brief…', 'Matching the piecewise-linear study notes…', `${studyPacket.sources.length} sources matched`] },
+    { title: 'Building the study packet', detail: 'Study mode · Go all in', ms: 2800, ticks: ['Explaining breakpoints and slopes…', 'Writing the piecewise equations…', 'Building the ramp-function representation…', 'Adding practice checks…'] },
+    { title: 'Preparing the waveform diagram', detail: 'Labeled breakpoints, rising edge, plateau, and falling edge', ms: 1300, ticks: ['Plotting the illustrative trapezoidal waveform…', 'Labeling the vertices and segment slopes…'] },
+    { title: 'Checking the packet', detail: 'Explanations and diagram tied to the study sources', ms: 1500, ticks: ['Verifying citations…', 'Checking the diagram and practice answers…'] },
   ];
-  return <StagedRun label="Homework Autopilot" steps={steps} onDone={onDone}>
-    <div class="ja"><style>{ASSISTANT_STYLES}</style>
+  return <div class="ja g-stack"><style>{ASSISTANT_STYLES}</style>
+    <section class="ja-inner ja-demo-setup" aria-label="Study packet demo setup">
+      <header class="ja-head"><div class="ja-core" aria-hidden="true"><span><Icon name="spark" size={20}/></span></div><h1>AI Workspace</h1></header>
+      <div class="ja-fields two">
+        <label><span class="ja-label">Course</span><select class="ja-control" aria-label="Assistant course" value={STUDY_DEMO.course.id} disabled><option value={STUDY_DEMO.course.id}>{STUDY_DEMO.course.code} · {STUDY_DEMO.course.name}</option></select></label>
+        <label><span class="ja-label">Assignment</span><select class="ja-control" aria-label="Assistant assignment" value={STUDY_DEMO.assignment.id} disabled><option value={STUDY_DEMO.assignment.id}>{STUDY_DEMO.assignment.name}</option></select></label>
+      </div>
+      <p class="ja-note">{STUDY_DEMO.assignment.name}</p>
+      <div class="ja-detail" role="group" aria-label="Response detail level">{([{ id: 'a_bit', title: 'A bit' }, { id: 'a_bit_more', title: 'A bit more' }, { id: 'all_in', title: 'Go all in' }] as const).map(level => <button key={level.id} class={STUDY_DEMO.level === level.id ? 'active' : ''} aria-pressed={STUDY_DEMO.level === level.id} disabled><strong>{level.title}</strong></button>)}</div>
+      <div class="ja-mode" role="group" aria-label="Assistant output type"><button class="ja-btn active" aria-pressed={STUDY_DEMO.mode === 'explain'} disabled>Study</button><button class="ja-btn" aria-pressed={false} disabled>Reference example</button></div>
+      <button class="ja-btn primary full" onClick={() => { onRestart?.(); setRun(previous => previous + 1); }}><Icon name="spark" size={18}/>Build my study packet</button>
+    </section>
+    <StagedRun key={run} label="Study packet" steps={steps} onDone={onDone} onRestart={onRestart}>
       <section class="ja-result" aria-label="Prepared study guide">
-        <header class="ja-result-header"><h2>{packet.title}</h2><p>{packet.summary}</p></header>
+        <header class="ja-result-header"><h2>{studyPacket.title}</h2><p>{studyPacket.summary}</p></header>
         <div class="ja-result-body">
-          <ComputedVisuals packet={packet}/>
-          <details open><summary>Worked guide</summary><GroundedMarkdown text={packet.sampleMarkdown} sources={packet.sources}/></details>
+          <ComputedVisuals packet={studyPacket}/>
+          <GroundedMarkdown text={studyPacket.markdown} sources={studyPacket.sources}/>
         </div>
       </section>
-    </div>
-  </StagedRun>;
+    </StagedRun>
+  </div>;
 }
 
 const FALLBACK_TOPICS = ['Algorithms', 'Data science', 'Computational biology'];

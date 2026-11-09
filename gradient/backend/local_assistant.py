@@ -1631,7 +1631,7 @@ def explain_plainly(payload: ExplainRequest) -> ExplainOutput:
 
 
 class JobRequest(BaseModel):
-    type: Literal["generate", "browser", "research", "speech", "photo", "explain"]
+    type: Literal["generate", "browser", "research", "reu", "speech", "photo", "explain"]
     request: dict
 
 
@@ -1655,9 +1655,15 @@ def run_job(job_id: str, kind: str, payload: BaseModel):
             result = synthesize(payload)
         elif kind == "explain":
             result = explain_plainly(payload)
+        elif kind == "reu":
+            try:
+                from .reu_finder import search_reus
+            except ImportError:
+                from reu_finder import search_reus
+            result = search_reus(payload)
         else:
             result = generate_study_packet(payload) if kind == "generate" else browser_plan(payload)
-        state = {"status": "complete", "result": result.model_dump(by_alias=True)}
+        state = {"status": "complete", "result": result.model_dump(by_alias=True) if isinstance(result, BaseModel) else result}
     except HTTPException as exc:
         state = {"status": "error", "error": str(exc.detail)}
     except Exception:
@@ -1671,7 +1677,14 @@ def run_job(job_id: str, kind: str, payload: BaseModel):
 @router.post("/jobs", status_code=202)
 def create_job(payload: JobRequest):
     try:
-        validated = StudyRequest.model_validate(payload.request) if payload.type in ("generate", "research") else ExplainRequest.model_validate(payload.request) if payload.type == "explain" else SpeechRequest.model_validate(payload.request) if payload.type == "speech" else PhotoRequest.model_validate(payload.request) if payload.type == "photo" else BrowserRequest.model_validate(payload.request)
+        if payload.type == "reu":
+            try:
+                from .reu_finder import ReuQuery
+            except ImportError:
+                from reu_finder import ReuQuery
+            validated = ReuQuery.model_validate(payload.request)
+        else:
+            validated = StudyRequest.model_validate(payload.request) if payload.type in ("generate", "research") else ExplainRequest.model_validate(payload.request) if payload.type == "explain" else SpeechRequest.model_validate(payload.request) if payload.type == "speech" else PhotoRequest.model_validate(payload.request) if payload.type == "photo" else BrowserRequest.model_validate(payload.request)
     except ValidationError as exc:
         # Do not reflect assignment bodies or screenshots in validation errors.
         raise HTTPException(422, "Invalid assistant job request. Check the model, detail level and required assignment/page fields.") from exc

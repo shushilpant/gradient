@@ -7,7 +7,7 @@ All commands below run from `gradient/`. The presentation uses **synthetic stude
 Every module has a **Demo** button under the tabs. Each one plays a staged run on the sample courses and then shows a real result:
 
 - **Academics** rebuilds the grades, ranks the top three priorities and splits eight study hours.
-- **AI Workspace** runs Homework Autopilot on the saved study guide, starting with an integrity check.
+- **AI Workspace** builds a saved **CE 240 · Homework 2 - Trapezoidal Piecewise-Linear Waveforms** study packet with **Study** mode and **Go all in** selected. Both **Demo AI Workspace** and **Play full tour** show **Build my study packet**, an illustrative trapezoidal waveform with labeled breakpoints and slopes, piecewise and ramp-function explanations, and practice checks.
 - **Automation** loads the saved workflow sequence, assignment and computed plot.
 - **Research** reads interests from the coursework and lists real programmes, each linking to its website. The match scores are illustrative and labelled as such.
 

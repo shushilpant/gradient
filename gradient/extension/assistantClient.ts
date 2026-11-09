@@ -80,8 +80,9 @@ export async function pullAssistantModel(settings: AssistantSettings, model: str
   await request(settings, 'models/pull', 'POST', { model });
 }
 
+interface ReuSearchRequest { topics:string[]; model:string; candidates?:{title:string;url:string}[] }
 /** Poll short requests so MV3's 30-second fetch limit never interrupts local inference. */
-async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research' | 'speech' | 'photo' | 'explain', input: StudyRequest | BrowserPlanRequest | {text:string;voice:string} | PhotoCheckRequest | ExplainRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<unknown> {
+async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research' | 'speech' | 'photo' | 'explain' | 'reu', input: StudyRequest | BrowserPlanRequest | {text:string;voice:string} | PhotoCheckRequest | ExplainRequest | ReuSearchRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<unknown> {
   signal?.throwIfAborted();
   const job = z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/) }).parse(await request(settings, 'jobs', 'POST', { type, request: input }));
   signal?.throwIfAborted();
@@ -99,6 +100,10 @@ async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' 
 }
 
 export interface ExplainRequest { model: string; topic: 'overview' | 'course'; facts: Record<string, string | number> }
+
+export function searchReuOpportunities(settings:AssistantSettings,input:Omit<ReuSearchRequest,'model'>,onProgress?:(progress:StudyProgress)=>void,signal?:AbortSignal):Promise<unknown> {
+  return runJob(settings,'reu',{...input,model:settings.reasoningModel},onProgress,signal);
+}
 
 /** The local model only rewords figures computed from Canvas; the backend rejects any new numbers. */
 export async function explainPlainly(settings: AssistantSettings, topic: ExplainRequest['topic'], facts: ExplainRequest['facts'], signal?: AbortSignal): Promise<string> {

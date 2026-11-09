@@ -3,10 +3,11 @@ import { z } from 'zod';
 import type { CanvasSnapshot } from '../liveCanvas.js';
 import { getAcademicContext, readAcademicMaterials, subscribeAcademicContext, type AcademicContext, type AcademicEvidence } from '../academicContext.js';
 import { assistantRequest } from '../assistantTransport.js';
-import { enableBrowserSearch, loadAssistantSettings } from '../assistantClient.js';
+import { enableBrowserSearch, loadAssistantSettings, searchReuOpportunities } from '../assistantClient.js';
 
 const opportunitySchema = z.object({ title:z.string(),url:z.string().url(),matchedTopics:z.array(z.string()),summary:z.string(),
   deadlineEvidence:z.string().nullable(),eligibilityEvidence:z.string().nullable(),fundingEvidence:z.string().nullable(),
+  deadlineSummary:z.string().nullable().optional(),eligibilitySummary:z.string().nullable().optional(),fundingSummary:z.string().nullable().optional(),summaryWarning:z.string().optional(),
   status:z.string(),skills:z.array(z.string()).optional().default([]),skillEvidence:z.record(z.string()).optional().default({}),applicationUrl:z.string().url().nullable().optional() });
 const resultSchema = z.object({opportunities:z.array(opportunitySchema).max(20),query:z.string(),checkedAt:z.string(),message:z.string()});
 type Result = z.infer<typeof resultSchema>;
@@ -40,6 +41,7 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
   }
   async function search() {
     const selected=[...new Set(topics.split(',').map(s=>s.trim()).filter(Boolean))].slice(0,8),id=++request.current;
+    const abort=new AbortController();controller.current=abort;
     setBusy(true);setError('');setResult(null);setProgress('Searching and reading programme pages…');context.preferences.researchInterests=selected;
     try {
       const settings=await loadAssistantSettings();let candidates:{title:string;url:string}[]|undefined;
@@ -50,15 +52,21 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
         if(!response?.ok)throw new Error(response?.error||'Browser search failed.');
         candidates=response.data.map((item:{title:string;url:string})=>({title:item.title,url:item.url}));
       }
-      const response=resultSchema.parse(await assistantRequest(settings.backendUrl,'/api/v1/assistant/reu/search','POST',{topics:selected,...(candidates?{candidates}:{})}));
+      const response=resultSchema.parse(await searchReuOpportunities(settings,{topics:selected,...(candidates?{candidates}:{})},state=>{if(id===request.current)setProgress(state.label);},abort.signal));
       if(id===request.current){setResult(response);setProgress('');}
     }catch(reason){if(id===request.current){setError(reason instanceof Error?reason.message:'Search failed. Try again.');setProgress('');}}
     finally{if(id===request.current)setBusy(false);}
   }
   const ranked=useMemo(()=>(result?.opportunities??[]).map(item=>{
     const matchedSkills=profile.skills.filter(skill=>item.skills.some(name=>name.toLowerCase()===skill.name.toLowerCase()));
-    return {...item,matchedSkills,overlap:item.matchedTopics.length*2+matchedSkills.length};
-  }).sort((a,b)=>b.overlap-a.overlap||a.title.localeCompare(b.title)),[result,profile]);
+    const matches=[...profile.interests.filter(interest=>item.matchedTopics.some(topic=>topic.toLowerCase()===interest.topic.toLowerCase())).map(interest=>({label:interest.topic,evidence:interest.evidence})),...matchedSkills.map(skill=>({label:skill.name,evidence:skill.evidence}))];
+    const coursework=context.courses.flatMap(course=>{
+      const labels=matches.filter(match=>match.evidence.some(evidence=>evidence.courseId===course.id)).map(match=>match.label);
+      const reasons=[...new Map(labels.map(label=>[label.toLowerCase(),label])).values()];
+      return reasons.length?[{course,reasons}]:[];
+    });
+    return {...item,matchedSkills,coursework,overlap:item.matchedTopics.length*2+matchedSkills.length};
+  }).sort((a,b)=>b.overlap-a.overlap||a.title.localeCompare(b.title)),[result,profile,context]);
   return <div class="jc"><div><span class="jc-kicker">Undergraduate research</span><h1>Research</h1><p class="jc-sub">Discover undergraduate research through your coursework, with evidence for each match.</p></div>
     <section class="jc-section"><h2>Your academic background</h2><p class="jc-muted">{context.courses.map(course=>course.code).join(' · ')||'Sync Canvas to discover your enrolled courses.'}</p>
       <h3>Suggested research interests</h3><p class="jc-muted">Suggestions require a course title, substantive course description, learning objective, or corroborating documents. Incidental examples are excluded; course codes alone do not establish a subject.</p>
@@ -74,7 +82,7 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
     </section>
     <section class="jc-section"><h2>Find opportunities</h2><label class="g-field-label">Topics, separated by commas<input class="g-select" aria-label="REU research topics" value={topics} disabled={busy||reading} onInput={event=>setTopics(event.currentTarget.value)} maxLength={400}/></label>
       <button class="g-secondary" disabled={busy||reading||!profile.interests.length} onClick={()=>setTopics(profile.interests.slice(0,8).map(item=>item.topic).join(', '))}>Use suggested interests</button>
-      <p class="jc-muted">Only these editable topic keywords are sent to public search. Course text, skills, grades, and identity stay local. Matching uses deterministic topic and skill overlap; no AI model is required.</p>
+      <p class="jc-muted">Only these editable topic keywords are sent to public search. Course text, skills, grades, and identity stay local. Your selected local reasoning model summarises programme deadlines, eligibility, and funding.</p>
       <label class="jc-muted"><input type="checkbox" checked={browserSearch} disabled={busy||reading} onChange={async event=>{if(!event.currentTarget.checked){setBrowserSearch(false);return;}const id=request.current;try{const enabled=await enableBrowserSearch();if(id===request.current)setBrowserSearch(enabled);}catch(reason){if(id===request.current)setError(reason instanceof Error?reason.message:'Browser search unavailable.');}}}/>Use Google in the browser (requires site access)</label>
       <button class="g-primary" disabled={busy||reading||!topics.trim()} onClick={()=>void search()}>{busy?'Searching programme pages…':'Find REUs'}</button>
       {(busy||reading)&&<button class="g-secondary" onClick={stop}>Cancel</button>}
@@ -86,8 +94,8 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
         <p>{item.summary}</p>{item.applicationUrl&&/^https:\/\//.test(item.applicationUrl)&&<p><a href={item.applicationUrl} target="_blank" rel="noopener noreferrer">Application information from programme page</a><span class="jc-muted"> · Current cycle unverified</span></p>}<p class="jc-muted">Overlap score {item.overlap}: {item.matchedTopics.length} topic matches × 2 + {item.matchedSkills.length} skill mentions × 1. A transparent relevance ordering, not a probability.</p>
         <p><strong>Matched topics:</strong> {item.matchedTopics.join(', ')||'None'}</p>
         <p><strong>Skill overlap:</strong> {item.matchedSkills.map(skill=>`${skill.name} (${skill.status==='demonstrated'?'assessed coursework':'inferred exposure'})`).join('; ')||'No supported skill overlap found.'}</p>
-        <details><summary>Why this matches your coursework</summary>{item.matchedTopics.map(topic=>{const interest=profile.interests.find(entry=>entry.topic.toLowerCase()===topic.toLowerCase());return <div key={topic}><h3>{topic}</h3>{interest?<Evidence items={interest.evidence}/>:<p class="jc-muted">An editable search topic; no supporting Canvas evidence identified.</p>}</div>;})}{item.matchedSkills.map(skill=><div key={skill.name}><h3>{skill.name}</h3><Evidence items={skill.evidence}/>{item.skillEvidence[skill.name]&&<p class="jc-muted">Programme source excerpt: “{item.skillEvidence[skill.name]}”</p>}</div>)}</details>
-        <details><summary>Deadline, eligibility & funding</summary>{([['Deadline',item.deadlineEvidence],['Eligibility',item.eligibilityEvidence],['Funding',item.fundingEvidence]] as const).map(([label,evidence])=><div key={label}><strong>{label}</strong><p>{evidence||'Not found on the source page.'}</p></div>)}<p class="jc-muted">These are source excerpts, which may describe a past cycle. Confirm the current deadline, eligibility, funding, and application instructions on the linked programme page.</p></details>
+        <details><summary>Why this matches your coursework</summary>{item.coursework.length?<ul>{item.coursework.map(({course,reasons})=><li key={course.id}><strong>{course.code} · {course.name}</strong><p class="jc-muted">Matches: {reasons.join(', ')}.</p></li>)}</ul>:<p class="jc-muted">No relevant enrolled course was identified for this match.</p>}</details>
+        <details><summary>Deadline, eligibility & funding</summary>{([['Deadline',item.deadlineSummary,item.deadlineEvidence],['Eligibility',item.eligibilitySummary,item.eligibilityEvidence],['Funding',item.fundingSummary,item.fundingEvidence]] as const).map(([label,summary,evidence])=><div key={label}><strong>{label}</strong><p>{summary?.trim()||(evidence?'Summary unavailable. Check the programme page.':'Not found on the source page.')}</p></div>)}{item.summaryWarning&&<p class="jc-muted">{item.summaryWarning}</p>}<p class="jc-muted">{(item.deadlineSummary||item.eligibilitySummary||item.fundingSummary)&&'Summarised locally from the programme page. '}Details may describe a past cycle; confirm them on the linked programme page.</p></details>
       </article>)}
     </section>}
     <a class="jc-source" href="https://www.nsf.gov/funding/initiatives/reu/search" target="_blank" rel="noopener noreferrer">Browse the NSF REU directory</a>

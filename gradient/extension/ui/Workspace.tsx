@@ -277,7 +277,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     </div>}
     {presentationDemo&&<div key={`${tab}:${demoVersion}`} class="g-body g-stack" role="tabpanel" aria-labelledby={`g-tab-${tab}`} aria-label={`${activeDemoLabel} saved demo`}>
       {tab==='academics'&&snapshot&&<AcademicsDemo snapshot={snapshot} onDone={demoDone}/>}
-      {tab==='assistant'&&<AssistantDemo onDone={demoDone}/>}
+      {tab==='assistant'&&<AssistantDemo onDone={demoDone} onRestart={()=>clearTimeout(tourTimer.current)}/>}
       {tab==='automation'&&<AutomationDemo snapshot={snapshot??undefined} onReplay={leaveDemo} onDone={demoDone}/>}
       {tab==='research'&&snapshot&&<ResearchDemo snapshot={snapshot} onDone={demoDone}/>}
     </div>}
