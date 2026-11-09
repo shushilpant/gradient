@@ -7,7 +7,7 @@ const fixture = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../sandbox/f
 
 export function launchBrowser(): Promise<Browser> {
   const macChrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-  return chromium.launch({ headless: true, ...(fs.existsSync(macChrome) ? { executablePath: macChrome } : {}) });
+  return chromium.launch({ headless: true, args: ['--force-prefers-reduced-motion'], ...(fs.existsSync(macChrome) ? { executablePath: macChrome } : {}) });
 }
 
 export function bundle(name = 'content'): string {
