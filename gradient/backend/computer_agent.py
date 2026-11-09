@@ -78,10 +78,10 @@ _AUTOMATION_CURSOR_SCRIPT = r"""(() => {
     const shadow = host.attachShadow({mode:'open'});
     shadow.innerHTML = `<style>
       svg{position:absolute;left:-1px;top:-1px;width:19px;height:23px;overflow:visible;filter:drop-shadow(0 1px 1px #0005)}
-      .pulse{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border:1.5px solid #FFC72C;border-radius:50%;box-sizing:border-box;opacity:0}
+      .pulse{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border:1.5px solid #a64b2a;border-radius:50%;box-sizing:border-box;opacity:0}
       :host([data-clicking]) .pulse{animation:click-pulse .42s ease-out}
       @keyframes click-pulse{from{opacity:.75;transform:scale(.5)}to{opacity:0;transform:scale(1.5)}}
-    </style><span class="pulse"></span><svg viewBox="0 0 19 23" aria-hidden="true"><path d="M1 1V18L5.5 14L9 21.5L12 20L8.5 12.5H15Z" fill="#FFC72C" stroke="#231F20" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
+    </style><span class="pulse"></span><svg viewBox="0 0 19 23" aria-hidden="true"><path d="M1 1V18L5.5 14L9 21.5L12 20L8.5 12.5H15Z" fill="#a64b2a" stroke="#FFFFFF" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
     document.body.append(host);
     place();
   }

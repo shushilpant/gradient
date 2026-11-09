@@ -109,7 +109,7 @@ function showControls(session: ComputerSession) {
     host.style.cssText = 'all:initial;position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:2147483647;width:max-content;max-width:calc(100vw - 36px)';
     const root = host.attachShadow({ mode: 'open' });
     const style = document.createElement('style');
-    style.textContent = '.control{display:flex;align-items:center;gap:14px;padding:9px 10px 9px 18px;background:#0f2742;color:#ffffff;box-shadow:0 10px 30px #1018284d;border-radius:22px;font:600 14px/1.4 system-ui}.label{min-width:0;overflow-wrap:anywhere}button{cursor:pointer;flex:none;border:0;border-radius:14px;padding:8px 13px;background:#e8f2fd;color:#155fa8;font:700 13px system-ui}';
+    style.textContent = '.control{display:flex;align-items:center;gap:14px;padding:9px 10px 9px 18px;background:#873b22;color:#ffffff;box-shadow:0 10px 30px #873b224d;border-radius:22px;font:600 14px/1.4 system-ui}.label{min-width:0;overflow-wrap:anywhere}button{cursor:pointer;flex:none;border:0;border-radius:14px;padding:8px 13px;background:#f8ede6;color:#873b22;font:700 13px system-ui}';
     const control = document.createElement('div');
     control.className = 'control';
     const label = document.createElement('span');
@@ -312,8 +312,8 @@ function drawCursor(target?: HTMLElement, clicking = false) {
     const root = marker.attachShadow({ mode: 'open' });
     root.innerHTML = `<style>
       svg{all:initial;display:block;width:19px;height:23px;overflow:visible;filter:drop-shadow(0 1px 1px #0005)}
-      .pulse{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border:1.5px solid #1A73C9;border-radius:50%;box-sizing:border-box;opacity:0;pointer-events:none}
-    </style><span class="pulse"></span><svg viewBox="0 0 19 23" aria-hidden="true"><path d="M1 1V18L5.5 14L9 21.5L12 20L8.5 12.5H15Z" fill="#1A73C9" stroke="#FFFFFF" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
+      .pulse{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border:1.5px solid #a64b2a;border-radius:50%;box-sizing:border-box;opacity:0;pointer-events:none}
+    </style><span class="pulse"></span><svg viewBox="0 0 19 23" aria-hidden="true"><path d="M1 1V18L5.5 14L9 21.5L12 20L8.5 12.5H15Z" fill="#a64b2a" stroke="#FFFFFF" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
     document.body.append(marker);
   }
   const oldX = Number.parseFloat(marker.style.left);

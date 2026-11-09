@@ -4,15 +4,16 @@ GRADIENT is written for a student who opens Canvas and wants three answers quick
 
 ## Direction
 
-A light, calm study notebook. Ink on warm paper, one confident blue for action, and colour reserved for meaning. Big numbers are set in a serif so they read like a printed report; everything that is interacted with uses a quiet sans.
+A light, calm study notebook. Ink on warm paper, one confident rust for action, and colour reserved for meaning. Big numbers are set in a serif so they read like a printed report; everything that is interacted with uses a quiet sans.
 
 The previous layout layered several stylesheets on top of each other, kept presenter controls permanently on screen, and showed numbers as generic stat tiles. The rework replaces those with a single stylesheet per surface, a **Present** menu that keeps demo controls out of the way, and charts that answer a question in their title.
 
 ## System
 
-- **Surfaces:** canvas `#f6f6f3`, white cards, sunken `#eff0ec` for inset areas. Rules `#e7e8ec`, stronger edges `#d6d8df`.
-- **Text:** ink `#161b26`, secondary `#3d4453`, muted `#5d6475`, faint `#9aa0ad`.
-- **Accent:** ink blue `#2f46b0` for primary actions, the current tab and selected states only.
+- **Surfaces:** canvas `#f8f6f3`, white cards, sunken `#f0eae4` for inset areas. Rules `#ebe5df`, stronger edges `#ddd3ca`.
+- **Text:** ink `#2a1f1a`, secondary `#4a3f38`, muted `#6b6058`, faint `#a89b91`.
+- **Accent:** rust `#a64b2a` (hover `#873b22`, soft `#f8ede6`) for primary actions, the current tab and selected states only.
+- **Automation:** the visible cursor, click ring and control overlay share the rust accent. The native pointer is preserved.
 - **Meaning:** amber and red signal deadline pressure; green means handed in or done. Each course keeps one identity colour (`--g-c1` to `--g-c6`) across every chart, list and badge.
 - **Grade zones:** D or below, C, B and A have their own tints (`--g-band-*`) so a mark can be read as a position, not just a number.
 - **Type:** Newsreader for titles and headline figures, Figtree for body and controls, 14 px base. Both are bundled as data URLs in `fontStyles.ts`; no font CDN is used.

@@ -103,7 +103,7 @@ it('replays the saved GRADIENT-SIGNALS assignment in the existing Canvas tab wit
   }
 }, 35000);
 
-it('keeps the gold automation cursor visible through replay pauses and navigation without replacing the native cursor', async () => {
+it('keeps the rust automation cursor visible through replay pauses and navigation without replacing the native cursor', async () => {
   const browser = await launchBrowser();
   try {
     const { page, openedPages } = await mockLocalWorkflow(browser, true);
@@ -117,11 +117,11 @@ it('keeps the gold automation cursor visible through replay pauses and navigatio
     expect(await cursor.count()).toBe(0);
     await page.getByRole('button', { name: 'Demo automation', exact: true }).click();
 
-    const expectVisibleGoldCursor = async () => {
+    const expectVisibleRustCursor = async () => {
       await cursor.waitFor({ state: 'visible', timeout: 1000 });
       const svg = cursor.locator('svg');
       expect(await svg.isVisible()).toBe(true);
-      expect(await svg.locator('path').evaluate(node => getComputedStyle(node).fill)).toBe('rgb(26, 115, 201)');
+      expect(await svg.locator('path').evaluate(node => getComputedStyle(node).fill)).toBe('rgb(166, 75, 42)');
       const size = await svg.boundingBox();
       expect(size?.width).toBeGreaterThanOrEqual(15);
       expect(size?.width).toBeLessThanOrEqual(24);
@@ -130,11 +130,11 @@ it('keeps the gold automation cursor visible through replay pauses and navigatio
       if (await nativeLink.count()) expect(await nativeLink.evaluate(node => getComputedStyle(node).cursor)).toBe(nativeCursors.link);
     };
     // It must be present during the first pause, not just immediately before navigation.
-    await expectVisibleGoldCursor();
-    await page.screenshot({ path: '/private/tmp/gradient-gold-cursor-visible.png' });
+    await expectVisibleRustCursor();
+    await page.screenshot({ path: '/private/tmp/gradient-rust-cursor-visible.png' });
     for (const path of [coursePath, coursePath + '/assignments', assignmentPath]) {
       await page.waitForURL(localCanvas + path);
-      await expectVisibleGoldCursor();
+      await expectVisibleRustCursor();
     }
     await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor({ timeout: 15000 });
     expect(await cursor.count()).toBe(0);
@@ -142,7 +142,7 @@ it('keeps the gold automation cursor visible through replay pauses and navigatio
 
     // A new run removes its marker as soon as the user stops it.
     await page.getByRole('button', { name: 'Demo automation', exact: true }).click();
-    await expectVisibleGoldCursor();
+    await expectVisibleRustCursor();
     await page.locator('#gradient-page-control').getByRole('button', { name: 'Stop run', exact: true }).click();
     expect(await cursor.count()).toBe(0);
     expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).toBe(nativeCursors.body);
