@@ -1,4 +1,4 @@
-/** Demo-only context. Imported by preview.js, never by the live extension entry. */
+/** Synthetic context used only by explicit preview and presentation demo actions. */
 import { CanvasAdapter } from './adapter/canvasAdapter.js';
 import type { CanvasSnapshot } from './liveCanvas.js';
 import { currentGrade, finalGrade } from '../core/gradeModel.js';

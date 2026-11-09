@@ -55,4 +55,52 @@ describe('Canvas extension isolation and authentication', () => {
       expect(await page.locator('#gradient-panel-host').count()).toBe(0);
     } finally { await page.close(); }
   });
+
+  it('reuses coursework across module switches and navigation, but refreshes on demand', async () => {
+    const { page, requests } = await mockCanvas(browser);
+    const cache: Record<string, unknown> = {};
+    try {
+      await waitForLoaded(page);
+      await page.exposeBinding('__courseCache', (_source, operation: string, key: string, value?: unknown) => {
+        if (operation === 'get') return { [key]: cache[key] };
+        if (operation === 'set') cache[key] = value;
+        if (operation === 'remove') delete cache[key];
+        return undefined;
+      });
+      const storageShim = () => {
+        const rpc = (window as any).__courseCache;
+        (window as any).chrome = { storage: { local: {
+          get: (key: string, callback?: (value: unknown) => void) => rpc('get', key).then((value: unknown) => { callback?.(value); return value; }),
+          set: async (entries: Record<string, unknown>) => { for (const [key, value] of Object.entries(entries)) await rpc('set', key, value); },
+          remove: (key: string) => rpc('remove', key),
+        } } };
+      };
+      await page.evaluate(storageShim);
+      await page.addInitScript(storageShim);
+      await page.addInitScript({ content: bundle() });
+      // Prime the extension cache using the normal explicit-refresh path.
+      await page.getByRole('button', { name: 'Refresh Canvas data', exact: true }).click();
+      await waitForLoaded(page);
+      await expect.poll(() => Object.keys(cache).filter(key => key.startsWith('gradient_course_snapshot_v1:')).length).toBe(1);
+      const courseReads = () => requests.filter(request => request.path.startsWith('/api/v1/courses')).length;
+      const synced = courseReads();
+      for (const name of ['Automation', 'AI Workspace', 'Research', 'Academics']) {
+        await page.getByRole('tab', { name, exact: true }).click();
+      }
+      expect(courseReads()).toBe(synced);
+      await page.goto('https://canvas.instructure.com/courses/99001/modules');
+      await waitForLoaded(page);
+      expect(courseReads()).toBe(synced);
+      await page.getByRole('button', { name: 'Refresh Canvas data', exact: true }).click();
+      await waitForLoaded(page);
+      expect(courseReads()).toBeGreaterThan(synced);
+      // A cached snapshot must never outlive authentication.
+      await page.route('**/api/v1/users/self/profile', route => route.fulfill({ status: 401, json: {} }));
+      await page.goto('https://canvas.instructure.com/courses/99001');
+      await page.getByRole('alert').first().waitFor();
+      expect(await page.locator('#gradient-workspace').innerText()).not.toContain('Live Systems Lab');
+      await expect.poll(() => Object.keys(cache).filter(key => key.startsWith('gradient_course_snapshot_v1:')).length).toBe(0);
+    } finally { await page.close(); }
+  }, 20000);
+
 });

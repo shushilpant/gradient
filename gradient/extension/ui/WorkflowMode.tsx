@@ -82,7 +82,7 @@ export function AutoWorkflow({snapshot,preview=false}:{snapshot?:CanvasSnapshot;
   const exportHtml=()=>{
     if(!session?.packet||!result.current)return;
     const title=escape(session.packet.title);
-    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${ASSISTANT_STYLES}${WORKFLOW_STYLES}body{margin:0;padding:32px;background:#faf8f5}main{max-width:850px;margin:auto}@media print{body{padding:0;background:white}.ja-rendered-visual{break-inside:avoid}}</style></head><body><main class="ja">${result.current.innerHTML}</main></body></html>`,'gradient-auto-reference.html','text/html;charset=utf-8');
+    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title><style>${ASSISTANT_STYLES}${WORKFLOW_STYLES}body{margin:0;padding:32px;background:#faf8f1}main{max-width:850px;margin:auto}@media print{body{padding:0;background:white}.ja-rendered-visual{break-inside:avoid}}</style></head><body><main class="ja">${result.current.innerHTML}</main></body></html>`,'gradient-auto-reference.html','text/html;charset=utf-8');
   };
   return <section class="wf-auto" aria-label="Automatic sandbox workflow"><style>{WORKFLOW_STYLES + ASSISTANT_STYLES}</style>
     <header class="wf-auto-head"><h1>Sandbox workflows</h1></header>

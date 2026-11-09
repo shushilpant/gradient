@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { loadCanvasSnapshot, type CanvasSnapshot } from '../liveCanvas.js';
+import { type CanvasSnapshot } from '../liveCanvas.js';
+import { loadWorkspaceSnapshot } from '../canvasSnapshotCache.js';
 import { activateAcademicContext } from '../academicContext.js';
 import { Workspace } from './Workspace.js';
 import { getPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
@@ -16,7 +17,7 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
   const assignmentId = new URL(initialUrl).pathname.match(/^\/courses\/\d+\/assignments\/(\d+)/)?.[1];
 
   const launchCourseId = useRef(courseId);
-  const refresh = useCallback(() => {
+  const sync = useCallback((force = false) => {
     // All tools share the launch snapshot and join any sync already in flight.
     if (activeRequest.current) return;
     const controller = new AbortController();
@@ -25,7 +26,7 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
     setLoading(true);
     setSnapshot(null);
     setError(null);
-    loadCanvasSnapshot({ courseId: launchCourseId.current, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } })
+    loadWorkspaceSnapshot({ courseId: launchCourseId.current, signal: controller.signal, onProgress: (message) => { if (!controller.signal.aborted) setProgress(message); } }, force)
       .then((result) => {
         if (!controller.signal.aborted) {
           activateAcademicContext(result);
@@ -45,25 +46,27 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
       });
   }, []);
 
+  const refresh = useCallback(() => sync(true), [sync]);
+
   useEffect(() => {
     // The automation driver checks the current account before every action.
     // Keep a full coursework sync from competing with navigation during a run.
     const running = getPageAutomation()?.status === 'running';
     const unsubscribe = running ? subscribePageAutomation(run => {
-      if (run && run.status !== 'running') refresh();
+      if (run && run.status !== 'running') sync();
     }) : undefined;
     const restore = (event: PageTransitionEvent) => {
-      if (running && event.persisted && getPageAutomation()?.status !== 'running') refresh();
+      if (running && event.persisted && getPageAutomation()?.status !== 'running') sync();
     };
     window.addEventListener('pageshow', restore);
-    if (!running) refresh();
+    if (!running) sync();
     return () => {
       unsubscribe?.();
       window.removeEventListener('pageshow', restore);
       activeRequest.current?.abort();
       activateAcademicContext(null);
     };
-  }, [refresh]);
+  }, [sync]);
 
   return <Workspace snapshot={snapshot} loading={loading} error={error} progress={progress}
     onRefresh={refresh} initialCourseId={courseId} initialAssignmentId={assignmentId} />;

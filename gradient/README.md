@@ -21,6 +21,8 @@ In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, a
 
 Study Studio, audio, Photo Check, QR sharing, focus timers and command-centre utilities are isolated from the primary interface. Their implementations remain available for maintenance.
 
+**Automation** has a **Demo Automation** button with a saved presentation example. It uses synthetic data and works without AI or public search; **Back to my workspace** returns to live coursework.
+
 ## Optional local AI
 
 Install Python 3.11 or 3.12 and Ollama, then run from this directory:

@@ -78,7 +78,11 @@ it('replays the saved GRADIENT-SIGNALS assignment in the existing Canvas tab wit
     deferSync = true;
     await page.waitForURL(localCanvas + assignmentPath);
     expect(await page.locator('#assignment-brief').innerText()).toBe(assignmentBrief);
-    await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor();
+    await page.getByRole('status').filter({ hasText: 'Preparing the saved demo assignment' }).waitFor();
+    const preparing = performance.now();
+    expect(await page.getByRole('region', { name: 'Automatic reference sample', exact: true }).count()).toBe(0);
+    await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor({ timeout: 15000 });
+    expect(performance.now() - preparing).toBeGreaterThanOrEqual(9800);
     const result = page.getByRole('region', { name: 'Automatic reference sample', exact: true });
     await result.getByRole('heading', { name: 'Saved reference assignment', exact: true }).waitFor();
     await result.getByRole('heading', { name: assignmentName, exact: true }).waitFor();
@@ -97,9 +101,9 @@ it('replays the saved GRADIENT-SIGNALS assignment in the existing Canvas tab wit
     releaseSync();
     await browser.close();
   }
-}, 25000);
+}, 35000);
 
-it('keeps the rust automation cursor visible through replay pauses and navigation without replacing the native cursor', async () => {
+it('keeps the gold automation cursor visible through replay pauses and navigation without replacing the native cursor', async () => {
   const browser = await launchBrowser();
   try {
     const { page, openedPages } = await mockLocalWorkflow(browser, true);
@@ -113,11 +117,11 @@ it('keeps the rust automation cursor visible through replay pauses and navigatio
     expect(await cursor.count()).toBe(0);
     await page.getByRole('button', { name: 'Demo automation', exact: true }).click();
 
-    const expectVisibleRustCursor = async () => {
+    const expectVisibleGoldCursor = async () => {
       await cursor.waitFor({ state: 'visible', timeout: 1000 });
       const svg = cursor.locator('svg');
       expect(await svg.isVisible()).toBe(true);
-      expect(await svg.locator('path').evaluate(node => getComputedStyle(node).fill)).toBe('rgb(183, 65, 14)');
+      expect(await svg.locator('path').evaluate(node => getComputedStyle(node).fill)).toBe('rgb(26, 115, 201)');
       const size = await svg.boundingBox();
       expect(size?.width).toBeGreaterThanOrEqual(15);
       expect(size?.width).toBeLessThanOrEqual(24);
@@ -126,26 +130,26 @@ it('keeps the rust automation cursor visible through replay pauses and navigatio
       if (await nativeLink.count()) expect(await nativeLink.evaluate(node => getComputedStyle(node).cursor)).toBe(nativeCursors.link);
     };
     // It must be present during the first pause, not just immediately before navigation.
-    await expectVisibleRustCursor();
-    await page.screenshot({ path: '/private/tmp/gradient-rust-cursor-visible.png' });
+    await expectVisibleGoldCursor();
+    await page.screenshot({ path: '/private/tmp/gradient-gold-cursor-visible.png' });
     for (const path of [coursePath, coursePath + '/assignments', assignmentPath]) {
       await page.waitForURL(localCanvas + path);
-      await expectVisibleRustCursor();
+      await expectVisibleGoldCursor();
     }
-    await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor({ timeout: 15000 });
     expect(await cursor.count()).toBe(0);
     expect(openedPages).toEqual([]);
 
     // A new run removes its marker as soon as the user stops it.
     await page.getByRole('button', { name: 'Demo automation', exact: true }).click();
-    await expectVisibleRustCursor();
+    await expectVisibleGoldCursor();
     await page.locator('#gradient-page-control').getByRole('button', { name: 'Stop run', exact: true }).click();
     expect(await cursor.count()).toBe(0);
     expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).toBe(nativeCursors.body);
   } finally {
     await browser.close();
   }
-}, 25000);
+}, 35000);
 
 it('requires approval and generates from the selected homework in the existing read-only Canvas tab', async () => {
   const browser = await launchBrowser();

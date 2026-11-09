@@ -227,7 +227,7 @@ def test_real_isolated_browser_observes_clicks_reads_and_exports_without_mutatio
         server.shutdown();server.server_close()
 
 
-def test_rust_cursor_tracks_only_model_pointer_and_preserves_native_cursor():
+def test_gold_cursor_tracks_only_model_pointer_and_preserves_native_cursor():
     from playwright.sync_api import sync_playwright
     with sync_playwright() as driver:
         browser = driver.chromium.launch(headless=True, executable_path=agent.browser_executable())
@@ -244,7 +244,7 @@ def test_rust_cursor_tracks_only_model_pointer_and_preserves_native_cursor():
             page.goto('http://127.0.0.1:8086/')
             cursor = page.locator('#gradient-automation-cursor')
             assert cursor.get_attribute('aria-hidden') == 'true'
-            assert cursor.locator('path').get_attribute('fill') == '#B7410E'
+            assert cursor.locator('path').get_attribute('fill') == '#FFC72C'
             assert cursor.evaluate('(node) => getComputedStyle(node).pointerEvents') == 'none'
             assert page.evaluate('getComputedStyle(document.body).cursor') == 'auto'
             assert not cursor.is_visible()
@@ -265,7 +265,7 @@ def test_rust_cursor_tracks_only_model_pointer_and_preserves_native_cursor():
             page.wait_for_url('**/next')
             cursor.wait_for(state='visible')
             assert cursor.count() == 1
-            assert cursor.locator('path').get_attribute('fill') == '#B7410E'
+            assert cursor.locator('path').get_attribute('fill') == '#FFC72C'
             assert page.evaluate('getComputedStyle(document.body).cursor') == 'auto'
             model_position = cursor.evaluate('(node) => node.style.transform')
             page.mouse.move(350, 280)

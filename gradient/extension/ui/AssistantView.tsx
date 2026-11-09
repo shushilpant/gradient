@@ -177,9 +177,14 @@ export function packetMarkdown(packet: StudyPacket): string {
   ].filter(Boolean).join('\n\n') + '\n';
 }
 function FinalAssignment({packet}: {packet: StudyPacket}) {
-  return <section aria-label="Final LaTeX assignment">
+  return <section aria-label="Final assignment">
     <article class="ja-result"><div class="ja-result-body">
-      <pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}><code>{packet.finalLatex || 'Regenerate this assignment to receive the final LaTeX output.'}</code></pre>
+      <h2>{packet.title}</h2>
+      {packet.sampleMarkdown ? <GroundedMarkdown text={packet.sampleMarkdown} sources={packet.sources}/> : <p>Regenerate this assignment to receive its readable preview.</p>}
+      {(packet.renderedVisuals ?? []).map(figure => <figure class="ja-visual ja-rendered-visual" key={figure.id}>
+        <img src={`data:image/png;base64,${figure.data}`} alt={figure.caption || figure.title}/>
+        <figcaption>{figure.caption || figure.title}</figcaption>
+      </figure>)}
     </div></article>
     {packet.finalLatex && <div class="ja-export">
       <button class="ja-btn" onClick={() => download(packet.finalLatex!, `${filename(packet.title)}.tex`, 'application/x-tex;charset=utf-8')}><Icon name="download" size={16}/>Download LaTeX</button>
@@ -319,7 +324,7 @@ export function AssistantView({ snapshot, initialCourseId, initialAssignmentId, 
   };
   const exportHtml = () => {
     if (!packet || !resultRef.current) return;
-    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(packet.title)}</title><style>body{margin:0;background:#faf8f5;font-family:Figtree,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:30px 15px}main{max-width:850px;margin:auto}${ASSISTANT_STYLES}.ja{border:0}.ja-result{border:0}.ja-result-header{padding:30px}.ja-result-body{padding:30px}@media print{body{background:white;padding:0}.ja{border:0}.ja-result{overflow:visible}.ja-result-header,.ja-result-body{padding:15px}.ja-visual{break-inside:avoid}a{overflow-wrap:anywhere}}</style></head><body><main class="ja"><article class="ja-result">${resultRef.current.innerHTML}</article></main></body></html>`, `${filename(packet.title)}.html`, 'text/html;charset=utf-8');
+    download(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(packet.title)}</title><style>body{margin:0;background:#faf8f1;font-family:Figtree,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;padding:30px 15px}main{max-width:850px;margin:auto}${ASSISTANT_STYLES}.ja{border:0}.ja-result{border:0}.ja-result-header{padding:30px}.ja-result-body{padding:30px}@media print{body{background:white;padding:0}.ja{border:0}.ja-result{overflow:visible}.ja-result-header,.ja-result-body{padding:15px}.ja-visual{break-inside:avoid}a{overflow-wrap:anywhere}}</style></head><body><main class="ja"><article class="ja-result">${resultRef.current.innerHTML}</article></main></body></html>`, `${filename(packet.title)}.html`, 'text/html;charset=utf-8');
   };
 
   return <><style>{ASSISTANT_STYLES}</style><section class="ja" aria-label="Local AI study assistant">

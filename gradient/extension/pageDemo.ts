@@ -14,6 +14,7 @@ import {
 
 const LOCAL_CANVAS_ORIGIN = /^http:\/\/(?:127\.0\.0\.1|localhost):8080$/;
 const STEP_DELAY = 1500;
+const RESULT_DELAY = 10_000;
 
 interface DemoTarget {
   courseId: string;
@@ -76,8 +77,8 @@ export function resumePageDemo(): Promise<void> {
     if (location.pathname.replace(/\/+$/, '') !== assignmentPath) {
       throw new Error('Canvas did not reach the seeded time-shift assignment. Start the demo again.');
     }
-    updatePageAutomation(run, 'replaying', 'Viewing the homework instructions');
-    await waitPageAutomation(STEP_DELAY, signal);
+    updatePageAutomation(run, 'replaying', 'Preparing the saved demo assignment…');
+    await waitPageAutomation(RESULT_DELAY, signal);
     const packet = packetSchema.parse(savedDemo.packet);
     packet.sources = packet.sources.map(source => {
       const path = /^\/courses\/\d+\/assignments\/\d+$/.test(source.url)

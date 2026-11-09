@@ -2,6 +2,12 @@
 
 All commands below run from `gradient/`. The presentation uses **synthetic student data**. The presentation automation plays a fixed Canvas sequence and shows a clearly labeled saved assignment. Live model runs are a separate option.
 
+## Prepared Automation demo
+
+Only **Automation** has a presentation demo button. **Demo Automation** loads the saved workflow sequence, assignment and computed plot immediately, even while Canvas is connecting. **Run saved Canvas demo** performs the same-tab replay when the seeded local course is available, with the gold cursor and 10-second final pause. **Back to my workspace** restores the live module; selecting the demo button again resets the prepared instance.
+
+Academics, AI Workspace and Research use their regular live views.
+
 ## Reliable core preview
 
 ```sh
@@ -17,7 +23,7 @@ The preview is localhost-only and says **Synthetic demo**. Alex has algorithms, 
 
 To freeze fixture dates, pass `--date 2026-11-09`. This embeds that day into the page and produces identical deadlines in the preview and served brief APIs. It freezes synthetic data, not the browser's wall clock or timezone. Use today's default for a presentation so due labels and study eligibility reflect the current clock. Dates render in the user's timezone; UTC 23:59 is 17:59 Chicago standard time. Browser tests can additionally fix their clock.
 
-The three new assignment briefs, rubrics and graph notes have actual readable local URLs. Existing posted grades use the same deterministic grade engine as the extension. No coursework comes from a university account. The preview bundle and its sample corpus are excluded from the install archive.
+The three new assignment briefs, rubrics and graph notes have actual readable local URLs. Existing posted grades use the same deterministic grade engine as the extension. No coursework comes from a university account. The preview bundle is excluded from the install archive. The explicitly selected presentation demos ship their synthetic examples with the extension.
 
 1. In **Academics → Overview**, show three courses and overlapping tasks. Open **Coursework**, choose CS-101, inspect Graph traversal planning and its rubric.
 2. Move a what-if score, enter available study hours and build an allocation. Explain that weighted grades and drop rules are deterministic; study-hour/GPA ranges depend on explicit learning assumptions. Download deadlines as `.ics`.
@@ -54,7 +60,7 @@ python3 sandbox/canvas_local/setup.py status
 
 Use [the Canvas replica](http://127.0.0.1:8080/login/canvas) and the local student credentials from `sandbox/canvas_local/.runtime/credentials.json`; do not print or place them in pitch slides. The seed provides actual synthetic homework and its guide. Full details and staging/import instructions are in [LOCAL_CANVAS.md](LOCAL_CANVAS.md).
 
-For the presentation, load the rebuilt extension in your signed-in local Canvas tab. In **Automation**, select **Demo automation**, directly below **Start automatic workflow**. It visits the seeded **GRADIENT-SIGNALS** homework on time shifts in that same tab, with about 1.5 seconds between actions, then shows the saved reference assignment in Gradient. The rust cursor marks the scripted actions. The replay needs no model, local assistant backend, or public web research. Rehearse once before the presentation to verify the local replica and Chrome are ready. The saved result lives in [`backend/demo_automation.json`](../backend/demo_automation.json).
+For the presentation, load the rebuilt extension in your signed-in local Canvas tab. In **Automation**, select **Demo automation**, directly below **Start automatic workflow**. It visits the seeded **GRADIENT-SIGNALS** homework on time shifts in that same tab, with about 1.5 seconds between actions and a 10-second pause before showing the saved reference assignment in Gradient. The rust cursor marks the scripted actions. The replay needs no model, local assistant backend, or public web research. Rehearse once before the presentation to verify the local replica and Chrome are ready. The saved result lives in [`backend/demo_automation.json`](../backend/demo_automation.json).
 
 For a live run, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and select **Start automatic workflow**. The workflow uses the current signed-in local Canvas tab. It follows observed same-origin coursework links and stops on unsupported assessment pages. Inspect its result and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
 
