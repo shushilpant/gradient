@@ -1,6 +1,7 @@
 {
   "label": "Synthetic hackathon student; no live Canvas account",
   "student": { "id": "preview", "name": "Alex Chen", "shortName": "Alex" },
+  "submittedAssignments": { "99001": ["1005"] },
   "courses": [
     { "id": "99001", "topics": "Learning objectives: asymptotic analysis, graph algorithms, breadth-first search, algorithm design, experimental evaluation. Reference examples and conceptual explanations are permitted for the synthetic homework below. All submissions must be student-authored." },
     { "id": "99002", "topics": "Learning objectives: discrete mathematics, probability, combinatorics, induction, mathematical proof. The syllabus restriction on AI-written proof submissions remains in effect." },

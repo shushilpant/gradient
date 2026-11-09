@@ -89,65 +89,26 @@ export const DEFAULT_TASK_PRIORS: Record<string, TaskTypePrior> = {
   },
 };
 
-/**
- * Infer task type from assignment name, submission types, and group name.
- */
+function namedTaskType(name: string): string | undefined {
+  const words = name.replace(/_/g, ' ');
+  if (/\bquiz(?:zes|\d+)?\b/i.test(words)) return 'quiz';
+  if (/\b(?:exams?|examinations?|midterms?|tests?)\d*\b/i.test(words)) return 'exam';
+  if (/\b(?:essays?|papers?|reports?|critiques?)\b/i.test(words)) return 'essay';
+  if (/\b(?:projects?|proposals?|milestones?|presentations?)\b/i.test(words)) return 'project';
+  if (/\b(?:problem[\s-]+sets?|pset(?:s|\d+)?)\b/i.test(words)) return 'problem_set';
+  if (/\b(?:hw\d*|homework|labs?|laboratory|laboratories|exercises?)\b/i.test(words)) return 'homework';
+  return undefined;
+}
+
+/** Prefer a specific title before falling back to Canvas's quiz type or group name. */
 export function inferTaskType(
   assignmentName: string,
   submissionTypes?: readonly string[],
   groupName?: string
 ): string {
-  const combined = `${assignmentName} ${groupName ?? ''}`.toLowerCase();
-
-  if (combined.includes('quiz')) {
-    return 'quiz';
-  }
-  if (
-    combined.includes('exam') ||
-    combined.includes('midterm') ||
-    combined.includes('final exam') ||
-    combined.includes('test')
-  ) {
-    return 'exam';
-  }
-  if (
-    combined.includes('essay') ||
-    combined.includes('paper') ||
-    combined.includes('report') ||
-    combined.includes('critique')
-  ) {
-    return 'essay';
-  }
-  if (
-    combined.includes('project') ||
-    combined.includes('proposal') ||
-    combined.includes('milestone') ||
-    combined.includes('presentation')
-  ) {
-    return 'project';
-  }
-  if (
-    combined.includes('problem set') ||
-    combined.includes('pset') ||
-    combined.includes('problem-set')
-  ) {
-    return 'problem_set';
-  }
-  if (
-    combined.includes('hw') ||
-    combined.includes('homework') ||
-    combined.includes('lab') ||
-    combined.includes('exercise')
-  ) {
-    return 'homework';
-  }
-
-  // Fallback to submission types if available
-  if (submissionTypes?.includes('online_quiz')) {
-    return 'quiz';
-  }
-
-  return 'default';
+  return namedTaskType(assignmentName)
+    ?? (submissionTypes?.includes('online_quiz') ? 'quiz' : namedTaskType(groupName ?? ''))
+    ?? 'default';
 }
 
 /**

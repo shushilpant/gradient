@@ -94,23 +94,25 @@ export class CanvasAdapter implements LMSAdapter {
 
     // Normalise grading scheme if provided by Canvas
     let gradingScheme: Array<{ minPct: number; letter: string }> = DEFAULT_GRADING_SCHEME.map((item) => ({ ...item }));
-    const rawScheme = data.grading_standard ?? data.grading_scheme;
+    const rawScheme = Array.isArray(data.grading_standard) && data.grading_standard.length
+      ? data.grading_standard : data.grading_scheme;
+    const hasCanvasScheme = Array.isArray(rawScheme) && rawScheme.length > 0;
 
-    if (Array.isArray(rawScheme) && rawScheme.length > 0) {
+    if (hasCanvasScheme) {
       gradingScheme = rawScheme.map((entry) => {
         let letter = 'F';
-        let minPct = 0;
+        let value = 0;
 
         if (Array.isArray(entry) && entry.length >= 2) {
           letter = String(entry[0]);
-          const val = Number(entry[1]);
-          minPct = val <= 1.0 ? val * 100 : val;
+          value = Number(entry[1]);
         } else if (typeof entry === 'object' && entry !== null) {
           letter = String(entry.name ?? 'F');
-          const val = Number(entry.value ?? 0);
-          minPct = val <= 1.0 ? val * 100 : val;
+          value = Number(entry.value ?? 0);
         }
 
+        // Canvas fractions can gain floating-point noise when converted to percentages.
+        const minPct = value <= 1 ? Number((value * 100).toPrecision(15)) : value;
         return { letter, minPct };
       });
     }
@@ -121,6 +123,7 @@ export class CanvasAdapter implements LMSAdapter {
       creditHours,
       applyGroupWeights: Boolean(data.apply_assignment_group_weights),
       gradingScheme,
+      gradingSchemeSource: hasCanvasScheme ? 'canvas' : 'default',
       gradePointScale: DEFAULT_GRADE_POINT_SCALE,
     };
 

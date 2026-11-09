@@ -6,7 +6,7 @@ All commands below run from `offcanvas/`. The presentation uses **synthetic stud
 
 Every module has a **Demo** button under the tabs. Each one plays a staged run on the sample courses and then shows a real result:
 
-- **Academics** rebuilds the grades, ranks the top three priorities and splits eight study hours.
+- **Academics** rebuilds the grades, ranks the top three priorities and plans up to eight hours based on assignment type, deadline and grade impact.
 - **AI Workspace** builds a saved **CE 240 · Homework 2 - Trapezoidal Piecewise-Linear Waveforms** study packet with **Study** mode and **Go all in** selected. Both **Demo AI Workspace** and **Play full tour** show **Build my study packet**, an illustrative trapezoidal waveform with labeled breakpoints and slopes, piecewise and ramp-function explanations, and practice checks.
 - **Automation** loads the saved workflow sequence, assignment and computed plot.
 - **Research** reads interests from the coursework and lists real programmes, each linking to its website. The match scores are illustrative and labelled as such.
@@ -32,8 +32,8 @@ To freeze fixture dates, pass `--date 2026-11-09`. This embeds that day into the
 
 The three new assignment briefs, rubrics and graph notes have actual readable local URLs. Existing posted grades use the same deterministic grade engine as the extension. No coursework comes from a university account. The preview bundle is excluded from the install archive. The explicitly selected presentation demos ship their synthetic examples with the extension.
 
-1. In **Academics → Overview**, show three courses and overlapping tasks. Open **Coursework**, choose CS-101, inspect Graph traversal planning and its rubric.
-2. Move a what-if score, enter available study hours and build an allocation. Explain that weighted grades and drop rules are deterministic; study-hour/GPA ranges depend on explicit learning assumptions. Download deadlines as `.ics`.
+1. In **Academics → Overview**, point to the priority briefing. Open **Panic button** and choose **30 min** for a short block on Graph traversal planning. Switch to **2 hrs** to see a 90-minute first block. Open the assignment and expand **Marking criteria and feedback** to show the personal rubric checklist.
+2. Click **Grade target** from the assignment and choose **B+**. Graph traversal needs 82% to reach that target on the current grade using the demo's default scale. Build the eight-hour study plan to show two hours for each homework and a 30-minute starter for the undated final. The remaining 3.5 hours stay free. Use **Add first study block to calendar** to download a timed `.ics` event.
 3. Open **Grade Lab** to compare an effort scenario and inspect counted/dropped work. Do not call the modeled interval a guaranteed grade prediction.
 4. Use the assignment's AI action to carry its course and rubric into **AI Workspace**. Show the requirements/source context even if generation is unavailable.
 5. In **Research**, inspect coursework-derived interests, evidence and editable topics. Read available course materials to enrich the shared context, then search if network and the local service are ready. Results are programme-page evidence, never assumed-open applications.
@@ -73,7 +73,9 @@ Watch the highlighted cursor open the course, click **Assignments**, open the ho
 
 In **Academics → Overview → Panic button**, choose **Automate assignment** to review the top eligible homework in Automation. In the signed-in local replica, approve the read-only workflow and select **Start automatic workflow**. From your institution’s Canvas tab, stage and import the local copy first, then select the assignment in the replica.
 
-**Demo panic automation** is available in Panic mode and under **Present → Demo Academics**. It uses the saved time-shift assignment and graph. A seeded local Canvas tab shows the cursor navigating the real pages. Otherwise the demo shows a labeled synthetic replay in the workspace using bundled data.
+**Demo panic automation** is available in Panic mode and under **Present → Demo Academics**. Open the signed-in local Canvas replica with the imported **CE 240 H001** course first. The demo selects **Homework 1 - Amplitude Spectrum Derivation**, clicks the main Canvas course and assignment links, and scrolls the instructions before showing the saved derivation and spectrum graph. If the course is unavailable, the button shows setup guidance. The graph labels its illustrative duty cycle because numeric signal parameters were absent from the available notes.
+
+The dedicated **Automation → Demo automation** runs the separate OFFCANVAS-SIGNALS time-shift example. Starting it clears any previous Panic answer immediately, including when the local demo setup is unavailable.
 
 For a live run, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and select **Start automatic workflow**. The workflow uses the current signed-in local Canvas tab. It follows observed same-origin coursework links and stops on unsupported assessment pages. Inspect its result and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
 
@@ -99,7 +101,7 @@ Stop the preview with Ctrl+C. The launcher stops a backend it started itself; an
 | Time | Screen and message |
 | --- | --- |
 | 0–15 s | **Preview page hero:** “Students already have everything in Canvas, but grades, deadlines, rules and opportunities are scattered. OffCanvas pulls them into one panel.” |
-| 15–40 s | **Academics overview:** show the week chart, course standings and **AI rules by course**. “It quotes each syllabus's AI policy, so students know the rules before they ask for help.” |
-| 40–95 s | Press **Play the one-minute tour** and narrate each result as it lands: rebuilt grades that match Canvas, the cited study guide, the automation sequence and the research matches with real programme links. |
+| 15–40 s | **Academics overview:** show Alex's priority briefing. In **Panic button**, switch from **30 min** to **2 hrs** to show how available time changes the first block. |
+| 40–95 s | **Coursework:** open Graph traversal planning, check a rubric item, then select **B+** in the assignment grade calculator. Show the syllabus AI rule or open the assignment's source context if time permits. |
 | 95–125 s | **See it refuse a quiz:** open the assessment page. “On quizzes and timed exams, OffCanvas stays off. It never submits anything.” |
 | 125–150 s | **How it works:** “Canvas session in, local AI on your laptop, nothing leaves the machine by default. Install it with Load unpacked today.” If time allows, show a real Autopilot run with Ollama. |

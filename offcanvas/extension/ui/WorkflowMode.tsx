@@ -2,7 +2,7 @@ import { homeworkAutopilotBlock } from '../homeworkAutopilot.js';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { AssistantHealth, AssistantSettings } from '../assistantTypes.js';
 import { getAssistantHealth, loadAssistantSettings } from '../assistantClient.js';
-import { canAutomateCurrentPage, getPageAutomation, stopPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
+import { canAutomateCurrentPage, clearPageAutomationResult, getPageAutomation, stopPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
 import { startPageAutopilot } from '../pageAutopilot.js';
 import { PAGE_DEMO_SEED_MESSAGE, startPageDemo } from '../pageDemo.js';
 import { GroundedMarkdown } from './AssistantView.js';
@@ -10,6 +10,7 @@ import type { CanvasSnapshot } from '../liveCanvas.js';
 import { ComputedVisuals, WorkEvidence } from './WorkEvidence.js';
 import { ASSISTANT_STYLES } from './assistantStyles.js';
 import { Icon } from './Icons.js';
+import { DemoAssessmentBanner } from './DemoAssessment.js';
 import { WORKFLOW_STYLES } from './workflowStyles.js';
 
 export type WorkflowMode = 'manual' | 'auto';
@@ -94,6 +95,7 @@ export function AutoWorkflow({snapshot,preview=false,panicTarget}:{snapshot?:Can
   useEffect(()=>{if(session?.status==='complete')activity.current?.scrollIntoView({block:'start',behavior:'smooth'});},[session?.id,session?.status]);
   const start=(kind:'workflow'|'demo')=>{
     if(active)return;
+    clearPageAutomationResult();
     setError('');
     try{
       if(kind==='demo'){
@@ -138,8 +140,9 @@ export function AutoWorkflow({snapshot,preview=false,panicTarget}:{snapshot?:Can
     {error&&<div class="g-notice" role="alert">{error}{!localCanvas&&<> <a href="http://127.0.0.1:8080/">Open local Canvas</a></>}</div>}
     {session&&<section class="wf-session" ref={activity} aria-label="Browser agent activity"><div class="wf-session-heading"><h2>{session.status==='complete'?(session.demo?(session.packet?.sampleMarkdown?'Saved demo result ready':'Canvas demo complete'):'Reference sample ready'):session.status==='cancelled'?'Run stopped':session.status==='error'?'Run needs attention':session.demo?'Playing saved demo':'Agent at work'}</h2><span class={`wf-state ${session.status}`}>{session.status}</span></div><p class="wf-session-label" role="status" aria-live="polite">{session.label||session.stage}</p>{session.error&&<div class="g-notice" role="alert">{session.error}</div>}
       <p class="g-small">{active ? 'Automation is running in this Canvas tab.' : 'Canvas tab run finished.'}</p>
+      {session.demo && session.status === 'complete' && <DemoAssessmentBanner/>}
       <ol class="wf-step-list">{session.steps.map((step,index)=><li key={`${step.number}-${index}`}><span class="wf-step-number">{String(step.number).padStart(2,'0')}</span><div><strong>{step.action==='open'?'Open resource':step.action==='observe'?'Inspect page':step.action==='read'?'Read instructions':step.action==='scroll'?'Explore page':session.demo?'Show saved assignment':'Prepare sample'}</strong><p>{step.reason}</p><small>{step.url}</small></div></li>)}</ol>
     </section>}
-    {session?.packet&&<section class="ja wf-result" aria-label="Automatic reference sample"><article class="ja-result" ref={result}><header class="ja-result-header"><h2>{session.packet.title}</h2><p>{session.packet.summary}</p></header><div class="ja-result-body"><GroundedMarkdown text={session.packet.markdown} sources={session.packet.sources}/><ComputedVisuals packet={session.packet}/><WorkEvidence packet={session.packet}/>{session.packet.sampleMarkdown&&<section class="ja-sample"><h3>{session.demo?'Saved reference assignment':'AI-generated reference material'}</h3>{!session.demo&&<p class="ja-note">Review the sources and your course’s assistance policy. This is reference material for learning.</p>}<GroundedMarkdown text={session.packet.sampleMarkdown} sources={session.packet.sources}/></section>}{session.packet.warnings.map((warning,index)=><p class="ja-note" key={index}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3><ol>{session.packet.sources.map(source=><li key={source.id}><strong>{source.title}</strong><p>{source.url}</p>{source.excerpt&&<blockquote>{source.excerpt}</blockquote>}</li>)}</ol></section></div></article><button class="g-secondary" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated sample</button></section>}
+    {session?.status==='complete'&&session.packet&&<section class="ja wf-result" aria-label="Automatic reference sample"><article class="ja-result" ref={result}><header class="ja-result-header"><h2>{session.packet.title}</h2><p>{session.packet.summary}</p></header><div class="ja-result-body"><GroundedMarkdown text={session.packet.markdown} sources={session.packet.sources}/><ComputedVisuals packet={session.packet}/><WorkEvidence packet={session.packet}/>{session.packet.sampleMarkdown&&<section class="ja-sample"><h3>{session.demo?'Saved reference assignment':'AI-generated reference material'}</h3>{!session.demo&&<p class="ja-note">Review the sources and your course’s assistance policy. This is reference material for learning.</p>}<GroundedMarkdown text={session.packet.sampleMarkdown} sources={session.packet.sources}/></section>}{session.packet.warnings.map((warning,index)=><p class="ja-note" key={index}>{warning}</p>)}<section class="ja-sources"><h3>Sources</h3><ol>{session.packet.sources.map(source=><li key={source.id}><strong>{source.title}</strong><p>{source.url}</p>{source.excerpt&&<blockquote>{source.excerpt}</blockquote>}</li>)}</ol></section></div></article><button class="g-secondary" onClick={exportHtml}><Icon name="download" size={16}/>Export illustrated sample</button></section>}
   </section>;
 }

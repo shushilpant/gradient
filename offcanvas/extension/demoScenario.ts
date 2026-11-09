@@ -15,6 +15,7 @@ export function createDemoSnapshot(origin: string, now = new Date()): CanvasSnap
     origin, syncedAt: now.toISOString(), user: { ...scenario.student }, issues: [],
     courses: rawCourses.map((raw, index) => {
       const id = String(raw.course.id);
+      const submitted = new Set((scenario.submittedAssignments as Record<string, string[]>)[id]);
       const additions = scenario.assignments.filter(item => item.courseId === id).map(item => ({
         id: item.id, course_id: id, name: item.name, assignment_group_id: item.groupId, points_possible: item.points,
         due_at: new Date(day + item.daysFromStart * 86400000 + 23 * 3600000 + 59 * 60000).toISOString(),
@@ -25,7 +26,11 @@ export function createDemoSnapshot(origin: string, now = new Date()): CanvasSnap
       const input = {
         course: adapter.parseCourse(raw.course, index === 1 ? 3 : 4),
         groups: adapter.parseAssignmentGroups(raw.assignment_groups), assignments: parsedAssignments,
-        submissions: adapter.parseSubmissions(raw.submissions), priorityWeight: 1,
+        submissions: adapter.parseSubmissions([
+          ...raw.submissions.filter(submission => !submitted.has(String(submission.assignment_id))),
+          ...Array.from(submitted, assignmentId => ({ assignment_id: assignmentId, workflow_state: 'submitted' })),
+        ]),
+        priorityWeight: 1,
         loggedHours: (id === '99001' ? { '1008': 3.5 } : {}) as Record<string, number>,
       };
       const resources = [...materials.filter(item => item.courseId === id), ...scenario.materials.filter(item => item.courseId === id)];

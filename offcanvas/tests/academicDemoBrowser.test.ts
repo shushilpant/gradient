@@ -21,11 +21,14 @@ it('shows every allocation in the eight-hour demo and reconciles the total', asy
     const rows = await split.locator('.g-demo-row').evaluateAll(elements => elements.map(element => ({
       name: element.querySelector('strong')?.textContent ?? '',
       hours: parseFloat(element.querySelector('.g-due')?.textContent ?? ''),
+      reason: element.querySelector('small')?.textContent ?? '',
     })));
     expect(rows.length).toBeGreaterThanOrEqual(5);
     const exam = rows.find(row => row.name === 'Lecture Exam 1');
     const quiz = rows.find(row => row.name === 'Quiz 1: Biomolecules');
     expect(exam?.hours).toBeGreaterThan(quiz?.hours ?? 0);
+    expect(exam?.reason).toContain('Full credit adds 45 percentage points to the final grade');
+    expect(quiz?.reason).toContain('Full credit adds 10 percentage points to the final grade');
     expect(Math.max(...rows.map(row => row.hours))).toBeGreaterThan(Math.min(...rows.map(row => row.hours)));
     const allocated = rows.reduce((sum, row) => sum + row.hours, 0);
     expect(allocated).toBe(8);

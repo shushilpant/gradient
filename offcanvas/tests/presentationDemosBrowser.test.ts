@@ -25,43 +25,31 @@ it('directs Automation demos to the actual local Canvas replica',async()=>{
  }finally{await browser.close();}
 },30000);
 
-it('runs the saved Panic automation from Demo Academics without Canvas or model requests', async () => {
+it('shows main Canvas setup guidance when Panic automation cannot start', async () => {
   const browser = await launchBrowser();
   try {
-    const { page } = await mockCanvas(browser);
-    await waitForLoaded(page);
-    const startingUrl = page.url();
-    const requests: string[] = [];
-    await page.route('**/*', route => {
-      requests.push(route.request().url());
-      return route.abort();
-    });
-
-    await page.getByRole('button', { name: 'Present', exact: true }).click();
-    await page.getByRole('button', { name: 'Demo Academics', exact: true }).click();
-    const setup = page.getByRole('region', { name: 'Panic automation demo', exact: true });
-    const start = setup.getByRole('button', { name: 'Demo panic automation', exact: true });
-    const result = page.getByRole('region', { name: 'Saved panic reference', exact: true });
-    await start.click();
-    const replay = page.getByRole('region', { name: 'Saved Canvas replay', exact: true });
-    await replay.getByRole('status').filter({ hasText: 'Opening OFFCANVAS-SIGNALS' }).waitFor();
-    await page.getByRole('button', { name: 'Stop demo', exact: true }).click();
-    expect(await result.count()).toBe(0);
-
-    await start.click();
-    await result.waitFor({ timeout: 15000 });
-    expect(await result.getByRole('heading', { name: 'Saved reference assignment', exact: true }).isVisible()).toBe(true);
-    expect(await result.innerText()).toContain('Homework: Time-shift response');
-    expect(await result.innerText()).toContain('1/e');
-    const plot = result.getByRole('img', { name: /response is zero through t = 2/ });
-    await expect.poll(() => plot.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 100)).toBe(true);
-    expect(page.url()).toBe(startingUrl);
-    expect(page.context().pages()).toEqual([page]);
-    expect(requests).toEqual([]);
-  } finally {
-    await browser.close();
-  }
-}, 25000);
+    for (const origin of ['https://canvas.instructure.com', 'http://127.0.0.1:8080']) {
+      const { page } = await mockCanvas(browser, { origin });
+      try {
+        await waitForLoaded(page);
+        const startingUrl = page.url();
+        await page.getByRole('button', { name: 'Present', exact: true }).click();
+        await page.getByRole('button', { name: 'Demo Academics', exact: true }).click();
+        const setup = page.getByRole('region', { name: 'Panic automation demo', exact: true });
+        await setup.getByRole('button', { name: 'Demo panic automation', exact: true }).click();
+        const error = setup.getByRole('alert');
+        await error.waitFor();
+        expect(await error.innerText()).toContain(origin.startsWith('https:')
+          ? 'Open the signed-in local Canvas replica' : 'Import CE 240 Homework 1');
+        expect(await setup.getByRole('link', { name: 'Open local Canvas' }).count()).toBe(origin.startsWith('https:') ? 1 : 0);
+        expect(await page.getByRole('region', { name: 'Saved Canvas replay', exact: true }).count()).toBe(0);
+        expect(await page.getByRole('region', { name: 'Saved panic reference', exact: true }).count()).toBe(0);
+        expect(await page.locator('#offcanvas-automation-cursor').count()).toBe(0);
+        expect(page.url()).toBe(startingUrl);
+      } finally { await page.close(); }
+    }
+  } finally { await browser.close(); }
+}, 20000);
 
 const STUDY_ASSIGNMENT='Homework 2 - Trapezoidal Piecewise-Linear Waveforms';
 const STUDY_TITLE=`CE 240 · ${STUDY_ASSIGNMENT} study packet`;

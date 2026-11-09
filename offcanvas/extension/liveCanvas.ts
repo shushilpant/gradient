@@ -356,7 +356,8 @@ export async function loadCanvasSnapshot(options: LoadCanvasOptions = {}): Promi
         return { section, status: failure ? count > 0 ? 'module-links' : 'unavailable' : 'direct', count, reason };
       });
       let courseForAdapter = raw;
-      if (Number(raw.grading_standard_id) > 0 && !Array.isArray(raw.grading_standard) && !Array.isArray(raw.grading_scheme)) {
+      const hasInlineGradingScheme = [raw.grading_standard, raw.grading_scheme].some(scheme => Array.isArray(scheme) && scheme.length > 0);
+      if (Number(raw.grading_standard_id) > 0 && !hasInlineGradingScheme) {
         try {
           const standard = (await get(`${prefix}/grading_standards/${raw.grading_standard_id}`)).data;
           if (Array.isArray(standard?.grading_scheme)) courseForAdapter = { ...raw, grading_scheme: standard.grading_scheme };

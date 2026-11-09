@@ -4,10 +4,11 @@ import savedStudyPacket from '../fixtures/ce240_homework2_study.json';
 import { getAcademicContext } from '../academicContext.js';
 import { syntheticCanvasTime } from '../canvasTime.js';
 import { gradeInsight, markScale, type GradeInsight } from '../gradeInsight.js';
-import { allocateStudySplit } from '../studySplit.js';
+import { allocateStudySplit, type StudySplitCourse, type StudySplitItem } from '../studySplit.js';
 import { getAssignmentPriorities } from '../assignmentPriorities.js';
+import { relativeDue } from '../plainLanguage.js';
 import { packetSchema } from '../assistantClient.js';
-import type { CanvasCourseSnapshot, CanvasLiveAssignment, CanvasSnapshot } from '../liveCanvas.js';
+import type { CanvasCourseSnapshot, CanvasSnapshot } from '../liveCanvas.js';
 import { AutomationPresentationDemo } from './AutomationPresentationDemo.js';
 import { canAutomateCurrentPage, getPageAutomation } from '../pageAutomation.js';
 import { getPageDemoTarget, startPageDemo } from '../pageDemo.js';
@@ -29,13 +30,6 @@ const STUDY_DEMO = {
 const studyPacket = packetSchema.parse(savedStudyPacket);
 const PLAN_HOURS = 8;
 
-function dueText(a: CanvasLiveAssignment): string {
-  if (!a.dueAt) return 'No due date';
-  const days = Math.round((new Date(a.dueAt).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
-  if (days < 0) return 'Past due';
-  if (days === 0) return 'Due today';
-  return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
-}
 function clock(ms: number): string { return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${Math.floor(ms / 100) % 10}`; }
 
 function TimeOnCanvas({ snapshot, grades }: { snapshot: CanvasSnapshot; grades: { course: CanvasCourseSnapshot; insight: GradeInsight }[] }) {
@@ -133,45 +127,46 @@ export function StagedRun({ label, steps, children, onDone, onRestart, scrollRes
   </>;
 }
 
-export function AcademicsDemo({ snapshot, onDone, onReplay, onRestart }: {
+export function AcademicsDemo({ snapshot, studyCourses, onDone, onReplay, onRestart }: {
   snapshot: CanvasSnapshot;
+  studyCourses: StudySplitCourse[];
   onDone?: () => void;
-  onReplay?: () => boolean;
+  onReplay?: () => void;
   onRestart?: () => void;
 }) {
   const [academicsComplete, setAcademicsComplete] = useState(false);
-  const [panicRunning, setPanicRunning] = useState(false);
+  const [planRun, setPlanRun] = useState(0);
   const doneRef = useRef(onDone);
   doneRef.current = onDone;
   useEffect(() => {
-    if (academicsComplete && !panicRunning) doneRef.current?.();
-  }, [academicsComplete, panicRunning]);
+    if (academicsComplete) doneRef.current?.();
+  }, [academicsComplete]);
   const courses = snapshot.courses;
   const assignments = courses.flatMap(course => course.assignments.map(assignment => ({ course, assignment })));
   const materials = courses.reduce((n, course) => n + course.resources.length, 0);
   const result = useMemo(() => {
     const grades = courses.map(course => ({ course, insight: gradeInsight(course) }));
-    const now = Date.now();
-    const priorities = getAssignmentPriorities(courses).filter(task => task.deadline > now).slice(0, 3);
-    let plan: { id: string; name: string; code: string; hours: number; reason: string }[] = [];
+    const now = new Date();
+    const priorities = getAssignmentPriorities(courses).filter(task => task.deadline > now.getTime()).slice(0, 3);
+    let plan: StudySplitItem[] = [];
     let planError = false;
     try {
-      plan = allocateStudySplit(courses, PLAN_HOURS, new Date());
+      plan = allocateStudySplit(studyCourses, PLAN_HOURS, now);
     } catch { planError = true; }
     const allocated = plan.reduce((total, item) => total + item.hours, 0);
-    return { grades, priorities, plan, planError, allocated, unused: Math.max(0, PLAN_HOURS - allocated) };
-  }, [snapshot]);
+    return { grades, priorities, now, plan, planError, allocated, unused: Math.max(0, PLAN_HOURS - allocated) };
+  }, [snapshot, studyCourses, planRun]);
   const steps: DemoStep[] = [
     { title: 'Connecting to Canvas', detail: `Signed in as ${snapshot.user.shortName || snapshot.user.name} · read-only`, ms: 1100, ticks: ['Checking your session…', 'Session verified · read-only access'] },
     { title: 'Syncing your courses', detail: `${courses.length} courses · ${assignments.length} assignments · ${materials} materials`, ms: 2100, ticks: courses.map((c, i) => `Reading ${c.code} (${i + 1} of ${courses.length})…`) },
     { title: 'Rebuilding every grade', detail: 'Weights, drop rules and missing work applied', ms: 1500, ticks: ['Applying assignment-group weights…', 'Checking drop rules…', 'Comparing with Canvas totals…'] },
     { title: 'Ranking what to do next', detail: 'Final course grade impact first, then the deadline', ms: 1300, ticks: ['Estimating grade impact…', 'Comparing deadlines…'] },
-    { title: 'Planning your study time', detail: `Splitting ${PLAN_HOURS} hours by deadline and grade weight`, ms: 1800, ticks: ['Weighing deadlines…', 'Checking grade weights and drop rules…', 'Estimating what each hour changes…', 'Choosing the split…'] },
+    { title: 'Planning your study time', detail: `Splitting up to ${PLAN_HOURS} hours by effort, deadlines and grade impact`, ms: 1800, ticks: ['Checking how much time fits before each deadline…', 'Checking grade weights and drop rules…', 'Estimating time by assignment type…', 'Choosing the split…'] },
   ];
   return <>
-    <PanicAutomationDemo onReplay={onReplay} onStart={() => { onRestart?.(); setPanicRunning(true); }} onDone={() => setPanicRunning(false)}/>
+    <PanicAutomationDemo onReplay={onReplay}/>
     <StagedRun label="Academics" steps={steps} scrollResult={false} onDone={() => setAcademicsComplete(true)}
-      onRestart={() => { onRestart?.(); setAcademicsComplete(false); }}>
+      onRestart={() => { onRestart?.(); setAcademicsComplete(false); setPlanRun(previous => previous + 1); }}>
       <section class="g-card" aria-label="Rebuilt grades">
         <div class="g-section-head"><h2>What can still change</h2></div>
         <div class="g-demo-metrics">{result.grades.map(({ course, insight }) => {
@@ -202,19 +197,20 @@ export function AcademicsDemo({ snapshot, onDone, onReplay, onRestart }: {
         {result.priorities.length ? result.priorities.map(({ course, assignment, gradeImpact }, i) => <div key={`${course.id}:${assignment.id}`} class="g-task">
           <div class={`g-task-marker ${i === 0 ? 'urgent' : 'soon'}`}><span class="g-demo-rank">{i + 1}</span></div>
           <div class="g-task-main"><strong>{assignment.name}</strong><div class="g-task-meta"><span>{course.code}</span><span>{gradeImpactLabel(gradeImpact)}</span></div></div>
-          <span class="g-due">{dueText(assignment)}</span>
+          <span class="g-due">{relativeDue(assignment, result.now)}</span>
         </div>) : <p class="g-small">Nothing is due. Enjoy the breathing room.</p>}
       </section>
       <section class="g-card soft" aria-label="Suggested study split">
-        <div class="g-section-head"><h2>Your {PLAN_HOURS}-hour study split</h2><Icon name="clock" size={20}/></div>
+        <div class="g-section-head"><h2>Study split for up to {PLAN_HOURS} hours</h2><Icon name="clock" size={20}/></div>
         {result.plan.map(item => <div key={item.id} class="g-demo-row">
           <div class="g-demo-row-main"><strong>{item.name}</strong><small class="g-small">{item.code} · {item.reason}</small><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / PLAN_HOURS * 100}%` }}/></span></div>
           <span class="g-due normal">{item.hours.toFixed(1)} hrs</span>
         </div>)}
         {result.planError ? <p class="g-notice" role="alert">The study split could not be calculated. Run the demo again.</p> : <>
           <p class="g-small" role="status">{result.allocated.toFixed(1)} of {PLAN_HOURS.toFixed(1)} hours allocated · {result.unused.toFixed(1)} hours unallocated.</p>
-          {!result.plan.length && <p class="g-small">No upcoming work is eligible for study time.</p>}
-          <p class="g-small">Split by deadline, grade weight, credit hours, drop rules, and how fast study turns into points. A scenario, not a guaranteed grade.</p>
+          {!result.plan.length && <p class="g-small">No study blocks fit this plan.</p>}
+          <p class="g-small">Time estimates depend on the type of work. Blocks fit before deadlines, and undated work gets up to 30 minutes.</p>
+          {result.plan.length > 0 && <p class="g-small">Full-credit estimates hold other scores fixed and count ungraded work as zero.</p>}
         </>}
       </section>
     </StagedRun>

@@ -1,13 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { CanvasSnapshot, CanvasLiveAssignment } from '../liveCanvas.js';
+import type { CanvasSnapshot } from '../liveCanvas.js';
 import { currentGrade } from '../../core/gradeModel.js';
 import { DEFAULT_GRADE_POINT_SCALE } from '../../core/schema.js';
-import { optimizeEffort, type OptimizerResult } from '../../core/optimiser.js';
 import { loadAcademicPreferences } from '../academicPreferences.js';
 import { getAcademicContext } from '../academicContext.js';
 import { getAssignmentPriorities } from '../assignmentPriorities.js';
+import { assignmentWhatIfGrade, canTargetAssignmentGrade } from '../assignmentGradeTarget.js';
 import { homeworkAutopilotBlock } from '../homeworkAutopilot.js';
-import { courseBriefing, dueTime, isGraded, isPending, isSubmitted, LOCALE, overviewBriefing } from '../plainLanguage.js';
+import { courseBriefing, dueTime, isGraded, isPending, isSubmitted, LOCALE } from '../plainLanguage.js';
+import { allocateStudySplit, type StudySplitItem } from '../studySplit.js';
 import { ChangeRadar } from './ChangeRadar.js';
 import { AiRules } from './AiRules.js';
 import { WORKSPACE_STYLES } from './workspaceStyles.js';
@@ -16,7 +17,7 @@ import { AssistantView, type AssistantFocus } from './AssistantView.js';
 import { CanvasMirror } from './CanvasMirror.js';
 import { DeadlineTracker } from './DeadlineTracker.js';
 import { canAutomateCurrentPage, getPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
-import { getPageDemoTarget, startPageDemo } from '../pageDemo.js';
+import { startPageDemo } from '../pageDemo.js';
 import { AutoWorkflow, type WorkflowTarget } from './WorkflowMode.js';
 import { WORKFLOW_STYLES } from './workflowStyles.js';
 import { ReuFinder } from './ReuFinder.js';
@@ -27,6 +28,9 @@ import { GradeLabStyles } from './gradeLabStyles.js';
 import { COMMAND_STYLES } from './commandStyles.js';
 import { CourseList, GradeHero, PlainExplainer, StandingChart, TaskRow, WorkloadChart, WorkStatus, type Task } from './Dashboard.js';
 import { AssignmentPriorities } from './AssignmentPriorities.js';
+import { AssignmentGradeTarget } from './AssignmentGradeTarget.js';
+import { AssignmentFeedback } from './AssignmentFeedback.js';
+import { StudyBlockCalendar } from './StudyBlockCalendar.js';
 
 export interface WorkspaceProps {
   snapshot: CanvasSnapshot | null;
@@ -56,7 +60,6 @@ function safeLink(value: string): string {
 function score(value: number | null | undefined): string { return value == null ? '–' : `${value.toFixed(1)}%`; }
 const pending = isPending;
 const dueDate = dueTime;
-function greeting(): string { const hour = new Date().getHours(); return hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'; }
 function exportCalendar(tasks: Task[], origin: string): void {
   const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
   const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
@@ -74,27 +77,6 @@ function exportCalendar(tasks: Task[], origin: string): void {
   const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'offcanvas-canvas-deadlines.ics'; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 function Empty({ title, children }: { title: string; children: string }) { return <div class="g-empty"><div class="g-empty-icon"><Icon name="check" size={20}/></div><h2>{title}</h2><p>{children}</p></div>; }
-
-function AssignmentFeedback({ assignment }: { assignment: CanvasLiveAssignment }) {
-  const rubric = assignment.rubric ?? [];
-  const comments = assignment.submission?.submissionComments ?? [];
-  const assessment = assignment.submission?.rubricAssessment ?? {};
-  if (!rubric.length && !comments.length) return null;
-  return <section class="g-card" aria-label="Marking criteria and lecturer feedback">
-    <details class="g-disclosure">
-      <summary class="g-feedback-summary">Marking criteria and feedback</summary>
-      {rubric.length > 0 && <div class="g-rubric-list">{rubric.map(criterion => {
-        const assessed = assessment[criterion.id];
-        return <div class="g-rubric-criterion" key={criterion.id}>
-          <div class="g-section-head"><h3>{plain(criterion.description) || 'Rubric criterion'}</h3><span class="g-label-count">{criterion.points} pts</span></div>
-          {assessed && <div class="g-notice info"><Icon name="check" size={16}/><div><strong>Your lecturer gave {assessed.points} / {criterion.points} pts</strong>{assessed.comments && <p>{plain(assessed.comments)}</p>}</div></div>}
-          {criterion.ratings.length > 0 && <details class="g-disclosure"><summary class="g-ratings-summary">Rating descriptions</summary><ul class="g-rubric-ratings">{criterion.ratings.map((rating, i) => <li key={rating.id ?? i}><span>{plain(rating.description) || 'No description provided'}</span><strong>{rating.points} pts</strong></li>)}</ul></details>}
-        </div>;
-      })}</div>}
-      {comments.length > 0 && <div class="g-feedback-comments"><h3>Comments on your submission</h3>{comments.map((comment, i) => <div class="g-instructor-comment" key={i}><div class="g-comment-author"><strong>{comment.authorName || 'Canvas user'}</strong>{comment.createdAt && Number.isFinite(Date.parse(comment.createdAt)) && <time dateTime={comment.createdAt}>{new Date(comment.createdAt).toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' })}</time>}</div><p>{plain(comment.comment)}</p></div>)}</div>}
-    </details>
-  </section>;
-}
 
 export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId, initialAssignmentId, progress, preview = false, onWorkflowMode }: WorkspaceProps) {
   const [tab, setTab] = useState<Tab>(() => !preview&&getPageAutomation()?'automation':'academics');
@@ -129,6 +111,13 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const showingPageRun = !preview && tab==='automation' && !!pageRun;
   const [academicView, setAcademicView] = useState<AcademicView>(initialAssignmentId ? 'coursework' : 'overview');
   const [panic, setPanic] = useState(false);
+  const [overviewTime, setOverviewTime] = useState(Date.now);
+  useEffect(() => {
+    if (tab !== 'academics' || academicView !== 'overview' || !snapshot) return;
+    setOverviewTime(Date.now());
+    const timer = window.setInterval(() => setOverviewTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [tab, academicView, snapshot]);
   const bodyRef = useRef<HTMLDivElement>(null);
   const priorityFocus = useRef<string | null>(null);
   useLayoutEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [tab, academicView]);
@@ -174,7 +163,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const [hours, setHours] = useState(8);
   const [planningScope, setPlanningScope] = useState<'course' | 'all'>('all');
   const [planning, setPlanning] = useState(false);
-  const [plan, setPlan] = useState<OptimizerResult | null>(null);
+  const [plan, setPlan] = useState<StudySplitItem[] | null>(null);
   const [planError, setPlanError] = useState('');
   const [credits, setCredits] = useState<Record<string, number>>({});
   const [gradeScale, setGradeScale] = useState<Record<string, number>>({ ...DEFAULT_GRADE_POINT_SCALE });
@@ -194,10 +183,15 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     if (snapshot) loadAcademicPreferences(snapshot).then(o => { if (mounted) { setCredits(o.courseCreditHours); setGradeScale(o.gradePointScale); if (context) context.preferences.courseCreditHours = o.courseCreditHours; } }).catch(() => { if (mounted) setCreditError('Saved grade settings could not be loaded. Grade calculations use defaults.'); });
     return () => { mounted = false; planEpoch.current++; };
   }, [accountScope]);
-  useEffect(() => { planEpoch.current++; setPlanning(false); setPlan(null); setPlanError(''); }, [snapshot, selectedCourseId, credits, gradeScale, hours, planningScope]);
+  useEffect(() => { planEpoch.current++; setPlanning(false); setPlan(null); setPlanError(''); }, [snapshot, selectedCourseId, credits, hours, planningScope]);
   useEffect(() => { if (context) Object.assign(context.preferences, { courseCreditHours: credits, weeklyStudyHours: hours, gradePointScale: gradeScale }); }, [context, credits, hours, gradeScale]);
   const tasks = useMemo(() => courses.flatMap(course => course.assignments.map(assignment => ({ course, assignment }))).sort((a, b) => dueDate(a.assignment) - dueDate(b.assignment)), [snapshot]);
   const priorities = useMemo(() => getAssignmentPriorities(snapshot?.courses ?? []), [snapshot]);
+  const upcoming = priorities.filter(task => task.deadline > overviewTime);
+  const studyCourses = useMemo(() => (snapshot?.courses ?? []).map(course => ({
+    ...course,
+    input: { ...course.input, course: { ...course.input.course, creditHours: credits[course.id] ?? 3 } },
+  })), [snapshot, credits]);
   const now = Date.now();
   const activePriorities = new Map(priorities.filter(task => task.course.id === active?.id).map((task, rank) =>
     [task.assignment.id, { gradeImpact: task.gradeImpact, rank: task.deadline > now ? rank : priorities.length }]));
@@ -207,14 +201,12 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     activeTasks.sort((a, b) => rank(a) - rank(b));
   }
   const simAssignment = active?.assignments.find(a => a.id === assignmentId) ?? active?.assignments.find(a => pending(a) && a.pointsPossible > 0) ?? active?.assignments.find(a => a.pointsPossible > 0);
-  const simulated = useMemo(() => {
-    if (!active || !simAssignment) return null;
-    const otherSubmissions = active.input.submissions.filter(s => s.assignmentId !== simAssignment.id);
-    return currentGrade({ ...active.input, submissions: [...otherSubmissions, { assignmentId: simAssignment.id, score: simAssignment.pointsPossible * whatIf / 100, posted: true, excused: false, missing: false, late: false, workflowState: 'graded' }] }).percentage;
-  }, [active, simAssignment, whatIf]);
+  const simulated = useMemo(() => active && simAssignment ? assignmentWhatIfGrade(active, simAssignment, whatIf) : null, [active, simAssignment, whatIf]);
   const computed = useMemo(() => active ? currentGrade(active.input).percentage : null, [active]);
-  const briefing = useMemo(() => snapshot ? overviewBriefing(snapshot) : null, [snapshot]);
   const activeBriefing = useMemo(() => active ? courseBriefing(active) : null, [active]);
+  const firstBlock = plan?.[0];
+  const allocatedHours = plan?.reduce((sum, item) => sum + item.hours, 0) ?? 0;
+  const unallocatedHours = Math.max(0, hours - allocatedHours);
   const allIssues = [...(snapshot?.issues ?? []), ...courses.flatMap(c => c.issues)];
   const changeTab = (next: Tab) => { if (tourRef.current.order) stopTour(); setTab(next); };
   const openAcademic = (view: AcademicView) => { setTab('academics'); setAcademicView(view); };
@@ -238,16 +230,11 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     changeTab('automation');
   };
   const replayPanicDemo = () => {
-    if (!snapshot || preview || snapshot.origin !== location.origin || !canAutomateCurrentPage() ||
-      !getPageDemoTarget(snapshot) || getPageAutomation()?.status === 'running') return false;
-    try {
-      startPageDemo(snapshot);
-    } catch {
-      return false;
-    }
+    if (preview || !canAutomateCurrentPage()) throw new Error('Open the signed-in local Canvas replica on port 8080 to run the Panic demo.');
+    if (!snapshot) throw new Error('Refresh Canvas to load CE 240 before starting the Panic demo.');
+    startPageDemo(snapshot, { demoKind: 'panic' });
     leaveDemo();
     setTab('automation');
-    return true;
   };
   const buildPlan = () => {
     if (!active || planning) return;
@@ -256,15 +243,13 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     setTimeout(() => {
       if (epoch !== planEpoch.current) return;
       try {
-        const inputs = (planningScope === 'all' ? courses : [active]).map(course => ({ ...course.input, studyEligibleAssignmentIds: course.assignments.filter(pending).map(assignment => assignment.id), course: { ...course.input.course, creditHours: credits[course.id] ?? 3, gradePointScale: gradeScale } }));
-        const result = optimizeEffort(inputs, { capacityHours: hours, stepSizeHours: .5, numSamples: 100, seed: 42, currentTime: new Date(), protectMastery: true, masteryFloorHours: .5, isRobustnessRun: true });
-        setPlan(result);
+        const selected = planningScope === 'all' ? studyCourses : studyCourses.filter(course => course.id === active.id);
+        setPlan(allocateStudySplit(selected, hours));
       } catch (e) { setPlanError(e instanceof Error ? e.message : 'The study plan could not be calculated.'); }
       finally { setPlanning(false); }
     }, 30);
   };
   const activeDemoLabel = ({academics:'Academics',assistant:'AI Workspace',automation:'Automation',research:'Research'} as const)[tab];
-  const firstName = snapshot ? (snapshot.user.shortName || snapshot.user.name).split(' ')[0] : '';
   const coursePicker = active ? <div class="g-course-menu"><select class="g-select" aria-label="Choose a course" value={active.id} onChange={e => selectCourse(e.currentTarget.value)}>{courses.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select><a class="g-icon-btn bordered" href={safeLink(active.url)} title="Open course in Canvas" aria-label="Open course in Canvas"><Icon name="external" size={16}/></a></div> : null;
   const tabs = [{ id: 'academics', label: 'Academics', icon: 'book' }, { id: 'assistant', label: 'AI Workspace', icon: 'spark' }, { id: 'automation', label: 'Automation', icon: 'bolt' }, { id: 'research', label: 'Research', icon: 'search' }] as const;
   const demoBlocked = pageRun?.status==='running'||(!snapshot&&tab==='research');
@@ -310,7 +295,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     </div>}
     {presentationDemo&&<div key={`${tab}:${demoVersion}`} class="g-body g-stack" role="tabpanel" aria-labelledby={`g-tab-${tab}`} aria-label={`${activeDemoLabel} saved demo`}>
       {tab==='academics'&&(snapshot
-        ? <AcademicsDemo snapshot={snapshot} onDone={demoDone} onReplay={replayPanicDemo} onRestart={() => clearTimeout(tourTimer.current)}/>
+        ? <AcademicsDemo snapshot={snapshot} studyCourses={studyCourses} onDone={demoDone} onReplay={replayPanicDemo} onRestart={() => clearTimeout(tourTimer.current)}/>
         : <PanicAutomationDemo/>)}
       {tab==='assistant'&&<AssistantDemo onDone={demoDone} onRestart={()=>clearTimeout(tourTimer.current)}/>}
       {tab==='automation'&&<AutomationDemo snapshot={snapshot??undefined} onReplay={leaveDemo} onDone={demoDone}/>}
@@ -320,16 +305,11 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
       {error && <div class="g-notice" role="alert"><Icon name="alert" size={16}/><div>{error}<button class="g-link-btn" onClick={onRefresh} disabled={loading}>Try again <Icon name="arrow" size={14}/></button></div></div>}
       {!snapshot && showingPageRun ? null : !snapshot && loading ? <div class="g-stack"><div><span class="g-eyebrow">One moment</span><h1 class="g-title">Syncing your Canvas</h1><p class="g-subtitle">Connecting your courses, deadlines, and materials.</p></div><div class="g-sync-loading" role="status"><Icon name="refresh" size={15} className="g-spinner"/>{progress || 'Syncing your Canvas account…'}</div><div class="g-skeleton"/><div class="g-skeleton short"/><div class="g-skeleton"/></div> : !snapshot ? <Empty title="Let’s connect your Canvas">Sign in to Canvas in this tab, then press refresh at the top.</Empty> : <>
       {tab === 'academics' && <div class="g-subnav" role="group" aria-label="Academic views">{([{id:'overview',label:'Overview'},{id:'coursework',label:'Coursework'},{id:'grades',label:'Grade Lab'}] as const).map(view => <button key={view.id} class={academicView === view.id ? 'active' : ''} aria-pressed={academicView === view.id} onClick={() => openAcademic(view.id)}>{view.label}</button>)}</div>}
-      {tab === 'academics' && academicView === 'overview' && briefing && <div class="g-stack g-overview">
-        <header class="g-greeting">
-          <span class="g-eyebrow">{new Date().toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          <h1 class="g-title">{greeting()}, {firstName}.</h1>
-          <p class="g-lede"><strong>{briefing.headline}</strong> {briefing.body}</p>
-          <PlainExplainer topic="overview" briefing={briefing}/>
-        </header>
+      {tab === 'academics' && academicView === 'overview' && <div class="g-stack g-overview">
         <div class="g-dash">
           <div class="g-dash-col">
-            <AssignmentPriorities snapshot={snapshot} priorities={priorities} panic={panic} onPanicToggle={() => setPanic(!panic)}
+            <AssignmentPriorities key={accountScope} snapshot={snapshot} upcoming={upcoming} hasOverdue={priorities.length > upcoming.length}
+              studyCourses={studyCourses} now={overviewTime} panic={panic} onPanicToggle={() => setPanic(!panic)}
               onOpen={openPriority} onPrepare={task => { selectCourse(task.course.id); explainAssignment(task.course.id, task.assignment.id, true); }}
               onAutomate={preview ? undefined : automatePriority} onDemoReplay={replayPanicDemo}/>
             <WorkloadChart snapshot={snapshot} tasks={tasks}/>
@@ -353,13 +333,67 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
           <GradeHero snapshot={snapshot} course={active}/>
           {activeBriefing && <div class="g-grade-explain"><p class="g-small">{activeBriefing.body}</p><PlainExplainer topic="course" briefing={activeBriefing} label="Explain my grade in plain English"/></div>}
         </section>
+        {simAssignment && <section class="g-card g-whatif" aria-label="What-if calculator">
+          <div class="g-section-head"><h2>Assignment grade</h2></div>
+          <select id="g-whatif-assignment" aria-label="Assignment to simulate" class="g-select" value={simAssignment.id} onChange={e => setAssignmentId(e.currentTarget.value)}>
+            {active.assignments.filter(a => a.pointsPossible > 0 || a.id === simAssignment.id).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+          <AssignmentGradeTarget key={JSON.stringify([accountScope, active.id])} course={active} assignment={simAssignment}/>
+          <label class="g-field-label">
+            What if I score {whatIf}%?
+            <input class="g-range" aria-label="What-if score percentage" type="range" min="0" max="100" step="1"
+              value={whatIf} style={{ '--fill': `${whatIf}%` }} onInput={e => setWhatIf(Number(e.currentTarget.value))}/>
+          </label>
+          <div class="g-whatif-result">
+            <div><small>Your mark now</small><strong>{score(computed)}</strong><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, computed ?? 0))}%` }}/></span></div>
+            <div class={`hot ${simulated != null && computed != null ? (simulated >= computed ? 'up' : 'down') : ''}`}>
+              <small>With that score</small>
+              <strong>{score(simulated)}{simulated != null && computed != null && Math.abs(simulated - computed) >= .05 && <em>{simulated > computed ? '+' : '−'}{Math.abs(simulated - computed).toFixed(1)}</em>}</strong>
+              <span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, simulated ?? 0))}%` }}/></span>
+            </div>
+          </div>
+        </section>}
         <section><div class="g-section-head"><h2 class="g-h-sans">Assignments</h2><button class="g-icon-btn bordered" onClick={() => exportCalendar(tasks.filter(t => t.course.id === active.id && pending(t.assignment) && dueDate(t.assignment) >= Date.now()), snapshot.origin)} aria-label="Download upcoming deadlines" title="Download upcoming deadlines"><Icon name="calendar" size={16}/></button></div>
           <div class="g-search"><Icon name="search" size={16}/><input aria-label="Search coursework" placeholder="Find an assignment" value={query} onInput={e => setQuery(e.currentTarget.value)}/></div>
           <div class="g-chips g-filter" role="group" aria-label="Filter assignments">{([{ value: 'todo', label: 'To do' }, { value: 'submitted', label: 'Handed in' }, { value: 'graded', label: 'Marked' }, { value: 'all', label: 'All work' }] as const).map(f => <button key={f.value} class={`g-chip ${filter === f.value ? 'active' : ''}`} aria-pressed={filter === f.value} onClick={() => setFilter(f.value)}>{f.label}</button>)}</div>
           <div class="g-card g-list">{activeTasks.length ? activeTasks.map(task => <TaskRow key={task.assignment.id} task={task} snapshot={snapshot} gradeImpact={activePriorities.get(task.assignment.id)?.gradeImpact} onSelect={() => setAssignmentId(task.assignment.id)}/>) : <Empty title="Nothing here">Try another filter.</Empty>}</div></section>
-        {simAssignment && <section class="g-card g-whatif" aria-label="What-if calculator"><div class="g-section-head"><div><span class="g-eyebrow">What if</span><h2>If I score <span class="g-big-number">{whatIf}%</span> on…</h2></div></div><select id="g-whatif-assignment" aria-label="Assignment to simulate" class="g-select" value={simAssignment.id} onChange={e => setAssignmentId(e.currentTarget.value)}>{active.assignments.filter(a => a.pointsPossible > 0).map(a => <option key={a.id} value={a.id}>{a.name}</option>)}</select><input class="g-range" aria-label="What-if score percentage" type="range" min="0" max="100" step="1" value={whatIf} style={{ '--fill': `${whatIf}%` }} onInput={e => setWhatIf(Number(e.currentTarget.value))}/><div class="g-whatif-result"><div><small>Your mark now</small><strong>{score(computed)}</strong><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, computed ?? 0))}%` }}/></span></div><div class={`hot ${simulated != null && computed != null ? (simulated >= computed ? 'up' : 'down') : ''}`}><small>With that score</small><strong>{score(simulated)}{simulated != null && computed != null && Math.abs(simulated - computed) >= .05 && <em>{simulated > computed ? '+' : '−'}{Math.abs(simulated - computed).toFixed(1)}</em>}</strong><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, simulated ?? 0))}%` }}/></span></div></div></section>}
-        {simAssignment && <><section id="offcanvas-priority-assignment" class="g-card" tabIndex={-1} aria-label="Selected assignment context"><div class="g-section-head"><div><span class="g-eyebrow">Selected assignment</span><h2>{simAssignment.name}</h2></div><a class="g-link-btn" href={safeLink(simAssignment.htmlUrl)}>Canvas <Icon name="external" size={14}/></a></div><p class="g-small g-assignment-brief">{plain(simAssignment.descriptionHtml) || 'Canvas did not share the instructions for this assignment. Open it in Canvas to read what is required.'}</p><div class="g-row-actions"><button class="g-secondary" onClick={() => explainAssignment(active.id, simAssignment.id)}><Icon name="book" size={15}/>Explain assignment</button><button class="g-secondary" onClick={() => explainAssignment(active.id, simAssignment.id, true)}><Icon name="spark" size={15}/>Homework Autopilot</button></div></section><AssignmentFeedback assignment={simAssignment}/></>}
-        <section class="g-card" aria-label="Study plan"><div class="g-section-head"><div><span class="g-eyebrow">Study plan</span><h2>Share out your study time</h2></div></div><p class="g-small">Tell us how many hours you have and we will suggest where they help most before each deadline. These are estimates based on typical learning curves, never guaranteed marks.</p><label class="g-field-label">Which courses<select class="g-select" aria-label="Study plan scope" value={planningScope} onChange={e => setPlanningScope(e.currentTarget.value as 'course' | 'all')}><option value="all">All courses</option><option value="course">Selected course</option></select></label><div class="g-plan-controls"><label class="g-hours"><input aria-label="Study hours available" type="number" min=".5" max="30" step=".5" value={hours} onChange={e => setHours(Math.max(.5, Math.min(30, Number(e.currentTarget.value) || .5)))}/>hours free</label><button class="g-primary" onClick={buildPlan} disabled={planning}>{planning ? <><Icon name="refresh" size={15} className="g-spinner"/>Planning…</> : <>Build my study plan <Icon name="arrow" size={15}/></>}</button></div>{planError && <p class="g-notice" role="alert">{planError}</p>}{plan && <div class="g-plan-result" aria-live="polite">{plan.recommendations.length ? plan.recommendations.map(rec => <div key={rec.assignmentId} class="g-plan-row"><div><strong>{rec.assignmentName}</strong><small>{courses.find(course => course.id === rec.courseId)?.code}</small></div><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${plan.allocatedHours ? rec.allocatedHours / plan.allocatedHours * 100 : 0}%` }}/></span><span class="g-plan-hours">{rec.allocatedHours.toFixed(1)} h</span></div>) : <p class="g-small">You’re all caught up.</p>}<p class="g-small g-plan-total">{plan.allocatedHours.toFixed(1)} of {hours} hours allocated.</p></div>}</section>
+        {simAssignment && <>
+          <section id="offcanvas-priority-assignment" class="g-card" tabIndex={-1} aria-label="Selected assignment context">
+            <div class="g-section-head"><h2>{simAssignment.name}</h2><a class="g-link-btn" href={safeLink(simAssignment.htmlUrl)}>Canvas <Icon name="external" size={14}/></a></div>
+            <p class="g-small g-assignment-brief">{plain(simAssignment.descriptionHtml) || 'Canvas did not share the instructions for this assignment. Open it in Canvas to read what is required.'}</p>
+            <div class="g-row-actions">
+              <button class="g-secondary" onClick={() => explainAssignment(active.id, simAssignment.id)}><Icon name="book" size={15}/>Explain assignment</button>
+              <button class="g-secondary" onClick={() => explainAssignment(active.id, simAssignment.id, true)}><Icon name="spark" size={15}/>Homework Autopilot</button>
+              {canTargetAssignmentGrade(simAssignment) && <button class="g-link-btn" onClick={() => bodyRef.current?.querySelector<HTMLElement>('#offcanvas-grade-target')?.focus()}>Grade target</button>}
+            </div>
+          </section>
+          <AssignmentFeedback assignment={simAssignment} accountScope={accountScope} courseId={active.id}/>
+        </>}
+        <section class="g-card" aria-label="Study plan">
+          <div class="g-section-head"><h2>Study plan</h2></div>
+          <label class="g-field-label">Which courses
+            <select class="g-select" aria-label="Study plan scope" value={planningScope} onChange={e => setPlanningScope(e.currentTarget.value as 'course' | 'all')}>
+              <option value="all">All courses</option><option value="course">Selected course</option>
+            </select>
+          </label>
+          <div class="g-plan-controls">
+            <label class="g-hours"><input aria-label="Study hours available" type="number" min=".5" max="30" step=".5" value={hours} onChange={e => setHours(Math.max(.5, Math.min(30, Number(e.currentTarget.value) || .5)))}/>hours free</label>
+            <button class="g-primary" onClick={buildPlan} disabled={planning}>{planning ? <><Icon name="refresh" size={15} className="g-spinner"/>Planning…</> : <>Build my study plan <Icon name="arrow" size={15}/></>}</button>
+          </div>
+          {planError && <p class="g-notice" role="alert">{planError}</p>}
+          {plan && <div class="g-plan-result">
+            <div aria-live="polite">
+              {plan.length ? plan.map(item => <div key={item.id} class="g-plan-row">
+                <div><strong>{item.name}</strong><small>{item.code}</small></div>
+                <span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / hours * 100}%` }}/></span>
+                <span class="g-plan-hours">{item.hours.toFixed(1)} h</span>
+              </div>) : <p class="g-small">No study blocks suggested.</p>}
+              <p class="g-small g-plan-total">{allocatedHours.toFixed(1)} of {hours} hours allocated.{unallocatedHours >= .05 && ` ${unallocatedHours.toFixed(1)} hours unallocated.`}</p>
+            </div>
+            {firstBlock && <StudyBlockCalendar key={JSON.stringify([accountScope, firstBlock.id, firstBlock.hours])}
+              accountScope={accountScope} recommendation={firstBlock}/>}
+          </div>}
+        </section>
       </> : <Empty title="No courses to show">Courses appear after a sync.</Empty>}</div>}
       </>}
       {snapshot && gradesOpened.current && <div hidden={tab !== 'academics' || academicView !== 'grades'}>{creditError && <p class="g-notice" role="alert">{creditError}</p>}<GradeLab key={accountScope} snapshot={snapshot} credits={credits} gradePointScale={gradeScale}/></div>}

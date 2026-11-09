@@ -62,6 +62,7 @@ export const CourseSchema = z.object({
   creditHours: z.number().positive(),
   applyGroupWeights: z.boolean(),
   gradingScheme: z.array(GradingSchemeItemSchema).default(() => [...DEFAULT_GRADING_SCHEME]),
+  gradingSchemeSource: z.enum(['canvas', 'default']).optional(),
   gradePointScale: GradePointScaleSchema.default(() => ({ ...DEFAULT_GRADE_POINT_SCALE })),
 });
 export type Course = z.infer<typeof CourseSchema>;

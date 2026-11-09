@@ -49,44 +49,69 @@ function course(partial: {
   };
 }
 
+function parseFixtureCourses(fixtures: typeof rawCourses): StudySplitCourse[] {
+  return fixtures.map(raw => {
+    const assignments = adapter.parseAssignments(raw.assignments);
+    const submissions = adapter.parseSubmissions(raw.submissions);
+    const byAssignment = new Map(submissions.map(submission => [submission.assignmentId, submission]));
+    return {
+      code: raw.course.course_code,
+      assignments: assignments.map(assignment => ({
+        ...assignment,
+        htmlUrl: 'https://canvas.example',
+        descriptionHtml: '',
+        submission: byAssignment.get(assignment.id) ?? null,
+      })),
+      input: {
+        course: adapter.parseCourse(raw.course, 3),
+        groups: adapter.parseAssignmentGroups(raw.assignment_groups),
+        assignments,
+        submissions,
+        priorityWeight: 1,
+      },
+    };
+  });
+}
+
 function hoursOf(plan: { name: string; hours: number }[], name: string): number {
   return plan.find(item => item.name === name)?.hours ?? 0;
 }
 
 describe('study split', () => {
-  it('gives the urgent counted assignment more time than an undated exam on the demo courses', () => {
-    const plan = allocateStudySplit(createDemoSnapshot('http://127.0.0.1:8085', NOW).courses, 8, NOW);
-    expect(plan.reduce((sum, item) => sum + item.hours, 0)).toBe(8);
-    expect(hoursOf(plan, 'HW 5: Greedy Algorithms')).toBeGreaterThan(hoursOf(plan, 'Homework: Probability study outline'));
-    expect(hoursOf(plan, 'Homework: Probability study outline')).toBeGreaterThan(hoursOf(plan, 'Final Exam'));
-    expect(hoursOf(plan, 'Final Exam')).toBeGreaterThan(0);
-    expect(hoursOf(plan, 'Homework: Graph traversal planning')).toBe(0);
+  it('caps the demo homework and leaves extra time free instead of piling it onto an undated exam', () => {
+    const courses = createDemoSnapshot('http://127.0.0.1:8085', NOW).courses;
+    const plan = allocateStudySplit(courses, 8, NOW);
+    expect(hoursOf(plan, 'Homework: Graph traversal planning')).toBe(2);
+    expect(hoursOf(plan, 'Homework: Probability study outline')).toBe(2);
+    expect(hoursOf(plan, 'Final Exam')).toBe(0.5);
+    expect(plan.reduce((sum, item) => sum + item.hours, 0)).toBe(4.5);
+    expect(allocateStudySplit(courses, 30, NOW)).toEqual(plan);
+    expect(hoursOf(plan, 'HW 5: Greedy Algorithms')).toBe(0);
     expect(hoursOf(plan, 'Lab planning: Enzyme experiment')).toBe(0);
     expect(plan.some(item => item.name.startsWith('HW 4'))).toBe(false);
     expect(plan[0]?.reason).toContain('Due tomorrow');
   });
 
+  it('looks past a dropped half-hour score only within the estimated time limit', () => {
+    const previous = live({ id: 'previous', name: 'Previous homework', groupId: '1', pointsPossible: 100 }, {
+      assignmentId: 'previous', score: 20, posted: true, excused: false, missing: false, late: false, workflowState: 'graded',
+    });
+    const homework = live({ id: 'next', name: 'Next homework', groupId: '1', pointsPossible: 100, dueAt: '2026-11-10T23:59:00Z' });
+    const courses = [course({ code: 'GEN', groups: [{ id: '1', name: 'Homework', dropLowest: 1 }], assignments: [previous, homework] })];
+    expect(allocateStudySplit(courses, 0.5, NOW)).toEqual([]);
+    expect(hoursOf(allocateStudySplit(courses, 1, NOW), 'Next homework')).toBe(1);
+
+    const original = allocateStudySplit(parseFixtureCourses(rawCourses), 8, NOW);
+    expect(hoursOf(original, 'HW 5: Greedy Algorithms')).toBe(0);
+  });
+
   it('prefers the heavier grade category when every deadline is the same', () => {
-    const fixtures = structuredClone(rawCourses) as Array<Record<string, any>>;
+    const fixtures = structuredClone(rawCourses);
     for (const raw of fixtures) {
       for (const assignment of raw.assignments) assignment.due_at = '2026-11-12T23:59:00Z';
       raw.submissions = [];
     }
-    const courses: StudySplitCourse[] = fixtures.map(raw => {
-      const parsed = adapter.parseAssignments(raw.assignments);
-      return {
-        code: String(raw.course.course_code),
-        assignments: parsed.map(assignment => ({ ...assignment, htmlUrl: 'https://canvas.example', descriptionHtml: '', submission: null })),
-        input: {
-          course: adapter.parseCourse(raw.course, 3),
-          groups: adapter.parseAssignmentGroups(raw.assignment_groups),
-          assignments: parsed,
-          submissions: [],
-          priorityWeight: 1,
-        },
-      };
-    });
-    const plan = allocateStudySplit(courses, 8, NOW);
+    const plan = allocateStudySplit(parseFixtureCourses(fixtures), 8, NOW);
     expect(plan.reduce((sum, item) => sum + item.hours, 0)).toBe(8);
     expect(plan.length).toBeGreaterThanOrEqual(5);
     expect(hoursOf(plan, 'Lecture Exam 1')).toBeGreaterThan(hoursOf(plan, 'Quiz 1: Biomolecules'));
@@ -96,9 +121,33 @@ describe('study split', () => {
   it('puts more hours on the sooner of two otherwise equal assignments', () => {
     const soon = live({ id: 'soon', name: 'Soon', groupId: '1', pointsPossible: 100, dueAt: '2026-11-10T23:59:00Z' });
     const later = live({ id: 'later', name: 'Later', groupId: '1', pointsPossible: 100, dueAt: '2026-12-01T23:59:00Z' });
-    const plan = allocateStudySplit([course({ code: 'GEN', groups: [{ id: '1', name: 'Work' }], assignments: [soon, later] })], 8, NOW);
+    const plan = allocateStudySplit([course({ code: 'GEN', groups: [{ id: '1', name: 'Work' }], assignments: [soon, later] })], 4, NOW);
     expect(hoursOf(plan, 'Soon')).toBeGreaterThan(hoursOf(plan, 'Later'));
-    expect(plan.reduce((sum, item) => sum + item.hours, 0)).toBe(8);
+    expect(plan.reduce((sum, item) => sum + item.hours, 0)).toBe(4);
+  });
+
+  it('prioritizes the earlier deadline on the same day and fits its time before it is due', () => {
+    const later = live({ id: 'later', name: 'Later', groupId: '1', pointsPossible: 100, dueAt: '2026-11-09T22:00:00Z' });
+    const soon = live({ id: 'soon', name: 'Soon', groupId: '1', pointsPossible: 100, dueAt: '2026-11-09T12:45:00Z' });
+    const courses = [course({ code: 'GEN', groups: [{ id: '1', name: 'Work' }], assignments: [later, soon] })];
+
+    expect(allocateStudySplit(courses, 0.5, NOW).map(item => item.name)).toEqual(['Soon']);
+
+    const plan = allocateStudySplit(courses, 8, NOW);
+    expect(hoursOf(plan, 'Soon')).toBe(0.5);
+    expect(hoursOf(plan, 'Later')).toBe(2.5);
+  });
+
+  it('shares the available time between work with close deadlines', () => {
+    const first = live({ id: 'first', name: 'First', groupId: '1', pointsPossible: 100, dueAt: '2026-11-09T13:00:00Z' });
+    const second = live({ id: 'second', name: 'Second', groupId: '1', pointsPossible: 100, dueAt: '2026-11-09T13:15:00Z' });
+    const later = live({ id: 'later', name: 'Later', groupId: '1', pointsPossible: 100, dueAt: '2026-11-09T22:00:00Z' });
+    const courses = [course({ code: 'GEN', groups: [{ id: '1', name: 'Work' }], assignments: [first, second, later] })];
+
+    const plan = allocateStudySplit(courses, 8, NOW);
+    expect(hoursOf(plan, 'First') + hoursOf(plan, 'Second')).toBe(1);
+    expect(hoursOf(plan, 'Later')).toBe(2.5);
+    expect(allocateStudySplit(courses, 0.75, NOW).reduce((sum, item) => sum + item.hours, 0)).toBe(0.5);
   });
 
   it('puts more hours on the assignment that is a larger share of the grade', () => {
@@ -111,6 +160,15 @@ describe('study split', () => {
       assignments: [heavy, light],
     })], 8, NOW);
     expect(hoursOf(plan, 'Heavy')).toBeGreaterThan(hoursOf(plan, 'Light'));
+    expect(hoursOf(plan, 'Light')).toBe(1);
+  });
+
+  it('shortens a homework block when the student has already logged study time', () => {
+    const homework = live({ id: 'hw', name: 'Homework', groupId: '1', pointsPossible: 100, dueAt: '2026-11-10T23:59:00Z' });
+    const fresh = course({ code: 'GEN', groups: [{ id: '1', name: 'Work' }], assignments: [homework] });
+    const started = { ...fresh, input: { ...fresh.input, loggedHours: { hw: 8 } } };
+    expect(hoursOf(allocateStudySplit([fresh], 8, NOW), 'Homework')).toBe(2);
+    expect(hoursOf(allocateStudySplit([started], 8, NOW), 'Homework')).toBe(0.5);
   });
 
   it('does not schedule graded or past-due work', () => {

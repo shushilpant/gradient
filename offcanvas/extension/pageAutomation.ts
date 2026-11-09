@@ -79,6 +79,16 @@ export function subscribePageAutomation(listener: (session: ComputerSession | nu
   return () => listeners.delete(listener);
 }
 
+/** Clear a finished answer before a new request, including requests that fail setup. */
+export function clearPageAutomationResult(): void {
+  if (active || storedRun() || latest?.status === 'running') return;
+  latest = null;
+  document.getElementById('offcanvas-page-control')?.remove();
+  restorePanel();
+  clearCursor();
+  for (const listener of listeners) listener(null);
+}
+
 function hidePanel() {
   const host = document.getElementById('offcanvas-panel-host');
   if (host && hiddenPanel?.host !== host) {

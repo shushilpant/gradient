@@ -1,5 +1,22 @@
 import { type StudyBlock, type BusyBlock } from './schedulerSchema.js';
 
+function escapeIcsText(text: string): string {
+  return text.replace(/\\/g, '\\\\').replace(/\r\n|\r|\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;');
+}
+
+function foldIcsLine(line: string): string {
+  const encoder = new TextEncoder();
+  let folded = '';
+  let length = 0;
+  for (const char of line) {
+    const bytes = encoder.encode(char).length;
+    if (length + bytes > 75) { folded += '\r\n '; length = 1; }
+    folded += char;
+    length += bytes;
+  }
+  return folded;
+}
+
 /**
  * Formats a Date object or ISO string into RFC 5545 iCalendar format: YYYYMMDDTHHMMSSZ.
  */
@@ -65,24 +82,24 @@ export function exportScheduleToICS(
     'PRODID:-//OffCanvas//Study Scheduler//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:${calendarName}`,
+    `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
   ];
 
   for (const block of blocks) {
     const dtStart = formatIcsDate(block.startTime);
     const dtEnd = formatIcsDate(block.endTime);
     const summary = `[OffCanvas] Study: ${block.assignmentName} (${block.courseCode})`;
-    const description = `Block ${block.blockIndex + 1} of ${block.totalBlocks} (${block.durationMinutes} min)\\nAssignment: ${block.assignmentName}\\nCourse: ${block.courseCode}\\nStatus: ${block.status.toUpperCase()}`;
+    const description = `Block ${block.blockIndex + 1} of ${block.totalBlocks} (${block.durationMinutes} min)\nAssignment: ${block.assignmentName}\nCourse: ${block.courseCode}\nStatus: ${block.status.toUpperCase()}`;
 
     lines.push(
       'BEGIN:VEVENT',
-      `UID:${block.id}`,
+      `UID:${escapeIcsText(block.id)}`,
       `SEQUENCE:${block.sequence}`,
       `DTSTAMP:${nowStamp}`,
       `DTSTART:${dtStart}`,
       `DTEND:${dtEnd}`,
-      `SUMMARY:${summary}`,
-      `DESCRIPTION:${description}`,
+      `SUMMARY:${escapeIcsText(summary)}`,
+      `DESCRIPTION:${escapeIcsText(description)}`,
       'STATUS:CONFIRMED',
       'TRANSP:OPAQUE',
       'END:VEVENT'
@@ -90,7 +107,7 @@ export function exportScheduleToICS(
   }
 
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldIcsLine).join('\r\n') + '\r\n';
 }
 
 /**

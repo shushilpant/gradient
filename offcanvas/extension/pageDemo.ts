@@ -1,9 +1,11 @@
 import savedDemo from '../backend/demo_automation.json';
+import panicDemo from './fixtures/ce240_homework1_automation.json';
 import { packetSchema } from './assistantClient.js';
 import { homeworkAutopilotBlock } from './homeworkAutopilot.js';
 import type { CanvasSnapshot } from './liveCanvas.js';
 import {
   beginPageAutomation,
+  clearPageAutomationResult,
   finishPageAutomation,
   navigatePageAutomation,
   readPageAutomation,
@@ -21,9 +23,9 @@ const DEMO_RESULT_PHASES = [
   {label:'Taking another look at the stored graph…', duration:3100, quick:1000},
   {label:'Arranging the saved solution and citations…', duration:2700, quick:500},
 ];
-const COURSE_CODES = [savedDemo.courseCode, ...savedDemo.courseCodeAliases];
-const SAVED_PACKET = packetSchema.parse(savedDemo.packet);
 export const PAGE_DEMO_SEED_MESSAGE = `Seed ${savedDemo.courseCode} in the local Canvas replica, then refresh Canvas to run the demo.`;
+export type PageDemoKind = 'automation' | 'panic';
+const DEMOS = { automation: savedDemo, panic: panicDemo };
 
 interface DemoTarget {
   courseId: string;
@@ -35,47 +37,58 @@ interface DemoTarget {
 interface DemoRunData extends DemoTarget {
   nextStep: number;
   pauseBeforeResult?: boolean;
+  demoKind?: PageDemoKind;
 }
 
-function validTarget(target: DemoTarget): boolean {
+function validTarget(target: DemoTarget, demoKind: PageDemoKind): boolean {
+  const demo = DEMOS[demoKind];
   return /^\d+$/.test(target.courseId) && /^\d+$/.test(target.assignmentId) &&
-    COURSE_CODES.includes(target.courseName) && target.assignmentName === savedDemo.assignmentName;
+    [demo.courseCode, ...demo.courseCodeAliases].includes(target.courseName) && target.assignmentName === demo.assignmentName;
 }
 
-export function getPageDemoTarget(snapshot?: CanvasSnapshot): DemoTarget | undefined {
+export function getPageDemoTarget(snapshot?: CanvasSnapshot, demoKind: PageDemoKind = 'automation'): DemoTarget | undefined {
   if (!snapshot || !LOCAL_CANVAS_ORIGIN.test(snapshot.origin)) return;
-  for (const code of COURSE_CODES) {
+  const demo = DEMOS[demoKind];
+  for (const code of [demo.courseCode, ...demo.courseCodeAliases]) {
     for (const course of snapshot.courses) {
       if (course.code !== code || !/^\d+$/.test(course.id)) continue;
       const assignment = course.assignments.find(item =>
-        item.name === savedDemo.assignmentName && /^\d+$/.test(item.id) && !homeworkAutopilotBlock(item));
+        item.name === demo.assignmentName && /^\d+$/.test(item.id) && !homeworkAutopilotBlock(item));
       if (assignment) return { courseId: course.id, assignmentId: assignment.id, courseName: code, assignmentName: assignment.name };
     }
   }
   return undefined;
 }
 
-export function startPageDemo(snapshot: CanvasSnapshot, { pauseBeforeResult = false } = {}): void {
+export function startPageDemo(snapshot: CanvasSnapshot, { pauseBeforeResult = false, demoKind = 'automation' }: { pauseBeforeResult?: boolean; demoKind?: PageDemoKind } = {}): void {
+  clearPageAutomationResult();
   if (snapshot.origin !== location.origin || !LOCAL_CANVAS_ORIGIN.test(location.origin)) {
     throw new Error('Open the signed-in local Canvas tab on port 8080 to run the demo.');
   }
-  const target = getPageDemoTarget(snapshot);
-  if (!target) throw new Error(PAGE_DEMO_SEED_MESSAGE);
-  beginPageAutomation<DemoRunData>('demo', { ...target, nextStep: 0, pauseBeforeResult }, `Starting saved Canvas replay · ${target.courseName}`, snapshot.user.id);
+  const target = getPageDemoTarget(snapshot, demoKind);
+  if (!target) throw new Error(demoKind === 'panic'
+    ? `Import CE 240 Homework 1 into the local Canvas replica, then refresh Canvas to run the Panic demo.` : PAGE_DEMO_SEED_MESSAGE);
+  beginPageAutomation<DemoRunData>('demo', { ...target, nextStep: 0, pauseBeforeResult, demoKind }, `Starting saved Canvas replay · ${target.courseName}`, snapshot.user.id);
   void resumePageDemo();
 }
 
 export function resumePageDemo(): Promise<void> {
   return resumePageAutomation<DemoRunData>('demo', async (run, signal) => {
     const { data, origin } = run;
-    if (!data || !validTarget(data) || !Number.isInteger(data.nextStep) ||
-        data.nextStep < 0 || data.nextStep > savedDemo.navigation.length) {
+    const demoKind = data?.demoKind ?? 'automation';
+    if (demoKind !== 'automation' && demoKind !== 'panic') throw new Error('The saved demo selection is invalid. Start the demo again.');
+    const demo = DEMOS[demoKind];
+    if (!data || !validTarget(data, demoKind) || !Number.isInteger(data.nextStep) ||
+        data.nextStep < 0 || data.nextStep > demo.navigation.length) {
       throw new Error('The saved demo state is invalid. Start the demo again from OffCanvas.');
     }
     const coursePath = `/courses/${data.courseId}`;
     const assignmentPath = `${coursePath}/assignments/${data.assignmentId}`;
+    if (data.nextStep === 0) {
+      updatePageAutomation(run, 'replaying', 'Assessment check passed. Regular homework cleared for the saved replay. OffCanvas would refuse a timed quiz or exam.');
+    }
     const pauses = data.pauseBeforeResult ? DEMO_ACTION_PAUSES_MS : DEMO_QUICK_PAUSES_MS;
-    for (const step of savedDemo.navigation.slice(data.nextStep)) {
+    for (const step of demo.navigation.slice(data.nextStep)) {
       const path = coursePath + step.path.replace('{assignmentId}', data.assignmentId);
       const url = origin + path;
       const label = step.label.replace('{courseCode}', data.courseName).replace('{assignmentName}', data.assignmentName);
@@ -99,12 +112,13 @@ export function resumePageDemo(): Promise<void> {
       updatePageAutomation(run, 'replaying', `Saved replay · ${phase.label}`);
       await waitPageAutomation(data.pauseBeforeResult ? phase.duration : phase.quick, signal);
     }
-    const sources = SAVED_PACKET.sources.map(source => {
+    const packet = packetSchema.parse(demo.packet);
+    const sources = packet.sources.map(source => {
       const path = /^\/courses\/\d+\/assignments\/\d+$/.test(source.url)
         ? assignmentPath
         : source.url.replace(/^\/courses\/\d+\//, `${coursePath}/`);
-      return { ...source, url: new URL(path, origin).href };
+      return { ...source, url: path ? new URL(path, origin).href : '' };
     });
-    finishPageAutomation(run, { ...SAVED_PACKET, sources }, 'Canvas demo complete');
+    finishPageAutomation(run, { ...packet, sources }, 'Canvas demo complete');
   });
 }

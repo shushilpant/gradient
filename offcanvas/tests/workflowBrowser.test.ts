@@ -13,6 +13,16 @@ const assignmentPath = coursePath + '/assignments/1001';
 const legacyCoursePath = '/courses/99002';
 const assignmentName = 'Homework: Time-shift response';
 const assignmentBrief = 'Plot the shifted response on 0 ≤ t ≤ 8 and explain its maximum.';
+const panicCoursePath = '/courses/99002';
+const panicAssignmentPath = panicCoursePath + '/assignments/1001';
+const panicCourseCode = 'CE 240 H001';
+const panicAssignmentName = 'Homework 1 - Amplitude Spectrum Derivation';
+const panicAssignmentBrief = 'Derive the amplitude spectrum from the pulse signal Fourier coefficients and plot its harmonics.';
+const panicPages: Record<string, string> = {
+  [panicCoursePath]: `<h1>${panicCourseCode}</h1><a href="${panicCoursePath}/assignments">Assignments</a>`,
+  [panicCoursePath + '/assignments']: `<h1>Course assignments</h1><a href="${panicAssignmentPath}">${panicAssignmentName}</a>`,
+  [panicAssignmentPath]: `<h1>${panicAssignmentName}</h1><p id="assignment-brief">${panicAssignmentBrief}</p>`,
+};
 const nativePages: Record<string, string> = {
   '/': `<h1>Canvas dashboard</h1><a href="${coursePath}" target="_blank">OFFCANVAS-SIGNALS</a>`,
   [coursePath]: `<h1>Signals and Systems</h1><a href="${coursePath}/assignments">Assignments</a>`,
@@ -62,10 +72,11 @@ for (const origin of [CANVAS_ORIGIN, localCanvas]) {
 async function mockLocalWorkflow(browser: Browser, options: {
   hostileCursorStyles?: boolean;
   includeLegacyCourse?: boolean;
+  includePanicCourse?: boolean;
   courseCode?: string;
   panicTarget?: boolean;
 } = {}) {
-  const { hostileCursorStyles, includeLegacyCourse, courseCode = 'OFFCANVAS-SIGNALS', panicTarget } = options;
+  const { hostileCursorStyles, includeLegacyCourse, includePanicCourse, courseCode = 'OFFCANVAS-SIGNALS', panicTarget } = options;
   const mocked = await mockCanvas(browser, {
     origin: localCanvas,
     url: localCanvas + '/',
@@ -73,6 +84,10 @@ async function mockLocalWorkflow(browser: Browser, options: {
     fixedTime: panicTarget ? '2026-11-09T12:00:00Z' : undefined,
     pageHtml(url) {
       const styles = hostileCursorStyles ? '<style>svg{display:none!important}path{fill:blue!important}body{cursor:default}a{cursor:pointer}</style>' : '';
+      if (includePanicCourse && url.pathname === '/') {
+        return styles + nativePages['/'] + `<a href="${panicCoursePath}">${panicCourseCode}</a>`;
+      }
+      if (includePanicCourse && panicPages[url.pathname]) return styles + panicPages[url.pathname];
       if (includeLegacyCourse && url.pathname === '/') {
         return styles + nativePages['/'] + `<a href="${legacyCoursePath}" target="_blank">GRADIENT-SIGNALS</a>`;
       }
@@ -97,6 +112,13 @@ async function mockLocalWorkflow(browser: Browser, options: {
       if (includeLegacyCourse) {
         courses[1]!.course.course_code = 'GRADIENT-SIGNALS';
         Object.assign(courses[1]!.assignments[0], demoAssignment);
+      }
+      if (includePanicCourse) {
+        const course = courses[1]!;
+        course.course.course_code = panicCourseCode;
+        Object.assign(course.assignments[0], {
+          id: 1001, name: panicAssignmentName, description: `<p>${panicAssignmentBrief}</p>`,
+        });
       }
     },
   });
@@ -228,12 +250,21 @@ it('replays the BODHA-SIGNALS alias from Present and keeps its cursor separate f
   } finally {
     await browser.close();
   }
-}, 25000);
+}, 35000);
 
-it('replays Panic computer use in the seeded local Canvas tab from Demo Academics', async () => {
+it('replays CE 240 Homework 1 for Panic and clears its answer before the dedicated Automation demo', async () => {
   const browser = await launchBrowser();
   try {
-    const { page, requests, openedPages, navigation } = await mockLocalWorkflow(browser);
+    const { page, requests, openedPages, navigation } = await mockLocalWorkflow(browser, { includePanicCourse: true });
+    const trackClicks = () => document.addEventListener('click', event => {
+      const anchor = (event.target as Element).closest('a');
+      if (anchor && !anchor.closest('#offcanvas-panel-host')) {
+        const clicks = JSON.parse(sessionStorage.getItem('panic-main-clicks') || '[]');
+        sessionStorage.setItem('panic-main-clicks', JSON.stringify([...clicks, anchor.pathname]));
+      }
+    }, true);
+    await page.addInitScript(trackClicks);
+    await page.evaluate(trackClicks);
     const backendCalls: string[] = [];
     await page.route('http://127.0.0.1:8765/**', route => {
       backendCalls.push(route.request().url());
@@ -243,10 +274,38 @@ it('replays Panic computer use in the seeded local Canvas tab from Demo Academic
     await page.getByRole('button', { name: 'Present', exact: true }).click();
     await page.getByRole('button', { name: 'Demo Academics', exact: true }).click();
     await page.getByRole('button', { name: 'Demo panic automation', exact: true }).click();
-    await page.waitForURL(localCanvas + assignmentPath);
+    const assessment = page.getByRole('dialog', { name: 'Assessment check passed', exact: true });
+    expect(await assessment.count()).toBe(0);
+    expect(await page.locator('#offcanvas-panel-host').evaluate(host => getComputedStyle(host).display)).toBe('none');
+    await page.waitForURL(localCanvas + panicAssignmentPath);
     await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor();
-    expect(await page.locator('#assignment-brief').innerText()).toBe(assignmentBrief);
-    expect(navigation).toEqual([coursePath, coursePath + '/assignments', assignmentPath]);
+    const check = page.getByRole('status', { name: 'Assessment check', exact: true });
+    expect(await check.innerText()).toContain('regular homework, so the saved automation continued');
+    expect(await page.locator('#assignment-brief').innerText()).toBe(panicAssignmentBrief);
+    expect(navigation).toEqual([panicCoursePath, panicCoursePath + '/assignments', panicAssignmentPath]);
+    expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('panic-main-clicks') || '[]'))).toEqual([
+      panicCoursePath, panicCoursePath + '/assignments', panicAssignmentPath,
+    ]);
+    const result = page.getByRole('region', { name: 'Automatic reference sample', exact: true });
+    expect(await result.innerText()).toContain(panicAssignmentName);
+    expect(await result.innerText()).toContain('Start with the Fourier coefficients');
+    expect(await result.locator('.katex').count()).toBeGreaterThan(0);
+    const panicPlot = result.getByRole('img', { name: /Normalized pulse waveform and one-sided amplitude spectrum/ });
+    await expect.poll(() => panicPlot.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 800)).toBe(true);
+
+    await page.getByRole('tab', { name: 'Automation', exact: true }).click();
+    await page.getByRole('button', { name: 'Demo automation', exact: true }).click();
+    expect(await assessment.count()).toBe(0);
+    expect(await result.count()).toBe(0);
+    expect(await page.getByRole('heading', { name: panicAssignmentName, exact: true }).count()).toBe(1);
+    await page.waitForURL(localCanvas + assignmentPath);
+    await page.getByRole('heading', { name: 'Saved demo result ready', exact: true }).waitFor({ timeout: 15000 });
+    expect(await result.innerText()).toContain(assignmentName);
+    expect(await result.innerText()).not.toContain(panicAssignmentName);
+    expect(navigation).toEqual([
+      panicCoursePath, panicCoursePath + '/assignments', panicAssignmentPath,
+      coursePath, coursePath + '/assignments', assignmentPath,
+    ]);
     expect(backendCalls).toEqual([]);
     expect(requests.every(request => request.method === 'GET')).toBe(true);
     expect(openedPages).toEqual([]);
@@ -254,7 +313,7 @@ it('replays Panic computer use in the seeded local Canvas tab from Demo Academic
   } finally {
     await browser.close();
   }
-}, 20000);
+}, 45000);
 
 it('hands the Panic priority to the existing read-only Canvas workflow and requires fresh approval', async () => {
   const browser = await launchBrowser();

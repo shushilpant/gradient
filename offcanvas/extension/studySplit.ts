@@ -1,4 +1,3 @@
-import { getGradePoints, getLetterGrade } from '../core/grade.js';
 import { finalGrade } from '../core/gradeModel.js';
 import type { CourseOptimizationInput } from '../core/optimiser.js';
 import {
@@ -9,6 +8,7 @@ import {
 } from '../core/optimiserPriors.js';
 import type { Submission } from '../core/schema.js';
 import type { CanvasLiveAssignment } from './liveCanvas.js';
+import { clockTime, dueTime, isPending, relativeDue } from './plainLanguage.js';
 
 export interface StudySplitCourse {
   code: string;
@@ -18,16 +18,19 @@ export interface StudySplitCourse {
 
 export interface StudySplitItem {
   id: string;
+  courseId: string;
+  assignmentId: string;
   name: string;
   code: string;
+  dueAt: string | null;
   hours: number;
   reason: string;
 }
 
 const STEP_HOURS = 0.5;
-const MAX_HOURS = 8;
-/** A letter-grade step is worth this many semester-percentage points when bids are compared. */
-const LETTER_WEIGHT = 8;
+const HOUR_MS = 3600000;
+const MIN_GAIN_PER_HOUR = 1e-4;
+const GRADE_PRECISION = 6;
 
 interface Candidate {
   key: string;
@@ -36,77 +39,44 @@ interface Candidate {
   name: string;
   code: string;
   points: number;
-  dueAt: string | null;
+  deadline: number;
+  dueLabel: string;
   cap: number;
   tau: number;
+  maxSteps: number;
   urgency: number;
-  reason: string;
 }
 
-function openForStudy(assignment: CanvasLiveAssignment): boolean {
-  const submission = assignment.submission;
-  const state = submission?.workflowState;
-  return !assignment.lockedForUser && !assignment.omitFromFinalGrade && assignment.pointsPossible > 0
-    && !submission?.excused && submission?.score == null
-    && state !== 'submitted' && state !== 'pending_review' && state !== 'graded';
-}
-
-function dayStamp(value: Date): number {
-  const copy = new Date(value);
-  copy.setHours(0, 0, 0, 0);
-  return copy.getTime();
-}
-
-/** Sooner deadlines outrank undated work. Past-due work is not eligible. */
-function urgencyOf(dueAt: string | null, now: Date): number {
-  if (!dueAt) return 0.35;
-  const days = (dayStamp(new Date(dueAt)) - dayStamp(now)) / 86400000;
-  if (days < 0) return 0;
-  return 0.25 + 0.75 * Math.exp(-days / 6);
-}
-
-function dueLabel(dueAt: string | null, now: Date): string {
-  if (!dueAt) return 'No due date';
-  const days = Math.round((dayStamp(new Date(dueAt)) - dayStamp(now)) / 86400000);
-  if (days <= 0) return 'Due today';
-  if (days === 1) return 'Due tomorrow';
-  return `Due in ${days} days`;
-}
-
-function pointsLabel(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
+function simulateScore(assignmentId: string, score: number): Submission {
+  return { assignmentId, score, posted: true, excused: false, missing: false, late: false, workflowState: 'graded' };
 }
 
 /**
- * Splits a fixed study budget across outstanding work.
- * Each half hour goes to the assignment whose next block most improves the
- * credit-weighted grade, discounted by how soon it is due. Drop rules, group
- * weights, points, and the learning curve are applied through the grade model.
+ * Rank half-hour blocks by estimated grade gain and deadline proximity. The
+ * available hours are a ceiling, and each task gets at most one focused pass.
  */
 export function allocateStudySplit(courses: StudySplitCourse[], capacityHours: number, now = new Date()): StudySplitItem[] {
-  const budget = Math.max(0, Math.round(capacityHours / STEP_HOURS));
-  const maxSteps = Math.round(MAX_HOURS / STEP_HOURS);
+  const budget = Math.floor(capacityHours / STEP_HOURS);
   const nowMs = now.getTime();
-  const candidates: Candidate[] = [];
+  if (!Number.isFinite(budget) || budget < 1 || !Number.isFinite(nowMs)) return [];
 
-  courses.forEach((course, courseIndex) => {
+  const byCourse = courses.map((course, courseIndex) => {
+    const candidates: Candidate[] = [];
     const groups = new Map(course.input.groups.map(group => [group.id, group]));
     const known = new Set(course.input.assignments.map(assignment => assignment.id));
-    const coursePoints = course.input.assignments
-      .filter(assignment => !assignment.omitFromFinalGrade && groups.has(assignment.groupId))
-      .reduce((sum, assignment) => sum + assignment.pointsPossible, 0);
     for (const assignment of course.assignments) {
-      if (!openForStudy(assignment) || !known.has(assignment.id) || !groups.has(assignment.groupId)) continue;
-      const dueAt = assignment.dueAt ?? null;
-      if (dueAt && new Date(dueAt).getTime() <= nowMs) continue;
-      const group = groups.get(assignment.groupId)!;
+      const group = groups.get(assignment.groupId);
+      if (!group || !known.has(assignment.id) || assignment.lockedForUser || assignment.omitFromFinalGrade
+        || assignment.pointsPossible <= 0 || !isPending(assignment)) continue;
+      const deadline = dueTime(assignment);
+      const hoursUntilDue = (deadline - nowMs) / HOUR_MS;
+      if (hoursUntilDue < STEP_HOURS) continue;
       const taskType = inferTaskType(assignment.name, assignment.submissionTypes, group.name);
       const prior = DEFAULT_TASK_PRIORS[taskType] ?? DEFAULT_TASK_PRIORS.default!;
       const logged = course.input.loggedHours?.[assignment.id] ?? 0;
-      const weighted = course.input.course.applyGroupWeights && group.weight > 0;
-      const stake = weighted
-        ? `${group.name} is ${pointsLabel(group.weight)}% of the grade`
-        : `${pointsLabel(assignment.pointsPossible)} of ${pointsLabel(coursePoints)} course points`;
+      const tau = computeEffectiveTau(prior.tau, logged, prior.alphaLogged, 1);
+      const dated = Number.isFinite(deadline);
+      const due = relativeDue(assignment, now);
       candidates.push({
         key: `${course.input.course.id}:${assignment.id}`,
         courseIndex,
@@ -114,105 +84,118 @@ export function allocateStudySplit(courses: StudySplitCourse[], capacityHours: n
         name: assignment.name,
         code: course.code,
         points: assignment.pointsPossible,
-        dueAt,
+        deadline,
+        dueLabel: dated ? `${due} at ${clockTime(deadline)}` : due,
         cap: prior.cap,
-        tau: computeEffectiveTau(prior.tau, logged, prior.alphaLogged, 1),
-        urgency: urgencyOf(dueAt, now),
-        reason: `${dueLabel(dueAt, now)} · ${stake}`,
+        tau,
+        // At tau * ln(2), the curve's marginal return has halved. With no
+        // deadline to plan against, suggest only a half-hour starter block.
+        maxSteps: dated ? Math.max(1, Math.floor(tau * Math.LN2 / STEP_HOURS)) : 1,
+        // Dated work decays over six days. Undated work is considered last.
+        urgency: 0.25 + 0.75 * Math.exp(-hoursUntilDue / (6 * 24)),
       });
     }
+    return candidates;
   });
 
-  const steps = new Map(candidates.map(item => [item.key, 0]));
-  const creditTotal = courses.reduce((sum, course) => sum + course.input.course.creditHours * (course.input.priorityWeight ?? 1), 0) || 1;
+  const candidates = byCourse.flat().sort((a, b) => a.deadline - b.deadline);
+  const steps = new Map(candidates.map(item => [item, 0]));
+  const credits = courses.map(({ input }) => input.course.creditHours * (input.priorityWeight ?? 1));
+  const creditTotal = credits.reduce((total, weight) => total + weight, 0) || 1;
+  const baseline = courses.map(({ input }) => finalGrade(input, { roundingDecimals: GRADE_PRECISION }));
+  const projected = [...baseline];
 
-  const semester = () => {
-    let gpa = 0;
-    let pct = 0;
-    courses.forEach((course, courseIndex) => {
-      const submissions: Submission[] = course.input.submissions.map(submission => ({ ...submission }));
-      const byId = new Map(submissions.map(submission => [submission.assignmentId, submission]));
-      for (const item of candidates) {
-        if (item.courseIndex !== courseIndex) continue;
-        const spent = (steps.get(item.key) ?? 0) * STEP_HOURS;
-        if (spent <= 0) continue;
-        const next: Submission = {
-          assignmentId: item.assignmentId,
-          score: expectedScoreFraction(spent, item.cap, item.tau) * item.points,
-          posted: true,
-          excused: false,
-          missing: false,
-          late: false,
-          workflowState: 'graded',
-        };
-        const existing = byId.get(item.assignmentId);
-        if (existing) Object.assign(existing, next);
-        else submissions.push(next);
-        byId.set(item.assignmentId, next);
-      }
-      const grade = finalGrade({
-        course: course.input.course,
-        groups: course.input.groups,
-        assignments: course.input.assignments,
-        submissions,
-      }, { roundingDecimals: 6 });
-      const percentage = grade.percentage ?? 0;
-      const letter = getLetterGrade(percentage, course.input.course.gradingScheme);
-      const weight = course.input.course.creditHours * (course.input.priorityWeight ?? 1) / creditTotal;
-      gpa += weight * getGradePoints(letter, course.input.course.gradePointScale);
-      pct += weight * percentage;
-    });
-    return { gpa, pct };
+  const gradeWithPlan = (courseIndex: number) => {
+    const { input } = courses[courseIndex]!;
+    const submissions = new Map(input.submissions.map(submission => [submission.assignmentId, submission]));
+    for (const item of byCourse[courseIndex]!) {
+      const hours = steps.get(item)! * STEP_HOURS;
+      if (hours <= 0) continue;
+      const score = expectedScoreFraction(hours, item.cap, item.tau) * item.points;
+      submissions.set(item.assignmentId, simulateScore(item.assignmentId, score));
+    }
+    return finalGrade({ ...input, submissions: [...submissions.values()] }, { roundingDecimals: GRADE_PRECISION });
   };
 
   let remaining = budget;
-  let guard = 0;
-  while (remaining > 0 && guard < budget * 4) {
-    guard += 1;
-    const base = semester();
+  while (remaining > 0) {
+    // Additional work must fit by its own deadline and leave room for already
+    // planned work at each later deadline. Work can be done in deadline order.
+    let scheduled = budget - remaining;
+    let roomBeforeDeadline = remaining;
+    const roomByItem = new Map<Candidate, number>();
+    for (const item of [...candidates].reverse()) {
+      const deadlineSteps = Math.floor((item.deadline - nowMs) / (HOUR_MS * STEP_HOURS));
+      roomBeforeDeadline = Math.min(roomBeforeDeadline, deadlineSteps - scheduled);
+      roomByItem.set(item, roomBeforeDeadline);
+      scheduled -= steps.get(item)!;
+    }
+
     let best: { item: Candidate; value: number; commit: number } | null = null;
     for (const item of candidates) {
-      const current = steps.get(item.key) ?? 0;
-      const room = Math.min(maxSteps - current, remaining);
+      if (best && Number.isFinite(best.item.deadline) && !Number.isFinite(item.deadline)) break;
+      const current = steps.get(item)!;
+      const room = Math.min(item.maxSteps - current, roomByItem.get(item)!);
       if (room <= 0) continue;
+      const base = projected[item.courseIndex]!;
       const rateAt = (horizon: number) => {
-        steps.set(item.key, current + horizon);
-        const next = semester();
-        steps.set(item.key, current);
-        return ((next.pct - base.pct) + (next.gpa - base.gpa) * LETTER_WEIGHT) / (horizon * STEP_HOURS);
+        steps.set(item, current + horizon);
+        const next = gradeWithPlan(item.courseIndex);
+        steps.set(item, current);
+        const gradeGain = (next.percentage ?? 0) - (base.percentage ?? 0);
+        const creditShare = credits[item.courseIndex]! / creditTotal;
+        return creditShare * gradeGain / (horizon * STEP_HOURS);
       };
-      const immediate = rateAt(1);
       let commit = 1;
-      let rate = immediate;
-      if (!(immediate > 1e-4)) {
-        commit = 0;
-        rate = -Infinity;
-        for (const horizon of [2, 3, 4, 5, 6, 8]) {
-          if (horizon > room) break;
+      let rate = rateAt(1);
+      if (rate <= MIN_GAIN_PER_HOUR) {
+        // A dropped score may take more than one block to count. Keep any
+        // lookahead within the same deadline and focused-pass limits.
+        for (let horizon = 2; horizon <= room; horizon++) {
           const looked = rateAt(horizon);
-          if (looked > 1e-4) {
+          if (looked > rate) {
             commit = horizon;
             rate = looked;
-            break;
           }
         }
       }
       const value = item.urgency * rate;
-      if (commit > 0 && (!best || value > best.value)) best = { item, value, commit };
+      if (value > (best?.value ?? MIN_GAIN_PER_HOUR)) best = { item, value, commit };
     }
-    if (!best || best.value <= 1e-4) break;
-    steps.set(best.item.key, (steps.get(best.item.key) ?? 0) + best.commit);
+    if (!best) break;
+    steps.set(best.item, steps.get(best.item)! + best.commit);
+    projected[best.item.courseIndex] = gradeWithPlan(best.item.courseIndex);
     remaining -= best.commit;
   }
 
   return candidates
-    .filter(item => (steps.get(item.key) ?? 0) > 0)
-    .sort((a, b) => (steps.get(b.key)! - steps.get(a.key)!) || b.urgency - a.urgency || a.name.localeCompare(b.name))
-    .map(item => ({
-      id: item.key,
-      name: item.name,
-      code: item.code,
-      hours: (steps.get(item.key) ?? 0) * STEP_HOURS,
-      reason: item.reason,
-    }));
+    .filter(item => steps.get(item)! > 0)
+    .sort((a, b) => a.deadline - b.deadline || steps.get(b)! - steps.get(a)! || a.name.localeCompare(b.name))
+    .map(item => {
+      const { input } = courses[item.courseIndex]!;
+      const submissions = input.submissions.filter(submission => submission.assignmentId !== item.assignmentId);
+      submissions.push(simulateScore(item.assignmentId, item.points));
+      const fullCredit = finalGrade({ ...input, submissions }, { roundingDecimals: GRADE_PRECISION }).percentage;
+      const base = baseline[item.courseIndex]!.percentage;
+      const gain = fullCredit == null || base == null ? null : fullCredit - base;
+      let impact = 'Full-credit impact unavailable';
+      if (gain != null) {
+        const amount = Math.abs(gain);
+        const points = amount > 0 && amount < 0.1 ? 'less than 0.1' : Number(amount.toFixed(1));
+        const unit = points === 1 ? 'percentage point' : 'percentage points';
+        impact = gain < 0
+          ? `Full credit reduces the final grade by ${points} ${unit}`
+          : `Full credit adds ${points} ${unit} to the final grade`;
+      }
+      return {
+        id: item.key,
+        courseId: input.course.id,
+        assignmentId: item.assignmentId,
+        name: item.name,
+        code: item.code,
+        dueAt: Number.isFinite(item.deadline) ? new Date(item.deadline).toISOString() : null,
+        hours: steps.get(item)! * STEP_HOURS,
+        reason: `${item.dueLabel} · ${impact}`,
+      };
+    });
 }
