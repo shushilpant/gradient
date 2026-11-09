@@ -33,7 +33,7 @@ from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import ProxyHandler, Request as URLRequest, build_opener
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field, PrivateAttr, TypeAdapter, ValidationError, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, TypeAdapter, ValidationError, field_validator, model_validator
 
 try:
     from public_search import fallback as fallback_search
@@ -1578,8 +1578,60 @@ except ImportError:
     from backend.photo_check import PhotoRequest, check_photo
 
 
+class ExplainRequest(BaseModel):
+    model: str = Field(min_length=1, max_length=200)
+    topic: Literal["overview", "course"]
+    facts: dict[str, str | int | float] = Field(max_length=40)
+
+    @field_validator("facts")
+    @classmethod
+    def short_facts(cls, value: dict[str, str | int | float]) -> dict[str, str | int | float]:
+        for key, item in value.items():
+            if len(key) > 60 or (isinstance(item, str) and len(item) > 300):
+                raise ValueError("Each fact must be short.")
+        return value
+
+
+class ExplainOutput(BaseModel):
+    explanation: str = Field(min_length=20, max_length=900)
+
+
+_NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def grounded_numbers(text: str, facts: dict[str, str | int | float]) -> bool:
+    """Every figure in a plain-language explanation must come from the supplied facts."""
+    known = {match for key, value in facts.items() for match in _NUMBER.findall(f"{key} {value}")}
+    known |= {str(int(float(n))) for n in list(known)} | {f"{float(n):.1f}" for n in list(known)}
+    return all(n in known for n in _NUMBER.findall(text))
+
+
+def explain_plainly(payload: ExplainRequest) -> ExplainOutput:
+    installed_model(payload.model)
+    report_stage("explaining", "Rewording your figures in plain English")
+    facts = "\n".join(f"- {key}: {value}" for key, value in payload.facts.items())
+    subject = "the student's overall coursework this week" if payload.topic == "overview" else "the student's grade in one course"
+    messages = [
+        {"role": "system", "content": (
+            "You explain university coursework to a student who finds grades and jargon confusing. "
+            "Write in British English spelling. Use plain, friendly, calm language that a 12-year-old could follow. "
+            "Write two to four short sentences addressed to the student as 'you'. "
+            "Use only the facts provided. Never introduce a number, date, percentage or claim that is not in the facts. "
+            "Keep each figure attached to the fact it belongs to; never combine facts or apply a total to a single piece of work. "
+            "Do not use the words 'weighted', 'percentile', 'GPA' or 'rubric'. No emojis, no exclamation marks, no headings, no lists. "
+            "End with one gentle, practical suggestion drawn from the facts. "
+            'Respond as JSON: {"explanation": "..."}'
+        )},
+        {"role": "user", "content": f"Explain {subject} using these facts:\n{facts}"},
+    ]
+    output = model_json(payload.model, messages, ExplainOutput, 400)
+    if not grounded_numbers(output.explanation, payload.facts):
+        raise HTTPException(422, "The local model added figures that Canvas did not provide, so the built-in summary is shown instead.")
+    return output
+
+
 class JobRequest(BaseModel):
-    type: Literal["generate", "browser", "research", "speech", "photo"]
+    type: Literal["generate", "browser", "research", "speech", "photo", "explain"]
     request: dict
 
 
@@ -1601,6 +1653,8 @@ def run_job(job_id: str, kind: str, payload: BaseModel):
         elif kind == "speech":
             report_stage("speaking", "Generating Kokoro narration locally")
             result = synthesize(payload)
+        elif kind == "explain":
+            result = explain_plainly(payload)
         else:
             result = generate_study_packet(payload) if kind == "generate" else browser_plan(payload)
         state = {"status": "complete", "result": result.model_dump(by_alias=True)}
@@ -1617,7 +1671,7 @@ def run_job(job_id: str, kind: str, payload: BaseModel):
 @router.post("/jobs", status_code=202)
 def create_job(payload: JobRequest):
     try:
-        validated = StudyRequest.model_validate(payload.request) if payload.type in ("generate", "research") else SpeechRequest.model_validate(payload.request) if payload.type == "speech" else PhotoRequest.model_validate(payload.request) if payload.type == "photo" else BrowserRequest.model_validate(payload.request)
+        validated = StudyRequest.model_validate(payload.request) if payload.type in ("generate", "research") else ExplainRequest.model_validate(payload.request) if payload.type == "explain" else SpeechRequest.model_validate(payload.request) if payload.type == "speech" else PhotoRequest.model_validate(payload.request) if payload.type == "photo" else BrowserRequest.model_validate(payload.request)
     except ValidationError as exc:
         # Do not reflect assignment bodies or screenshots in validation errors.
         raise HTTPException(422, "Invalid assistant job request. Check the model, detail level and required assignment/page fields.") from exc

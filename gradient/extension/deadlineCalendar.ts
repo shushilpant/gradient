@@ -278,7 +278,7 @@ export function deliverDeadlineAlarm(alarm: chrome.alarms.Alarm): Promise<void> 
         for (const leadHours of [24, 1] as const) if (alarm.name === reminderName(deadline, leadHours)) {
           await chrome.notifications.create(alarm.name, { type: 'basic', iconUrl: chrome.runtime.getURL('extension/icons/icon128.png'),
             title: `${deadline.courseCode}: assignment due soon`,
-            message: `${deadline.title}\nDue ${new Date(deadline.dueAt).toLocaleString()}. Click to open in Canvas.`, priority: 1 });
+            message: `${deadline.title}\nDue ${new Date(deadline.dueAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Click to open in Canvas.`, priority: 1 });
           store.delivered[alarm.name] = Date.now(); await writeStore(store);
           return;
         }

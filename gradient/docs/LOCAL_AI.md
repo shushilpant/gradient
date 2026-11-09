@@ -26,6 +26,12 @@ Cancel stops the extension from waiting for or accepting a result; a local model
 
 Study studio builds flashcards, practice, concept maps, and guided reading from selected material. Photo check requires confirmation of the transcription before critique. Command center supports briefings, study planning, and focus timers. Browser automation requires a separately configured [local Canvas copy](LOCAL_CANVAS.md).
 
+## Plain-English explanations
+
+The Overview briefing and each course's grade card are written by deterministic code from Canvas data, so they work without any model. **Explain this more simply** sends only the short list of facts behind that text (counts, marks, dates, assignment names) to `POST /api/v1/assistant/jobs` with type `explain`. The model is asked for two to four sentences in British English and must not add anything.
+
+Every figure in the reply is checked against the supplied facts on both the backend and the extension. If the model invents a number, or the service is not running, the built-in briefing stays on screen with a short note. Nothing is sent beyond `127.0.0.1`.
+
 ## Reading materials
 
 Canvas pages are read with the signed-in browser session. Accessible PDF, DOCX, HTML, text, and source files can be extracted locally. Files are limited to 12 MB. Scanned PDFs, encrypted files, unsupported formats, and restricted Canvas items produce access errors. Inaccessible content is never silently treated as evidence.

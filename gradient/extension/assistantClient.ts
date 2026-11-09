@@ -81,7 +81,7 @@ export async function pullAssistantModel(settings: AssistantSettings, model: str
 }
 
 /** Poll short requests so MV3's 30-second fetch limit never interrupts local inference. */
-async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research' | 'speech' | 'photo', input: StudyRequest | BrowserPlanRequest | {text:string;voice:string} | PhotoCheckRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<unknown> {
+async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' | 'research' | 'speech' | 'photo' | 'explain', input: StudyRequest | BrowserPlanRequest | {text:string;voice:string} | PhotoCheckRequest | ExplainRequest, onProgress?: (progress: StudyProgress) => void, signal?: AbortSignal): Promise<unknown> {
   signal?.throwIfAborted();
   const job = z.object({ id: z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/) }).parse(await request(settings, 'jobs', 'POST', { type, request: input }));
   signal?.throwIfAborted();
@@ -96,6 +96,15 @@ async function runJob(settings: AssistantSettings, type: 'generate' | 'browser' 
     await new Promise(resolve => setTimeout(resolve, 1500));
   }
   throw new Error('Generation exceeded 15 minutes. Try a smaller installed model or a lower detail level.');
+}
+
+export interface ExplainRequest { model: string; topic: 'overview' | 'course'; facts: Record<string, string | number> }
+
+/** The local model only rewords figures computed from Canvas; the backend rejects any new numbers. */
+export async function explainPlainly(settings: AssistantSettings, topic: ExplainRequest['topic'], facts: ExplainRequest['facts'], signal?: AbortSignal): Promise<string> {
+  const result = await runJob(settings, 'explain', { model: settings.reasoningModel, topic, facts }, undefined, signal);
+  const text = z.object({ explanation: z.string().min(1).max(900) }).parse(result).explanation;
+  return text.replace(/[\u00a0\u202f]/g, ' ').replace(/(\d) %/g, '$1%').trim();
 }
 
 export async function enableBrowserSearch(): Promise<boolean> {

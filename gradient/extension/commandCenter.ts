@@ -88,7 +88,7 @@ export function detectMissionChanges(before: Record<string, AssignmentBaseline>,
     const previous = before[id];
     if (!previous) return [{ id: `${id}:new`, title: `New assignment: ${current.title}`, detail: 'Added since your previous sync.', url: current.url, courseId: current.courseId }];
     const changes: ChangeRecord[] = [];
-    if (current.dueAt !== previous.dueAt) changes.push({ id: `${id}:deadline`, title: `Deadline changed: ${current.title}`, detail: `${previous.dueAt ? new Date(previous.dueAt).toLocaleString() : 'No date'} → ${current.dueAt ? new Date(current.dueAt).toLocaleString() : 'No date'}`, url: current.url, courseId: current.courseId });
+    if (current.dueAt !== previous.dueAt) changes.push({ id: `${id}:deadline`, title: `Deadline changed: ${current.title}`, detail: `${previous.dueAt ? new Date(previous.dueAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No date'} → ${current.dueAt ? new Date(current.dueAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'No date'}`, url: current.url, courseId: current.courseId });
     if (current.description !== previous.description || current.rubric !== previous.rubric) changes.push({ id: `${id}:requirements`, title: `Requirements changed: ${current.title}`, detail: current.rubric !== previous.rubric ? 'The rubric changed. Review the current criteria before continuing.' : changedInstructionExcerpt(previous.description, current.description), url: current.url, courseId: current.courseId });
     return changes;
   });

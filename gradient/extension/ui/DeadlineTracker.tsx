@@ -52,7 +52,7 @@ export function DeadlineTracker({ snapshot, preview = false }: { snapshot: Canva
             if (e.currentTarget.checked) next.delete(deadline.id); else next.add(deadline.id);
             update(state?.enabled ?? false, [...next]);
           }}/>
-          <div class="g-task-main"><strong><a href={deadline.url}>{deadline.title}</a></strong><p class="g-small" style={{ marginTop: '4px' }}>{deadline.courseCode} · {new Date(deadline.dueAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}{past ? ' · Past due' : ''}</p>
+          <div class="g-task-main"><strong><a href={deadline.url}>{deadline.title}</a></strong><p class="g-small" style={{ marginTop: '4px' }}>{deadline.courseCode} · {new Date(deadline.dueAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}{past ? ' · Past due' : ''}</p>
             {!past && <a class="g-link-btn" style={{ display: 'inline-flex', marginTop: '7px' }} href={googleCalendarUrl(deadline)} target="_blank" rel="noopener noreferrer">Google Calendar <Icon name="external" size={14}/></a>}
           </div>
         </div>;

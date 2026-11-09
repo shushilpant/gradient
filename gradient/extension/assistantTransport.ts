@@ -48,6 +48,16 @@ export async function localAssistantFetch(backendUrl: string, path: string, meth
     const data = await response.json().catch(() => null);
     if (!response.ok) {
       const detail = data?.detail;
+      if (Array.isArray(detail)) {
+        if (path === '/api/v1/assistant/jobs' && detail.some(issue => issue?.loc?.join('.') === 'body.type' && issue?.type === 'literal_error')) {
+          throw new Error('The local AI service is outdated. Restart the backend, then retry.');
+        }
+        const issues = detail.slice(0, 3).map(issue => {
+          const field = Array.isArray(issue?.loc) ? issue.loc.filter((part: unknown) => part !== 'body').join('.') : 'request';
+          return `${field}: ${typeof issue?.msg === 'string' ? issue.msg : 'invalid value'}`;
+        });
+        throw new Error(`The local assistant could not accept the request. ${issues.join('; ')}`);
+      }
       throw new Error(typeof detail === 'string' ? detail : `The local assistant returned HTTP ${response.status}.`);
     }
     return data;

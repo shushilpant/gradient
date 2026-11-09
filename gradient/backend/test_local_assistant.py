@@ -817,3 +817,14 @@ def test_final_assignment_latex_reports_missing_converter(monkeypatch):
     monkeypatch.setattr(ai.shutil, 'which', lambda _: None)
     with pytest.raises(ai.HTTPException, match='Pandoc'):
         ai.assignment_latex('Homework', 'Answer', [])
+
+
+def test_plain_explanations_only_use_supplied_figures():
+    facts = {'courses at 80% or above': 3, 'LIVE-101 current mark': '90.7%'}
+    assert ai.grounded_numbers('All 3 courses are at 80% or above; LIVE-101 is on 90.7%.', facts)
+    assert not ai.grounded_numbers('LIVE-101 should reach 95% by Friday.', facts)
+
+
+def test_explain_requests_reject_long_facts():
+    with pytest.raises(ai.ValidationError):
+        ai.ExplainRequest.model_validate({'model': 'qwen3:8b', 'topic': 'course', 'facts': {'note': 'x' * 400}})

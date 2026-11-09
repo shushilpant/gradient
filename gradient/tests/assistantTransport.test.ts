@@ -76,6 +76,16 @@ describe('local assistant relay boundaries', () => {
     await assertion;
     expect((fetch.mock.calls[0]?.[1].signal as AbortSignal).aborted).toBe(true);
   });
+
+  it('identifies an outdated backend without reflecting request contents', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({detail:[{loc:['body','type'],type:'literal_error',msg:'Unsupported type',input:'private content'}]}), {status:422})));
+    await expect(localAssistantFetch('http://localhost:8765', '/api/v1/assistant/jobs', 'POST', {type:'explain'})).rejects.toThrow('Restart the backend');
+  });
+
+  it('shows validation fields instead of a bare HTTP 422', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({detail:[{loc:['body','model'],type:'missing',msg:'Field required',input:'private content'}]}), {status:422})));
+    await expect(localAssistantFetch('http://localhost:8765', '/api/v1/assistant/jobs', 'POST', {})).rejects.toThrow('model: Field required');
+  });
 });
 
 describe('user-invoked browser actions', () => {

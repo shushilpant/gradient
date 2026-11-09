@@ -9,6 +9,7 @@ it('plays the prepared Automation demo without live services',async()=>{
   const requests:string[]=[];
   await page.route('**/*',route=>{requests.push(route.request().url());return route.abort();});
   await page.getByRole('tab',{name:'Automation',exact:true}).click();
+  await page.getByRole('button',{name:'Present',exact:true}).click();
   await page.getByRole('button',{name:'Demo Automation',exact:true}).click();
   await page.getByRole('region',{name:'Automation demo run',exact:true}).waitFor();
   expect(await page.getByRole('region',{name:'Saved automation sequence',exact:true}).count()).toBe(0);
@@ -30,6 +31,7 @@ it('plays a staged demo for every module, then returns to live coursework',async
   const results:Record<string,string>={Academics:'Rebuilt grades','AI Workspace':'Prepared study guide',Research:'Example programme matches'};
   for(const [module,region] of Object.entries(results)){
    await page.getByRole('tab',{name:module,exact:true}).click();
+   await page.getByRole('button',{name:'Present',exact:true}).click();
    await page.getByRole('button',{name:`Demo ${module}`,exact:true}).click();
    await page.getByRole('region',{name:`${module==='AI Workspace'?'Homework Autopilot':module} demo run`,exact:true}).waitFor();
    expect(await page.getByRole('region',{name:region,exact:true}).count()).toBe(0);
@@ -54,6 +56,7 @@ it('starts module demos and the full tour from page events, and hands control ba
   await page.getByRole('region',{name:'Academics demo run',exact:true}).waitFor();
   await page.getByRole('tab',{name:'Research',exact:true}).click();
   expect(await page.getByRole('button',{name:'Stop tour',exact:true}).count()).toBe(0);
+  await page.getByRole('button',{name:'Present',exact:true}).click();
   await page.getByRole('button',{name:'Play full tour',exact:true}).waitFor();
  }finally{await browser.close();}
 },30000);

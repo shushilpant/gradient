@@ -59,7 +59,7 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
     const matchedSkills=profile.skills.filter(skill=>item.skills.some(name=>name.toLowerCase()===skill.name.toLowerCase()));
     return {...item,matchedSkills,overlap:item.matchedTopics.length*2+matchedSkills.length};
   }).sort((a,b)=>b.overlap-a.overlap||a.title.localeCompare(b.title)),[result,profile]);
-  return <div class="jc"><h1>Research</h1><p class="jc-sub">Discover undergraduate research through your coursework, with evidence for each match.</p>
+  return <div class="jc"><div><span class="jc-kicker">Undergraduate research</span><h1>Research</h1><p class="jc-sub">Discover undergraduate research through your coursework, with evidence for each match.</p></div>
     <section class="jc-section"><h2>Your academic background</h2><p class="jc-muted">{context.courses.map(course=>course.code).join(' · ')||'Sync Canvas to discover your enrolled courses.'}</p>
       <h3>Suggested research interests</h3><p class="jc-muted">Suggestions require a course title, substantive course description, learning objective, or corroborating documents. Incidental examples are excluded; course codes alone do not establish a subject.</p>
       {profile.interests.map(item=><details key={item.topic}><summary><strong>{item.topic}</strong> · {item.courses.join(', ')}</summary><Evidence items={item.evidence}/></details>)}
@@ -67,7 +67,7 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
       <h3>Skills and exposure</h3>
       {profile.skills.map(skill=><details key={skill.name}><summary>{skill.name} · {skill.status==='demonstrated'?'Assessed coursework evidence':'Inferred exposure'}</summary><Evidence items={skill.evidence}/></details>)}
       {!profile.skills.length&&<p class="jc-muted">No specific technical skills identified yet. Read accessible materials to enrich your profile.</p>}
-      <p class="jc-muted">Inferred exposure comes from course text and does not establish proficiency. Assessed coursework evidence requires a matching instructor rubric criterion awarded full points; it does not establish independent mastery.</p>
+      <p class="jc-muted">Inferred exposure comes from course text and does not establish proficiency. Assessed coursework evidence requires a matching marking criterion awarded full marks by your lecturer; it does not establish independent mastery.</p>
       <button class="g-secondary" disabled={busy||reading} onClick={()=>void analyseMaterials()}>Analyse accessible course materials</button>
       <p class="jc-muted">Reads up to six published pages or files per course, for up to eight courses. PDF and DOCX extraction uses the local service. Restricted content is excluded. Text is cached in memory for this account and sync.</p>
       {!!warnings.length&&<details><summary>{warnings.length} material access notes</summary><ul>{warnings.map((warning,index)=><li key={index}>{warning}</li>)}</ul></details>}
@@ -80,7 +80,7 @@ export function ReuFinder({snapshot,context:provided}:{snapshot:CanvasSnapshot;c
       {(busy||reading)&&<button class="g-secondary" onClick={stop}>Cancel</button>}
       {progress&&<p role="status" class="jc-muted">{progress}</p>}{error&&<p role="alert" class="jc-error">{error}</p>}
     </section>
-    {result&&<section class="jc-section" aria-label="REU search results"><p class="jc-muted">Source pages checked {new Date(result.checkedAt).toLocaleString()}. Current application status is unverified. Overlap does not establish eligibility or admission likelihood.</p>
+    {result&&<section class="jc-section" aria-label="REU search results"><p class="jc-muted">Source pages checked {new Date(result.checkedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}. Current application status is unverified. Overlap does not establish eligibility or admission likelihood.</p>
       {result.message&&<p role="status">{result.message}</p>}
       {ranked.map((item,index)=><article class="jc-message" key={item.url}><h2>{index+1}. <a href={/^https:\/\//.test(item.url)?item.url:undefined} target="_blank" rel="noopener noreferrer">{item.title}</a></h2>
         <p>{item.summary}</p>{item.applicationUrl&&/^https:\/\//.test(item.applicationUrl)&&<p><a href={item.applicationUrl} target="_blank" rel="noopener noreferrer">Application information from programme page</a><span class="jc-muted"> · Current cycle unverified</span></p>}<p class="jc-muted">Overlap score {item.overlap}: {item.matchedTopics.length} topic matches × 2 + {item.matchedSkills.length} skill mentions × 1. A transparent relevance ordering, not a probability.</p>

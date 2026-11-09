@@ -153,14 +153,14 @@ export class SafetyGuard {
       }
     }
 
-    // 3. Default-deny when unsure: verify URL path belongs to recognized safe Canvas course spaces
+    // 3. Default-deny when unsure: verify URL path belongs to recognised safe Canvas course spaces
     if (this.config.defaultDenyWhenUnsure) {
       const isRecognizedSafe = this.config.allowedPathPatterns.some((pattern) => pattern.test(url));
       if (!isRecognizedSafe) {
         return {
           allowed: false,
           blocked: true,
-          reason: `Blocked by fail-closed policy: URL '${url}' is outside recognized safe Canvas course views`,
+          reason: `Blocked by fail-closed policy: URL '${url}' is outside recognised safe Canvas course views`,
         };
       }
     }

@@ -59,7 +59,7 @@ describe('Consolidated workspace settings and keyboard controls', () => {
       await page.getByLabel('Assignment to simulate').selectOption('1008');
       await page.getByRole('button', { name: 'Explain assignment', exact: true }).click();
       expect(await page.getByLabel('Assistant assignment', { exact:true }).inputValue()).toBe('1008');
-      await page.getByRole('button', { name: 'Grade implications, study plan & calendar', exact: true }).click();
+      await page.getByRole('button', { name: 'Effect on your grade, study plan & calendar', exact: true }).click();
       expect(await page.getByLabel('Assignment to simulate').inputValue()).toBe('1008');
       expect(await page.getByLabel('Study hours available').count()).toBe(1);
       expect(await page.getByRole('button', { name:'Download calendar (.ics)', exact:true }).count()).toBe(1);

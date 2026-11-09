@@ -83,7 +83,7 @@ describe('Command center browser integration', () => {
       await command(page, 'I have 25 minutes. Get me started');
       await page.getByRole('timer').waitFor();
       expect(await page.getByRole('timer').innerText()).toBe('25:00');
-      await page.getByRole('button', { name: 'Minimize GRADIENT', exact: true }).click();
+      await page.getByRole('button', { name: 'Minimise GRADIENT', exact: true }).click();
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).click();
       expect(await page.getByRole('timer').innerText()).toBe('25:00');
       expect(await page.getByRole('log').innerText()).toContain('Adjusted to 40 minutes');

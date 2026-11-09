@@ -8,7 +8,7 @@ describe('Signature demo flows',()=>{
   const {page,requests}=await mockCanvas(browser,{legacy:true,fixedTime:'2026-11-05T15:00:00Z'});page.setDefaultTimeout(6000);
   try{
    await page.getByRole('button',{name:/^Grade lab/}).click();
-   const chart=page.getByRole('img',{name:/Modeled GPA fan chart/});await chart.waitFor();
+   const chart=page.getByRole('img',{name:/Modelled GPA fan chart/});await chart.waitFor();
    const before=await chart.getAttribute('aria-label');const count=requests.length;
    await page.getByRole('slider',{name:/Study hours for/}).first().evaluate((element:HTMLInputElement)=>{element.value='24';element.dispatchEvent(new Event('input',{bubbles:true}));});
    await page.waitForFunction(old=>{const host=document.querySelector('#gradient-panel-host')?.shadowRoot;return host?.querySelector('.gl-chart')?.getAttribute('aria-label')!==old;},before);

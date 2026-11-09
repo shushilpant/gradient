@@ -277,7 +277,7 @@ export async function loadCanvasSnapshot(options: LoadCanvasOptions = {}): Promi
           }]));
         }
         if (Array.isArray(source?.submission_comments)) {
-          submission.submissionComments = source.submission_comments.map((c: RecordData) => ({ authorName: String(c.author_name ?? 'Instructor'), comment: String(c.comment ?? ''), createdAt: c.created_at }));
+          submission.submissionComments = source.submission_comments.map((c: RecordData) => ({ authorName: String(c.author_name ?? 'Lecturer'), comment: String(c.comment ?? ''), createdAt: c.created_at }));
         }
         return submission;
       });

@@ -1,34 +1,43 @@
 # GRADIENT academic workbench
 
-Reading this as a student study workspace with the precision of a research notebook. The redesign uses UI/UX Pro Max for accessible dashboard behavior and the audit/aesthetic guidance from design-taste-frontend. The latter excludes dense product UI, so its marketing-page rules are not applied here.
+GRADIENT is written for a student who opens Canvas and wants three answers quickly: what is due next, how am I doing, and what should I do about it. Every screen is judged against that reader, not against someone who already knows grade boundaries or weighting rules.
 
-## Audit and direction
+## Direction
 
-The previous interface used blue SaaS cards, repeated aspirational headlines, a cyan/navy assistant theme later recolored blue, and decorative chart-shaped bars. Typography was inherited from system Inter. The result made the assistant feel attached to, rather than part of, the workspace.
+A light, calm study notebook. Ink on warm paper, one confident blue for action, and colour reserved for meaning. Big numbers are set in a serif so they read like a printed report; everything that is interacted with uses a quiet sans.
 
-The new direction is an academic instrument. It keeps Canvas data and controls legible, makes the work itself the focus, and replaces decorative visual claims with actual evidence and generated figures.
-
-Design settings: variance 6, motion 2, density 5. Styling is bespoke native CSS in the existing Preact Shadow DOM, not an imitation of a named component system.
+The previous layout layered several stylesheets on top of each other, kept presenter controls permanently on screen, and showed numbers as generic stat tiles. The rework replaces those with a single stylesheet per surface, a **Present** menu that keeps demo controls out of the way, and charts that answer a question in their title.
 
 ## System
 
-- Canvas: cool off-white `#f3f5f2`; white working surfaces.
-- Text: graphite `#202824`; secondary text `#5c6962`.
-- Accent: forest `#175b4c`, used for actions, current navigation, selected modes, and completion.
-- Rules: `#d8e0d9`; stronger edges `#cbd5ce`.
-- Amber and rust indicate deadlines or incomplete evidence; they are not decorative accent colors.
-- Manrope 400/600/800 provides body and display type. IBM Plex Mono 400 distinguishes dates, counts, methods, citations, and progress metadata.
-- Fonts are installed through `@fontsource`, bundled as WOFF2 data URLs in `fontStyles.ts`, and included in standalone HTML exports. No runtime font CDN is used.
-- Controls use a 6 px radius; content groups 8–9 px; the outer desktop workspace 14 px. Grade rings remain circular because their shape conveys a quantity.
+- **Surfaces:** canvas `#f6f6f3`, white cards, sunken `#eff0ec` for inset areas. Rules `#e7e8ec`, stronger edges `#d6d8df`.
+- **Text:** ink `#161b26`, secondary `#3d4453`, muted `#5d6475`, faint `#9aa0ad`.
+- **Accent:** ink blue `#2f46b0` for primary actions, the current tab and selected states only.
+- **Meaning:** amber and red signal deadline pressure; green means handed in or done. Each course keeps one identity colour (`--g-c1` to `--g-c6`) across every chart, list and badge.
+- **Grade zones:** D or below, C, B and A have their own tints (`--g-band-*`) so a mark can be read as a position, not just a number.
+- **Type:** Newsreader for titles and headline figures, Figtree for body and controls, 14 px base. Both are bundled as data URLs in `fontStyles.ts`; no font CDN is used.
+- **Shape:** 6 px chips, 9 px controls, 12 px cards, 16 px outer panel.
+- **Language:** UK English throughout, including dates (`en-GB`, e.g. "Tuesday 10 November", 24-hour times). Plain words win over Canvas jargon: "marked" rather than "graded", "handed in" rather than "submitted", "lecturer" rather than "instructor".
 
-## Information hierarchy
+## Overview
 
-The shell has a forest registration rule and underlined navigation. Overview numbers sit on a ruled strip rather than colored tiles. Course rows are a flat indexed list. Assignment context and autopilot have a left-edge rule, so the selected work and scope remain visible without decorative badges everywhere.
+1. A greeting and a two-to-three sentence briefing generated from Canvas data (`plainLanguage.ts`). An optional **Explain this more simply** button asks the local model to reword the same facts.
+2. **Next up:** the nearest deadline, a date tile, and one primary action.
+3. **Next fortnight:** a 14-day workload chart. Blocks are stacked by points and coloured by course, so heavy days are visible at a glance.
+4. **Where you stand:** every course on one 60–100 scale with grade zones, today's mark, and a bracket showing where the final mark can still land.
+5. **Term progress:** a single segmented bar for overdue, still to do, handed in and marked work.
+6. Course list, upcoming work, changes since last visit and AI rules follow.
 
-Autopilot has explicit homework scope, a six-stage progress ledger, requirement evidence, coverage states, and Python-rendered figure provenance. Completed work remains a document with a clear title and readable text, rather than a chat bubble.
+In the expanded workspace the cards sit in two columns; in the side panel they stack in reading order.
 
-Motion is reserved for actual pending operations. Reduced-motion preferences stop loaders and transitions. Focus rings are explicit, selected states include borders or text, and forms use persistent labels. Compact/mobile layouts preserve the navigation and stack controls without horizontal overflow.
+## Coursework
 
-## Preserved behavior
+The grade card leads with the current mark, letter and a plain-language reading ("Excellent · counts marked work only"), then a large zone track. Below it, a written briefing explains the lowest and highest possible final marks and the next thing to do. Filters are **To do**, **Handed in**, **Marked** and **All work**. The what-if slider shows its effect on the final mark immediately.
 
-Existing course navigation, Canvas refresh, assignment search, grading tools, resource access, reminder controls, local model settings, browser research, and exports retain their original selectors and interaction contracts. No primary navigation labels or brand wordmark were renamed.
+## Behaviour
+
+Motion is limited to state changes and pending operations, and stops under reduced-motion preferences. Focus rings are always visible, selected states never rely on colour alone, and charts carry text alternatives. Below 600 px the panel goes full-bleed without horizontal overflow.
+
+## Preserved behaviour
+
+Course navigation, Canvas refresh, assignment search, grade tools, resource access, reminders, local model settings, research and exports keep their interaction contracts. Demo controls moved into the **Present** menu but keep their accessible names.

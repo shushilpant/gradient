@@ -137,7 +137,7 @@ describe('GRADIENT Canvas workspace', () => {
       await wide.waitFor();
       await page.screenshot({ path: '/tmp/gradient-workspace-wide.png' });
       await wide.click();
-      await page.getByRole('button', { name: 'Minimize GRADIENT', exact: true }).click();
+      await page.getByRole('button', { name: 'Minimise GRADIENT', exact: true }).click();
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).click();
       await page.getByRole('tab', { name: 'Academics', exact: true }).waitFor();
       await page.setViewportSize({ width: 375, height: 812 });
@@ -173,9 +173,9 @@ describe('GRADIENT Canvas workspace', () => {
       expect(await todayRow.innerText()).toContain('Due today');
       expect(await todayRow.innerText()).not.toContain('Tomorrow');
       expect(await page.locator('.g-task').filter({ hasText: 'Hidden instructor score' }).count()).toBe(0);
-      await page.getByRole('button', { name: 'Graded', exact: true }).click();
+      await page.getByRole('button', { name: 'Marked', exact: true }).click();
       const hiddenRow = page.locator('.g-task').filter({ hasText: 'Hidden instructor score' });
-      expect(await hiddenRow.innerText()).toContain('Graded · score hidden');
+      expect(await hiddenRow.innerText()).toContain('Marked · score hidden');
     } finally { await page.close(); }
   }, 20000);
 
@@ -183,7 +183,7 @@ describe('GRADIENT Canvas workspace', () => {
     const { page } = await mockCanvas(browser);
     try {
       await waitForLoaded(page);
-      await page.getByRole('button', { name: 'Minimize GRADIENT', exact: true }).click();
+      await page.getByRole('button', { name: 'Minimise GRADIENT', exact: true }).click();
       await page.getByRole('button', { name: 'Open GRADIENT', exact: true }).waitFor();
       expect(await page.locator('#gradient-workspace').isVisible()).toBe(false);
       await page.evaluate(() => window.dispatchEvent(new Event('gradient:toggle')));
@@ -227,10 +227,10 @@ describe('GRADIENT Canvas workspace', () => {
       await waitForLoaded(page);
       await tab(page, 'Coursework');
       await page.getByLabel('Assignment to simulate').selectOption('1001');
-      const feedback = page.getByRole('region', { name: 'Assignment rubric and instructor feedback', exact: true });
+      const feedback = page.getByRole('region', { name: 'Marking criteria and lecturer feedback', exact: true });
       await feedback.locator('summary').first().click();
       expect(await feedback.innerText()).toContain('Asymptotic Correctness');
-      expect(await feedback.innerText()).toContain('Instructor assessment: 35 / 50 pts');
+      expect(await feedback.innerText()).toContain('Your lecturer gave 35 / 50 pts');
       expect(await feedback.innerText()).toContain('Show each step of your derivation.');
       expect(await feedback.innerText()).toContain('Professor Rivera');
       expect(await feedback.innerText()).toContain('Please justify the asymptotic bound.');

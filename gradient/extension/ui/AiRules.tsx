@@ -14,7 +14,7 @@ export function AiRules({ courses }: { courses: CanvasCourseSnapshot[] }) {
     <p class="g-small">Read from each syllabus, so you know the rules before you ask for help.</p>
     <ul>{rows.map(({ course, policy }) => <li key={course.id}>
       <div class="g-ai-rule-head"><strong>{course.code}</strong><span class={`g-ai-stance ${policy.stance}`}>{LABELS[policy.stance]}</span></div>
-      <q class={policy.sentence ? '' : 'none'}>{policy.sentence ?? 'The syllabus does not mention AI. Ask your instructor before using it on graded work.'}</q>
+      <q class={policy.sentence ? '' : 'none'}>{policy.sentence ?? 'The syllabus does not mention AI. Ask your lecturer before using it on marked work.'}</q>
     </li>)}</ul>
   </section>;
 }
