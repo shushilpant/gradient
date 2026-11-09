@@ -1,0 +1,124 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OffCanvas · Extension preview</title>
+<style>
+:root{--ink:#2a1f1a;--ink2:#4a3f38;--muted:#6b6058;--line:#ebe5df;--line2:#ddd3ca;--canvas:#f8f6f3;--accent:#a64b2a;--accent-hover:#873b22;--coral:#a64b2a;--serif:Newsreader,Georgia,"Times New Roman",serif;--sans:Figtree,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:#fff;color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+a{color:var(--accent);text-decoration:none}a:hover{color:var(--accent-hover);text-decoration:underline;text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+code{font:13px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);background:var(--canvas);border:1px solid var(--line);padding:2px 6px;border-radius:5px}
+nav{display:flex;align-items:center;gap:28px;padding:22px 56px;max-width:calc(100vw - 540px)}
+.brand{display:flex;align-items:baseline;gap:10px;color:var(--ink);font:600 24px/1 var(--serif);letter-spacing:-.015em}
+.brand:hover{text-decoration:none;color:var(--ink)}
+.brand b{font-weight:600}.brand span{color:var(--coral)}
+.brand small{font:500 12px/1 var(--sans);letter-spacing:0;color:var(--muted)}
+.links{display:flex;gap:22px;margin-left:auto;font-size:14px;font-weight:500}
+.links a{color:var(--muted)}.links a:hover{color:var(--ink);text-decoration:none}
+main{max-width:calc(100vw - 540px);padding:0 56px 72px}
+main>*{max-width:680px}
+small{color:var(--muted);font-weight:600;letter-spacing:.02em;font-size:13px}
+.overline{font-size:14px;font-weight:500;color:var(--muted);margin:72px 0 18px}
+h1{font:500 clamp(40px,4.6vw,62px)/1.04 var(--serif);letter-spacing:-.022em;margin:0 0 22px}
+h1 em{font-style:italic;color:var(--accent)}
+h2{font:500 32px/1.15 var(--serif);letter-spacing:-.015em;margin:0 0 10px}
+h3{font:600 22px/1.25 var(--serif);letter-spacing:-.01em;margin:0}
+p{color:var(--ink2);margin:0}
+.lede{font-size:19px;line-height:1.55;max-width:600px}
+.cta{display:flex;align-items:center;flex-wrap:wrap;gap:22px;margin:32px 0 40px}
+.btn{display:inline-flex;align-items:center;gap:10px;height:46px;padding:0 20px;border:0;border-radius:10px;background:var(--accent);color:#fff;font:600 15px/1 var(--sans);cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--accent-hover)}
+.btn:active{transform:scale(.98)}
+.btn svg{opacity:.85}
+.text-link{font-size:15px;font-weight:600}
+.facts{display:flex;flex-wrap:wrap;list-style:none;margin:0;padding:18px 0 0;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.facts li{padding-right:18px;margin-right:18px;border-right:1px solid var(--line)}
+.facts li:last-child{border:0;margin:0;padding:0}
+.facts strong{color:var(--ink);font-weight:600}
+section.block{margin-top:96px}
+.label{font-size:13px;font-weight:600;color:var(--muted);margin-bottom:10px}
+.intro{max-width:560px;margin-bottom:28px}
+.modules{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.modules li{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:4px 16px;align-items:start;padding:24px 0;border-bottom:1px solid var(--line)}
+.num{font:500 15px/1.9 var(--sans);color:var(--muted);font-variant-numeric:tabular-nums}
+.mod-name{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.modules p{margin-top:8px;font-size:15px;line-height:1.55;max-width:500px}
+.watch{align-self:center;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;background:#fff;color:var(--ink);font:600 13px/1 var(--sans);cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s}
+.watch:hover{border-color:#c9bcb1;background:var(--canvas)}
+.watch svg{color:var(--accent)}
+.principles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 40px}
+.principles div{padding:20px 0;border-top:1px solid var(--line)}
+.principles strong{display:block;font-size:15px;font-weight:600;margin-bottom:4px}
+.principles p{font-size:15px;line-height:1.55;color:var(--muted)}
+.principles a{display:inline-block;margin-top:8px;font-size:14px;font-weight:600}
+figure{margin:0;padding:28px;border:1px solid var(--line);border-radius:14px;background:var(--canvas)}
+.flow{display:grid;grid-template-columns:1fr 48px 1fr 48px 1fr;align-items:center}
+.node{padding:16px;border:1px solid var(--line2);border-radius:10px;background:#fff}
+.node strong{display:block;font-size:15px;font-weight:600}
+.node span{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+.node.core{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.arrow{position:relative;height:1px;background:var(--line2);margin:0 6px}
+.arrow::after{content:"";position:absolute;right:-1px;top:-4px;border:4.5px solid transparent;border-left:6px solid var(--line2);border-right:0}
+figcaption{margin-top:18px;font-size:14px;color:var(--muted)}
+.steps{counter-reset:step;list-style:none;margin:20px 0 18px;padding:0}
+.steps li{counter-increment:step;display:grid;grid-template-columns:44px 1fr;padding:14px 0;border-top:1px solid var(--line);color:var(--ink2);font-size:15px}
+.steps li::before{content:counter(step,decimal-leading-zero);color:var(--muted);font-variant-numeric:tabular-nums}
+.note{font-size:13px;line-height:1.6;color:var(--muted);margin-top:72px;padding-top:20px;border-top:1px solid var(--line)}
+footer{font-size:13px;color:var(--muted);margin-top:8px}
+@media(max-width:1100px){nav,main{max-width:none}}
+@media(max-width:720px){nav{padding:18px 22px}.links{display:none}main{padding:0 22px 56px}.overline{margin-top:40px}.principles{grid-template-columns:1fr}.flow{grid-template-columns:1fr;gap:8px}.arrow{width:1px;height:20px;margin:0 auto}.arrow::after{display:none}.modules li{grid-template-columns:32px 1fr}.watch{grid-column:2;justify-self:start;margin-top:12px}}
+</style></head><body>
+<nav><a class="brand" href="/courses/99001"><b>OffCanvas<span>.</span></b><small>Preview</small></a><div class="links"><a href="#modules">What it does</a><a href="#principles">Principles</a><a href="#install">Install</a></div></nav>
+<main>
+<p class="overline">A Canvas companion for students</p>
+<h1>Your whole semester, <em>in one place.</em></h1>
+<p class="lede">OffCanvas sits beside Canvas. It rebuilds your grades, ranks what is due, turns homework into cited study guides with an AI that runs on your laptop, and finds summer research that fits your courses.</p>
+<div class="cta"><button class="btn" type="button" data-tour><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>Play the one-minute tour</button><a class="text-link" href="#install">Install in Chrome</a></div>
+<ul class="facts"><li><strong>No API keys</strong> or passwords</li><li><strong>Read-only</strong> in Canvas</li><li>AI runs <strong>on your laptop</strong></li></ul>
+
+<section class="block" id="modules" aria-labelledby="modules-title">
+<div class="label">What it does</div>
+<h2 id="modules-title">Four tools that share one view of your courses.</h2>
+<p class="intro">Alex is a sample student with three courses and overlapping deadlines. Each demo plays in the panel on the right, using Alex's coursework.</p>
+<ol class="modules">
+<li><span class="num">01</span><div><span class="mod-name">Academics</span><h3>Know exactly where you stand.</h3><p>Every weighted category and drop rule is rebuilt and checked against Canvas. Try what-if scores, plan study hours, and see each syllabus's rules on AI.</p></div><button class="watch" type="button" data-demo="academics" aria-label="Watch the Academics demo"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>Watch</button></li>
+<li><span class="num">02</span><div><span class="mod-name">AI Workspace</span><h3>Study guides that show their sources.</h3><p>Homework Autopilot reads the brief, rubric and course materials, then writes a step-by-step guide with every claim cited. It uses local models, so coursework stays on your machine.</p></div><button class="watch" type="button" data-demo="assistant" aria-label="Watch the AI Workspace demo"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>Watch</button></li>
+<li><span class="num">03</span><div><span class="mod-name">Automation</span><h3>Busywork, done in front of you.</h3><p>A visible cursor works through a sandboxed copy of Canvas. Every step is logged, you can stop it at any point, and it never submits anything.</p></div><button class="watch" type="button" data-demo="automation" aria-label="Watch the Automation demo"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>Watch</button></li>
+<li><span class="num">04</span><div><span class="mod-name">Research</span><h3>Research that fits what you study.</h3><p>Interests and skills are read from your own coursework, then matched to real summer programmes and REUs, each with its reasoning and a link to the programme.</p></div><button class="watch" type="button" data-demo="research" aria-label="Watch the Research demo"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12-7.5z"/></svg>Watch</button></li>
+</ol>
+</section>
+
+<section class="block" id="principles" aria-labelledby="principles-title">
+<div class="label">Principles</div>
+<h2 id="principles-title">Helpful, without crossing the line.</h2>
+<div class="principles" style="margin-top:24px">
+<div><strong>It stays out of assessments</strong><p>OffCanvas switches itself off on quizzes and timed exams. Reference work is never submitted for you.</p><a href="/courses/99001/quizzes/501/take">See it refuse a quiz</a></div>
+<div><strong>Your course rules, quoted</strong><p>Each syllabus's AI policy is shown word for word, so you know what is allowed before you ask for help.</p></div>
+<div><strong>Private by default</strong><p>It uses the Canvas session you are already signed in to. Course text only goes to a service on your own machine.</p></div>
+<div><strong>Honest numbers</strong><p>Grades follow Canvas's own rules. Study plans state their assumptions and show ranges rather than promises.</p></div>
+</div>
+</section>
+
+<section class="block" aria-labelledby="flow-title">
+<div class="label">How it works</div>
+<h2 id="flow-title">Nothing leaves your machine by default.</h2>
+<figure style="margin-top:24px"><div class="flow">
+<div class="node"><strong>Canvas</strong><span>Your signed-in session</span></div><div class="arrow" aria-hidden="true"></div>
+<div class="node core"><strong>OffCanvas</strong><span>Runs in your browser</span></div><div class="arrow" aria-hidden="true"></div>
+<div class="node"><strong>Ollama</strong><span>Local models on your laptop</span></div>
+</div><figcaption>Grades and planning need no AI at all. Public research search is off until you switch it on.</figcaption></figure>
+</section>
+
+<section class="block" id="install" aria-labelledby="install-title"><div class="label">Install</div><h2 id="install-title">Bring it into your actual Canvas</h2><ol class="steps"><li>Open <code>chrome://extensions</code> in Chrome.</li><li><span>Enable Developer mode, choose <strong>Load unpacked</strong>, and select <code>offcanvas/dist</code>.</span></li><li>Open Canvas, sign in, and refresh. Your workspace connects automatically.</li></ol><a href="https://usm.instructure.com/">Open USM Canvas ↗</a></section>
+<p class="note">This preview uses sample courses. New homework deadlines are set one and two days after the selected demo day. Grades and planning work without AI. Model generation, public research and browser automation require their actual optional services; no completed execution is simulated. Guided demos in the panel replay prepared results with staged timing.</p><footer>The installed extension uses your own Canvas session and never substitutes sample data.</footer>
+</main>
+<script><!--BUNDLE--></script>
+<script>
+document.addEventListener('click', function (event) {
+  var target = event.target instanceof Element ? event.target.closest('[data-demo],[data-tour]') : null;
+  if (!target) return;
+  if (target.hasAttribute('data-tour')) window.dispatchEvent(new CustomEvent('offcanvas:tour'));
+  else window.dispatchEvent(new CustomEvent('offcanvas:demo', { detail: target.getAttribute('data-demo') }));
+});
+</script>
+</body></html>
