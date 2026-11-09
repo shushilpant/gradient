@@ -1,19 +1,19 @@
-# GRADIENT
+# OffCanvas
 
 An intelligent academic workspace inside Canvas: **Academics, AI Workspace, Automation, and Research** share the student's accessible coursework.
 
-GRADIENT is a Chrome Manifest V3 extension with optional local services. It reads the existing signed-in Canvas session without API tokens. Live Canvas stays read-only; ordinary coursework and deterministic grade planning work without AI.
+OffCanvas is a Chrome Manifest V3 extension with optional local services. It reads the existing signed-in Canvas session without API tokens. Live Canvas stays read-only; ordinary coursework and deterministic grade planning work without AI.
 
 ## Run the extension
 
 ```sh
-cd gradient
+cd bodha
 npm ci
 npm run typecheck
 npm run build
 ```
 
-In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `gradient/dist`. Sign in to Canvas and refresh. Instructure domains connect automatically; grant other supported Canvas domains explicitly in extension settings. `npm run package` also produces `gradient/gradient-extension.zip`.
+In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `bodha/dist`. Sign in to Canvas and refresh. Instructure domains connect automatically; grant other supported Canvas domains explicitly in extension settings. `npm run package` also produces `bodha/offcanvas-extension.zip`.
 
 - **Academics:** synced coursework, rubrics, feedback, announcements and resources; search and status filters; Canvas weighted grades and drop rules; what-if scenarios; Grade Lab; study allocation; change tracking; calendar exports and reminders.
 - **AI Workspace:** course and assignment assistance through installed Ollama models; three explanation depths; source excerpts and citations; optional public research; Homework Autopilot; cancellation; HTML and Markdown exports.
@@ -31,7 +31,7 @@ make install
 make assistant
 ```
 
-Choose an installed completion model in **AI Workspace → Models**. Browser automation also needs a vision model and the separately configured local Canvas replica. See [local AI setup](gradient/docs/LOCAL_AI.md) and [local Canvas setup](gradient/docs/LOCAL_CANVAS.md). Selected course content goes to the loopback backend and local Ollama. Public research sends editable search keywords to external search services only when enabled.
+Choose an installed completion model in **AI Workspace → Models**. Browser automation also needs a vision model and the separately configured local Canvas replica. See [local AI setup](bodha/docs/LOCAL_AI.md) and [local Canvas setup](bodha/docs/LOCAL_CANVAS.md). Selected course content goes to the loopback backend and local Ollama. Public research sends editable search keywords to external search services only when enabled.
 
 ## Synthetic demonstration
 
@@ -41,16 +41,16 @@ make demo-replay
 
 Open [the synthetic preview](http://127.0.0.1:8085/courses/99001). It contains three courses, posted grades, explicit homework briefs and overlapping deadlines relative to the demo day. It needs no backend for grades, planning or calendar exports. Model generation and browser runs require their actual services; completed runs are never simulated.
 
-Use `make demo-live` to start the same synthetic preview with the local backend. “Live” here means an actual optional service, never a real student account. The preview and the separate Canvas OSS replica are clearly distinguished. [Demo runbook and fallback](gradient/docs/DEMO.md) · [Architecture, inventory and 150-second pitch](gradient/docs/HACKATHON.md)
+Use `make demo-live` to start the same synthetic preview with the local backend. “Live” here means an actual optional service, never a real student account. The preview and the separate Canvas OSS replica are clearly distinguished. [Demo runbook and fallback](bodha/docs/DEMO.md) · [Architecture, inventory and 150-second pitch](bodha/docs/HACKATHON.md)
 
 ## Validate
 
 ```sh
-cd gradient
+cd bodha
 npm run typecheck
 npm run build
 npm test
 backend/.venv/bin/pytest backend -q
 ```
 
-No separate lint command is configured. Browser tests use controlled synthetic Canvas responses. See [validation notes](gradient/docs/VALIDATION.md) for recorded results and limitations; these checks do not authenticate to an institutional account.
+No separate lint command is configured. Browser tests use controlled synthetic Canvas responses. See [validation notes](bodha/docs/VALIDATION.md) for recorded results and limitations; these checks do not authenticate to an institutional account.

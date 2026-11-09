@@ -12,6 +12,7 @@ build/
 # Test and tool caches
 .pytest_cache/
 .vitest/
+.vite/
 
 # Environment and secrets
 .env
@@ -20,8 +21,8 @@ build/
 
 
 # Local assistant process metadata and logs
-gradient/.runtime/
+bodha/.runtime/
 
 # Pinned upstream Canvas checkout and isolated local state
-gradient/sandbox/canvas_local/upstream/
-gradient/sandbox/canvas_local/.state/
+bodha/sandbox/canvas_local/upstream/
+bodha/sandbox/canvas_local/.state/
