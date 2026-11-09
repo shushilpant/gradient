@@ -167,6 +167,23 @@ it('plays a staged demo for every module, then returns to live coursework',async
    await page.getByRole('region',{name:`${module==='AI Workspace'?'Study packet':module} demo run`,exact:true}).waitFor();
    expect(await page.getByRole('region',{name:region,exact:true}).count()).toBe(0);
    await page.getByRole('region',{name:region,exact:true}).waitFor({timeout:15000});
+   if(region==='Rebuilt grades'){
+    const grades=page.getByRole('region',{name:'Rebuilt grades',exact:true});
+    await grades.getByText('1.7 points short of an A').waitFor();
+    expect(await grades.innerText()).toContain('Final mark can still land from 94.2% to 60.9%, down to a D-');
+    const time = page.getByRole('region', { name: 'Time on Canvas', exact: true });
+    await time.waitFor();
+    const timeText = await time.innerText();
+    expect(timeText).toContain('21.0');
+    expect(timeText).not.toContain('Sample week');
+    expect(timeText).not.toContain('for this demo');
+    expect(timeText).toContain('LIVE-101 took 10.5 of those hours');
+    expect(timeText).toContain('BIO-110 got 3.5 hours');
+    await time.getByRole('button').nth(6).hover();
+    const day = time.getByRole('status');
+    await day.waitFor();
+    expect(await day.innerText()).toMatch(/Total\s+\d+\.\dh/);
+   }
   }
   await page.getByRole('tab',{name:'Academics',exact:true}).click();
   expect(await page.getByRole('region',{name:'Rebuilt grades',exact:true}).count()).toBe(0);

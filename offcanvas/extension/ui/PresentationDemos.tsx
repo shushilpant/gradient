@@ -1,18 +1,18 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import savedStudyPacket from '../fixtures/ce240_homework2_study.json';
-import { currentGrade } from '../../core/gradeModel.js';
-import { optimizeEffort } from '../../core/optimiser.js';
-import { DEFAULT_GRADE_POINT_SCALE } from '../../core/schema.js';
 import { getAcademicContext } from '../academicContext.js';
+import { syntheticCanvasTime } from '../canvasTime.js';
+import { gradeInsight, markScale, type GradeInsight } from '../gradeInsight.js';
+import { allocateStudySplit } from '../studySplit.js';
 import { getAssignmentPriorities } from '../assignmentPriorities.js';
 import { packetSchema } from '../assistantClient.js';
-import type { CanvasLiveAssignment, CanvasSnapshot } from '../liveCanvas.js';
+import type { CanvasCourseSnapshot, CanvasLiveAssignment, CanvasSnapshot } from '../liveCanvas.js';
 import { AutomationPresentationDemo } from './AutomationPresentationDemo.js';
 import { canAutomateCurrentPage, getPageAutomation } from '../pageAutomation.js';
 import { getPageDemoTarget, startPageDemo } from '../pageDemo.js';
 import { GroundedMarkdown } from './AssistantView.js';
-import { gradeImpactLabel } from './Dashboard.js';
+import { courseColour, gradeImpactLabel } from './Dashboard.js';
 import { ASSISTANT_STYLES } from './assistantStyles.js';
 import { Icon } from './Icons.js';
 import { PanicAutomationDemo } from './PanicAutomationDemo.js';
@@ -29,10 +29,6 @@ const STUDY_DEMO = {
 const studyPacket = packetSchema.parse(savedStudyPacket);
 const PLAN_HOURS = 8;
 
-function pending(a: CanvasLiveAssignment): boolean {
-  const state = a.submission?.workflowState;
-  return !a.submission?.excused && a.submission?.score == null && state !== 'submitted' && state !== 'pending_review' && state !== 'graded';
-}
 function dueText(a: CanvasLiveAssignment): string {
   if (!a.dueAt) return 'No due date';
   const days = Math.round((new Date(a.dueAt).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
@@ -41,7 +37,37 @@ function dueText(a: CanvasLiveAssignment): string {
   return days === 1 ? 'Due tomorrow' : `Due in ${days} days`;
 }
 function clock(ms: number): string { return `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}.${Math.floor(ms / 100) % 10}`; }
-function clamp(n: number | null | undefined): number { return Math.min(100, Math.max(0, n ?? 0)); }
+
+function TimeOnCanvas({ snapshot, grades }: { snapshot: CanvasSnapshot; grades: { course: CanvasCourseSnapshot; insight: GradeInsight }[] }) {
+  const [active, setActive] = useState<number | null>(null);
+  const report = useMemo(() => syntheticCanvasTime(grades.map(({ course, insight }) => ({
+    id: course.id, code: course.code, floor: insight.floor, ceiling: insight.ceiling,
+  }))), [grades]);
+  const detail = active == null ? null : report.days[active]!;
+  return <section class="g-card g-demo-time" aria-label="Time on Canvas">
+    <div class="g-section-head"><h2>Time on Canvas</h2><Icon name="clock" size={20}/></div>
+    <p class="g-demo-metric-score"><b>{report.total.toFixed(1)}</b><span>h</span></p>
+    <div class="g-demo-time-chart" onMouseLeave={() => setActive(null)}>
+      <div class="g-demo-time-grid" aria-hidden="true"><span/><span/><span/></div>
+      <div class="g-demo-time-cols">{report.days.map((day, index) => <button key={day.aria} type="button" class={`g-demo-time-col${index === report.days.length - 1 ? ' today' : ''}${day.weekday === 0 || day.weekday === 6 ? ' weekend' : ''}${active === index ? ' active' : ''}${day.total ? '' : ' empty'}`}
+        onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onBlur={() => setActive(null)} aria-label={day.aria}>
+        <span class="g-demo-time-area">{day.total > 0 && <span class="g-demo-time-stack" style={{ height: `${report.peak ? day.total / report.peak * 100 : 0}%`, animationDelay: `${index * 35}ms` }}>
+          {day.slices.filter(slice => slice.hours > 0).map(slice => <i key={slice.id} style={{ flexGrow: slice.hours, background: courseColour(snapshot, slice.id) }}/>)}
+        </span>}</span>
+        <span class="g-demo-time-day">{day.label}</span>
+        <span class="g-demo-time-date">{day.date}</span>
+      </button>)}</div>
+      {detail && <div class="g-tooltip" style={{ left: `${Math.min(78, Math.max(22, (active! + .5) / report.days.length * 100))}%` }} role="status">
+        <strong>{detail.title}{detail.total > 0 && <em>Total {detail.total.toFixed(1)}h</em>}</strong>
+        {detail.slices.filter(slice => slice.hours > 0).map(slice => <span key={slice.id}><i style={{ background: courseColour(snapshot, slice.id) }}/>{slice.code}<em>{slice.hours.toFixed(1)}h</em></span>)}
+        {!detail.total && <span class="none">No time on Canvas.</span>}
+      </div>}
+    </div>
+    <ul class="g-legend">{report.courses.map(course => <li key={course.id}><i style={{ background: courseColour(snapshot, course.id) }}/>{course.code}<span>{course.hours.toFixed(1)}h</span></li>)}</ul>
+    <p class="g-demo-metric-note">{report.note}</p>
+    {report.aside && <p class="g-demo-metric-note">{report.aside}</p>}
+  </section>;
+}
 
 /** Plays a scripted sequence of steps with varied timings, then reveals the prepared result. */
 export function StagedRun({ label, steps, children, onDone, onRestart, scrollResult = true }: { label: string; steps: DemoStep[]; children: ComponentChildren; onDone?: () => void; onRestart?: () => void; scrollResult?: boolean }) {
@@ -124,39 +150,53 @@ export function AcademicsDemo({ snapshot, onDone, onReplay, onRestart }: {
   const assignments = courses.flatMap(course => course.assignments.map(assignment => ({ course, assignment })));
   const materials = courses.reduce((n, course) => n + course.resources.length, 0);
   const result = useMemo(() => {
-    const grades = courses.map(course => ({ course, rebuilt: currentGrade(course.input).percentage }));
+    const grades = courses.map(course => ({ course, insight: gradeInsight(course) }));
     const now = Date.now();
     const priorities = getAssignmentPriorities(courses).filter(task => task.deadline > now).slice(0, 3);
-    let plan: { name: string; code: string; hours: number }[] = [];
+    let plan: { id: string; name: string; code: string; hours: number; reason: string }[] = [];
+    let planError = false;
     try {
-      const inputs = courses.map(course => ({ ...course.input, studyEligibleAssignmentIds: course.assignments.filter(pending).map(a => a.id), course: { ...course.input.course, creditHours: 3, gradePointScale: DEFAULT_GRADE_POINT_SCALE } }));
-      plan = optimizeEffort(inputs, { capacityHours: PLAN_HOURS, stepSizeHours: .5, numSamples: 100, seed: 42, currentTime: new Date(), protectMastery: true, masteryFloorHours: .5, isRobustnessRun: true })
-        .recommendations.map(rec => ({ name: rec.assignmentName, code: courses.find(c => c.id === rec.courseId)?.code ?? '', hours: rec.allocatedHours }));
-    } catch { plan = []; }
-    return { grades, priorities, plan };
+      plan = allocateStudySplit(courses, PLAN_HOURS, new Date());
+    } catch { planError = true; }
+    const allocated = plan.reduce((total, item) => total + item.hours, 0);
+    return { grades, priorities, plan, planError, allocated, unused: Math.max(0, PLAN_HOURS - allocated) };
   }, [snapshot]);
   const steps: DemoStep[] = [
     { title: 'Connecting to Canvas', detail: `Signed in as ${snapshot.user.shortName || snapshot.user.name} · read-only`, ms: 1100, ticks: ['Checking your session…', 'Session verified · read-only access'] },
     { title: 'Syncing your courses', detail: `${courses.length} courses · ${assignments.length} assignments · ${materials} materials`, ms: 2100, ticks: courses.map((c, i) => `Reading ${c.code} (${i + 1} of ${courses.length})…`) },
     { title: 'Rebuilding every grade', detail: 'Weights, drop rules and missing work applied', ms: 1500, ticks: ['Applying assignment-group weights…', 'Checking drop rules…', 'Comparing with Canvas totals…'] },
     { title: 'Ranking what to do next', detail: 'Final course grade impact first, then the deadline', ms: 1300, ticks: ['Estimating grade impact…', 'Comparing deadlines…'] },
-    { title: 'Planning your study time', detail: `100 grade scenarios for ${PLAN_HOURS} hours`, ms: 1800, ticks: ['Running scenarios 1–40…', 'Running scenarios 41–80…', 'Running scenarios 81–100…', 'Choosing the steadiest split…'] },
+    { title: 'Planning your study time', detail: `Splitting ${PLAN_HOURS} hours by deadline and grade weight`, ms: 1800, ticks: ['Weighing deadlines…', 'Checking grade weights and drop rules…', 'Estimating what each hour changes…', 'Choosing the split…'] },
   ];
   return <>
     <PanicAutomationDemo onReplay={onReplay} onStart={() => { onRestart?.(); setPanicRunning(true); }} onDone={() => setPanicRunning(false)}/>
     <StagedRun label="Academics" steps={steps} scrollResult={false} onDone={() => setAcademicsComplete(true)}
       onRestart={() => { onRestart?.(); setAcademicsComplete(false); }}>
       <section class="g-card" aria-label="Rebuilt grades">
-        <div class="g-section-head"><h2>Grades rebuilt</h2><span class="g-label-count">{result.grades.length} courses</span></div>
-        {result.grades.map(({ course, rebuilt }) => {
-          const matches = rebuilt != null && course.currentScore != null && Math.abs(rebuilt - course.currentScore) < 0.05;
-          return <div key={course.id} class="g-demo-row">
-            <div class="g-demo-row-main"><strong>{course.code}</strong><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${clamp(rebuilt)}%` }}/></span></div>
-            <span class="g-demo-score">{rebuilt == null ? '--' : `${rebuilt.toFixed(1)}%`}</span>
-            {matches && <span class="g-demo-ok"><Icon name="check" size={13}/>Matches Canvas</span>}
-          </div>;
-        })}
+        <div class="g-section-head"><h2>What can still change</h2></div>
+        <div class="g-demo-metrics">{result.grades.map(({ course, insight }) => {
+          const colour = courseColour(snapshot, course.id);
+          const low = insight.floor;
+          const high = insight.ceiling;
+          return <article key={course.id} class="g-demo-metric" style={{ '--course': colour }} aria-label={`${course.code}. ${insight.climb}. ${insight.stakes}.`}>
+            <div class="g-demo-metric-top">
+              <span class="g-demo-metric-code">{course.code}</span>
+              {insight.matchesCanvas
+                ? <span class="g-demo-ok"><Icon name="check" size={13}/>Matches Canvas</span>
+                : insight.canvasPercentage != null && <span class="g-small">Canvas {insight.canvasPercentage.toFixed(1)}%</span>}
+            </div>
+            <p class="g-demo-metric-score"><b>{insight.percentage == null ? '–' : insight.percentage.toFixed(1)}</b>{insight.percentage != null && <span>%</span>}{insight.letter && <em>{insight.letter}</em>}</p>
+            <div class="g-track" aria-hidden="true">
+              <div class="g-track-bands"><i class="d"/><i class="c"/><i class="b"/><i class="a"/></div>
+              {low != null && high != null && <span class="g-track-range" style={{ left: markScale(low), right: `calc(100% - ${markScale(high)})`, '--course': colour }}/>}
+              {insight.percentage != null && <span class="g-track-dot" style={{ left: markScale(insight.percentage), '--course': colour }}/>}
+            </div>
+            <p class="g-demo-metric-note">{insight.climb}</p>
+            <p class="g-demo-metric-note">{insight.stakes}</p>
+          </article>;
+        })}</div>
       </section>
+      <TimeOnCanvas snapshot={snapshot} grades={result.grades}/>
       <section class="g-card" aria-label="Priorities">
         <div class="g-section-head"><h2>Do these first</h2></div>
         {result.priorities.length ? result.priorities.map(({ course, assignment, gradeImpact }, i) => <div key={`${course.id}:${assignment.id}`} class="g-task">
@@ -165,14 +205,18 @@ export function AcademicsDemo({ snapshot, onDone, onReplay, onRestart }: {
           <span class="g-due">{dueText(assignment)}</span>
         </div>) : <p class="g-small">Nothing is due. Enjoy the breathing room.</p>}
       </section>
-      {result.plan.length > 0 && <section class="g-card soft" aria-label="Suggested study split">
+      <section class="g-card soft" aria-label="Suggested study split">
         <div class="g-section-head"><h2>Your {PLAN_HOURS}-hour study split</h2><Icon name="clock" size={20}/></div>
-        {result.plan.slice(0, 5).map(item => <div key={item.name} class="g-demo-row">
-          <div class="g-demo-row-main"><strong>{item.name}</strong><small class="g-small">{item.code}</small><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / PLAN_HOURS * 100}%` }}/></span></div>
+        {result.plan.map(item => <div key={item.id} class="g-demo-row">
+          <div class="g-demo-row-main"><strong>{item.name}</strong><small class="g-small">{item.code} · {item.reason}</small><span class="g-mini-bar" aria-hidden="true"><i style={{ width: `${item.hours / PLAN_HOURS * 100}%` }}/></span></div>
           <span class="g-due normal">{item.hours.toFixed(1)} hrs</span>
         </div>)}
-        <p class="g-small">Scenario-based suggestion, not a guaranteed grade.</p>
-      </section>}
+        {result.planError ? <p class="g-notice" role="alert">The study split could not be calculated. Run the demo again.</p> : <>
+          <p class="g-small" role="status">{result.allocated.toFixed(1)} of {PLAN_HOURS.toFixed(1)} hours allocated · {result.unused.toFixed(1)} hours unallocated.</p>
+          {!result.plan.length && <p class="g-small">No upcoming work is eligible for study time.</p>}
+          <p class="g-small">Split by deadline, grade weight, credit hours, drop rules, and how fast study turns into points. A scenario, not a guaranteed grade.</p>
+        </>}
+      </section>
     </StagedRun>
   </>;
 }
