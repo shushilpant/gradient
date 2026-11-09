@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager, suppress
 from datetime import datetime, timezone
 import html
 import importlib.util
@@ -40,6 +41,77 @@ _INFERENCE_LOCK = threading.Lock()
 _ROOT = Path(__file__).resolve().parents[1]
 _OUTPUT = _ROOT / '.runtime' / 'computer-agent'
 _CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+
+
+# A DOM cursor is visible both in the actual Canvas window and in screenshots.
+# Install it on the isolated context so navigation cannot remove the indicator.
+_AUTOMATION_CURSOR_SCRIPT = r"""(() => {
+  if (window.top !== window || window.__gradientAutomationCursor) return;
+  const state = {tracking: false};
+  window.__gradientAutomationCursor = state;
+  const storageKey = 'gradient_automation_cursor_position';
+  let position;
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(storageKey));
+    if (saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) position = saved;
+  } catch {}
+  let host;
+  let release;
+  function place() {
+    if (!host || !position) return;
+    host.style.removeProperty('display');
+    host.style.transform = `translate3d(${position.x}px,${position.y}px,0)`;
+  }
+  function move(event) {
+    if (!state.tracking || !event.isTrusted) return false;
+    position = {x: event.clientX, y: event.clientY};
+    place();
+    try { sessionStorage.setItem(storageKey, JSON.stringify(position)); } catch {}
+    return true;
+  }
+  function mount() {
+    if (!document.body || host?.isConnected) return;
+    host = document.createElement('div');
+    host.id = 'gradient-automation-cursor';
+    host.setAttribute('aria-hidden', 'true');
+    host.style.cssText = 'all:initial;display:none;position:fixed;left:0;top:0;width:19px;height:23px;z-index:2147483647;pointer-events:none!important;';
+    const shadow = host.attachShadow({mode:'open'});
+    shadow.innerHTML = `<style>
+      svg{position:absolute;left:-1px;top:-1px;width:19px;height:23px;overflow:visible;filter:drop-shadow(0 1px 1px #0005)}
+      .pulse{position:absolute;left:-8px;top:-8px;width:16px;height:16px;border:1.5px solid #B7410E;border-radius:50%;box-sizing:border-box;opacity:0}
+      :host([data-clicking]) .pulse{animation:click-pulse .42s ease-out}
+      @keyframes click-pulse{from{opacity:.75;transform:scale(.5)}to{opacity:0;transform:scale(1.5)}}
+    </style><span class="pulse"></span><svg viewBox="0 0 19 23" aria-hidden="true"><path d="M1 1V18L5.5 14L9 21.5L12 20L8.5 12.5H15Z" fill="#B7410E" stroke="#FFF7ED" stroke-width="1.25" stroke-linejoin="round"/></svg>`;
+    document.body.append(host);
+    place();
+  }
+  document.addEventListener('pointermove', move, true);
+  document.addEventListener('pointerdown', event => {
+    if (!move(event) || !host) return;
+    clearTimeout(release);
+    host.removeAttribute('data-clicking');
+    // Restart the pulse for every click, including double-clicks.
+    void host.offsetWidth;
+    host.setAttribute('data-clicking', '');
+    release = setTimeout(() => host?.removeAttribute('data-clicking'), 420);
+  }, true);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount, {once:true});
+  else mount();
+})();"""
+
+
+@contextmanager
+def _track_model_pointer(page):
+    from playwright.sync_api import Error
+
+    tracking = '(enabled) => { if (window.__gradientAutomationCursor) window.__gradientAutomationCursor.tracking = enabled; }'
+    page.evaluate(tracking, True)
+    try:
+        yield
+    finally:
+        # A click may replace the document or close the browser.
+        with suppress(Error):
+            page.evaluate(tracking, False)
 
 
 def sandbox_origins() -> list[str]:
@@ -158,7 +230,7 @@ def config():
         message = 'Local Canvas OSS sandbox and browser agent are ready.'
     else:
         message = 'Start the verified local Canvas sandbox and install the Playwright Python dependency. The agent does not connect to your production Canvas account.'
-    return {'sandboxOrigin': selected, 'sandboxOrigins': origins, 'engine': 'gradient-browser-agent', 'isolation': 'incognito-local-origin', 'available': ready, 'browserAvailable': bool(driver and browser), 'message': message}
+    return {'sandboxOrigin': selected, 'sandboxOrigins': origins, 'engine': 'gradient-browser-agent', 'isolation': 'incognito-local-origin', 'browserMode': 'window', 'available': ready, 'browserAvailable': bool(driver and browser), 'message': message}
 
 
 def _update(session_id: str, **fields):
@@ -356,8 +428,9 @@ def run_session(session_id: str, request: SessionRequest):
         ai.installed_model(request.visionModel, require_vision=True)
         _cancelled(session_id)
         with sync_playwright() as driver:
-            browser = driver.chromium.launch(headless=True, executable_path=browser_executable(), args=['--disable-background-networking'])
+            browser = driver.chromium.launch(headless=False, executable_path=browser_executable(), args=['--disable-background-networking'])
             context = browser.new_context(viewport={'width': 1280, 'height': 900}, accept_downloads=False, service_workers='block')
+            context.add_init_script(_AUTOMATION_CURSOR_SCRIPT)
             def restrict(route):
                 try:
                     if route.request.method not in ('GET', 'HEAD') and not (login_allowed and route.request.method == 'POST' and route.request.url == request.origin + '/login/canvas'):
@@ -368,7 +441,8 @@ def run_session(session_id: str, request: SessionRequest):
                     route.abort()
             context.route('**/*', restrict)
             page = context.new_page()
-            _update(session_id, stage='opening', label='Opening an isolated local Canvas browser')
+            page.bring_to_front()
+            _update(session_id, stage='opening', label='Opening the Canvas browser window')
             page.goto(safe_url('/', request.origin), wait_until='domcontentloaded', timeout=25000)
             vision = ''
             for index in range(request.maxSteps):
@@ -423,7 +497,8 @@ def run_session(session_id: str, request: SessionRequest):
                         anchor = anchors.nth(link_index)
                         href = anchor.get_attribute('href') or ''
                         if urljoin(page.url, href) == target['url'] and anchor.is_visible():
-                            anchor.click(timeout=10000)
+                            with _track_model_pointer(page):
+                                anchor.click(timeout=10000)
                             page.wait_for_load_state('domcontentloaded', timeout=20000)
                             clicked = True
                             break
@@ -432,7 +507,10 @@ def run_session(session_id: str, request: SessionRequest):
                         # still uses the exact observed href, never a guessed URL.
                         page.goto(target['url'], wait_until='domcontentloaded', timeout=25000)
                 elif decision.action == 'scroll':
-                    page.mouse.wheel(0, 650)
+                    viewport = page.viewport_size or {'width': 1280, 'height': 900}
+                    with _track_model_pointer(page):
+                        page.mouse.move(viewport['width'] / 2, viewport['height'] / 2, steps=12)
+                        page.mouse.wheel(0, 650)
                     _step(session_id, 'scroll', page.url, decision.reason)
                 elif decision.action == 'read':
                     _step(session_id, 'read', page.url, decision.reason)

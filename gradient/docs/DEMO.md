@@ -1,6 +1,6 @@
 # Hackathon demo runbook
 
-All commands below run from `gradient/`. The presentation uses **synthetic student data**. Model responses and browser traces are shown only when their real local services have run.
+All commands below run from `gradient/`. The presentation uses **synthetic student data**. The presentation automation plays a fixed Canvas sequence and shows a clearly labeled saved assignment. Live model runs are a separate option.
 
 ## Reliable core preview
 
@@ -54,7 +54,9 @@ python3 sandbox/canvas_local/setup.py status
 
 Use [the Canvas replica](http://127.0.0.1:8080/login/canvas) and the local student credentials from `sandbox/canvas_local/.runtime/credentials.json`; do not print or place them in pitch slides. The seed provides actual synthetic homework and its guide. Full details and staging/import instructions are in [LOCAL_CANVAS.md](LOCAL_CANVAS.md).
 
-In **Automation**, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and start. The browser uses a fresh isolated context, reads observed local links, and records actual screenshots and logs. Inspect its generated artifact and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
+For the presentation, load the rebuilt extension in your signed-in local Canvas tab. In **Automation**, select **Demo automation**, directly below **Start automatic workflow**. It visits the seeded **GRADIENT-SIGNALS** homework on time shifts in that same tab, with about 1.5 seconds between actions, then shows the saved reference assignment in Gradient. The rust cursor marks the scripted actions. The replay needs no model, local assistant backend, or public web research. Rehearse once before the presentation to verify the local replica and Chrome are ready. The saved result lives in [`backend/demo_automation.json`](../backend/demo_automation.json).
+
+For a live run, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and select **Start automatic workflow**. The workflow uses the current signed-in local Canvas tab. It follows observed same-origin coursework links and stops on unsupported assessment pages. Inspect its result and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
 
 The synthetic preview cannot stage itself through the live HTTPS Canvas mirror endpoint. That boundary is retained. Use the separately seeded replica for the synthetic automation demonstration; approved live coursework staging remains a separate explicit workflow.
 
@@ -66,7 +68,8 @@ The optional `sandbox.rehearsal` service on 8086 remains a **synthetic rehearsal
 | --- | --- |
 | Ollama or completion model | Continue with source instructions, rubric, deterministic what-if grades, allocation, calendar export and coursework-derived Research interests. Show the actual connection error; do not display an invented answer. |
 | Slow generation | Start before the pitch, then show the actual in-progress state or cancel. A previously exported packet may be shown only as a clearly labeled earlier local run with synthetic context. |
-| Browser service, vision model or Canvas replica | Show Automation's actual availability state and configured boundary. Explain the permitted workflow using the runbook. A saved screenshot/log is a prior run only; never label it current execution. |
+| Vision model | Use **Demo automation** with the seeded local Canvas replica. The demo needs the signed-in local Canvas tab and runs without inference. |
+| Browser service or Canvas replica | Show Automation's actual availability state. The saved assignment can be shown separately as a prepared artifact. |
 | Public search or programme page | Show editable interests and course evidence. Open the NSF directory link if accessible. Missing deadlines, funding or eligibility remain unknown. |
 | All optional services | The complete Academics demo and local interest extraction still run. Explicitly identify AI and browser execution as unavailable. |
 
@@ -79,6 +82,6 @@ Stop the preview with Ctrl+C. The launcher stops a backend it started itself; an
 | 0–15 s | **Academics overview:** “GRADIENT turns the Canvas context students already have into academic action. This is a synthetic student.” Show the three courses and overlapping deadlines. |
 | 15–45 s | **Coursework / Grade Lab:** inspect the homework rubric, move a what-if value and show allocation. “Grade rules are deterministic; study-hour scenarios disclose their assumptions.” |
 | 45–85 s | **AI Workspace:** show a real completed or in-progress Autopilot run, requirements, one source excerpt, and coverage gaps. “Reference material supports learning; the student authors the submission.” |
-| 85–110 s | **Automation:** show a real local replica run with screenshot and log evidence, or clearly name its unavailable state. “Permission is bounded to the synthetic replica, with review and stop controls.” |
+| 85–110 s | **Automation:** click **Demo automation**. “This is our saved GRADIENT-SIGNALS example. It navigates the local Canvas replica and shows the prepared assignment without waiting for a model.” |
 | 110–140 s | **Research:** show course-derived interests, one ranked sourced opportunity and its course/skill evidence. “The same syllabus context helps students discover a research direction. Deadlines and eligibility come from source pages.” |
 | 140–150 s | Return to the four-section navigation. “One academic context: understand the work, plan the effort, inspect automation, and discover what comes next.” |

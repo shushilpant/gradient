@@ -12,6 +12,7 @@ import { MaterialAccess } from './MaterialAccess.js';
 import { AssistantView, type AssistantFocus } from './AssistantView.js';
 import { CanvasMirror } from './CanvasMirror.js';
 import { DeadlineTracker } from './DeadlineTracker.js';
+import { getPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
 import { AutoWorkflow } from './WorkflowMode.js';
 import { WORKFLOW_STYLES } from './workflowStyles.js';
 import { ReuFinder } from './ReuFinder.js';
@@ -112,7 +113,10 @@ function AssignmentFeedback({ assignment }: { assignment: CanvasLiveAssignment }
 }
 
 export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId, initialAssignmentId, progress, preview = false, onWorkflowMode }: WorkspaceProps) {
-  const [tab, setTab] = useState<Tab>('academics');
+  const [tab, setTab] = useState<Tab>(() => !preview&&getPageAutomation()?'automation':'academics');
+  const [pageRun,setPageRun] = useState(getPageAutomation);
+  useEffect(() => preview ? undefined : subscribePageAutomation(setPageRun), [preview]);
+  const showingPageRun = !preview && tab==='automation' && !!pageRun;
   const [academicView, setAcademicView] = useState<AcademicView>(initialAssignmentId ? 'coursework' : 'overview');
   const bodyRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => { if (bodyRef.current) bodyRef.current.scrollTop = 0; }, [tab, academicView]);
@@ -131,8 +135,10 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const [wide, setWide] = useState(false);
   useEffect(() => {
     const toggle = () => setMinimized(previous => !previous);
+    const showAutomation = () => { setMinimized(false); setTab('automation'); };
     window.addEventListener('gradient:toggle', toggle);
-    return () => window.removeEventListener('gradient:toggle', toggle);
+    window.addEventListener('gradient:show-automation', showAutomation);
+    return () => { window.removeEventListener('gradient:toggle', toggle); window.removeEventListener('gradient:show-automation', showAutomation); };
   }, []);
   const [selectedCourseId, setSelectedCourseId] = useState(initialCourseId ?? '');
   const [query, setQuery] = useState('');
@@ -153,7 +159,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const active = courses.find(c => c.id === selectedCourseId) ?? courses[0];
   useEffect(() => { if (initialCourseId) setSelectedCourseId(initialCourseId); }, [initialCourseId]);
   useEffect(() => {
-    if (initialAssignmentId) { setAssignmentId(initialAssignmentId); setTab('academics'); setAcademicView('coursework'); }
+    if (initialAssignmentId) { setAssignmentId(initialAssignmentId); if(!getPageAutomation())setTab('academics'); setAcademicView('coursework'); }
   }, [initialAssignmentId]);
   useEffect(() => {
     let mounted = true;
@@ -226,7 +232,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     }}>{tabs.map(item => <button key={item.id} id={`g-tab-${item.id}`} class={`g-tab ${tab === item.id ? 'active' : ''}`} role="tab" tabIndex={tab === item.id ? 0 : -1} aria-selected={tab === item.id} aria-controls="gradient-tab-content" onClick={() => changeTab(item.id)}><Icon name={item.icon} size={19}/>{item.label}</button>)}</nav>
     <div id="gradient-tab-content" ref={bodyRef} class="g-body" role="tabpanel" aria-labelledby={`g-tab-${tab}`}>
       {error && <div class="g-notice" role="alert" style={{ marginBottom: '16px' }}><Icon name="alert" size={18}/><div>{error}<button class="g-link-btn" onClick={onRefresh} disabled={loading}>Try again <Icon name="arrow" size={14}/></button></div></div>}
-      {!snapshot && loading ? <div class="g-stack"><div><h1 class="g-title">Syncing<br/><span class="g-accent">your Canvas.</span></h1><p class="g-subtitle">Connecting your courses, deadlines, and materials.</p></div><div class="g-sync-loading" role="status"><Icon name="refresh" size={16} className="g-spinner"/>{progress || 'Syncing your Canvas account…'}</div><div class="g-skeleton"/><div class="g-skeleton"/><div class="g-skeleton"/></div> : !snapshot ? <Empty title="Let's connect your Canvas">Sign in to Canvas, then tap refresh.</Empty> : <>
+      {!snapshot && showingPageRun ? null : !snapshot && loading ? <div class="g-stack"><div><h1 class="g-title">Syncing<br/><span class="g-accent">your Canvas.</span></h1><p class="g-subtitle">Connecting your courses, deadlines, and materials.</p></div><div class="g-sync-loading" role="status"><Icon name="refresh" size={16} className="g-spinner"/>{progress || 'Syncing your Canvas account…'}</div><div class="g-skeleton"/><div class="g-skeleton"/><div class="g-skeleton"/></div> : !snapshot ? <Empty title="Let's connect your Canvas">Sign in to Canvas, then tap refresh.</Empty> : <>
       {tab === 'academics' && <div class="g-subnav" role="group" aria-label="Academic views">{([{id:'overview',label:'Overview'},{id:'coursework',label:'Coursework'},{id:'resources',label:'Resources'},{id:'grades',label:'Grade Lab'},{id:'settings',label:'Preferences'}] as const).map(view => <button key={view.id} class={academicView === view.id ? 'active' : ''} aria-pressed={academicView === view.id} onClick={() => openAcademic(view.id)}>{view.label}</button>)}</div>}
       {tab === 'academics' && academicView === 'overview' && <div class="g-stack">
         <h1 class="g-title">Hey {firstName}.<br/><span class="g-accent">{dueThisWeek.length ? `${dueThisWeek.length} due this week.` : 'All clear this week.'}</span></h1>
@@ -256,7 +262,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
       {snapshot && gradesOpened.current && <div hidden={tab !== 'academics' || academicView !== 'grades'}><GradeLab key={accountScope} snapshot={snapshot} credits={credits} gradePointScale={gradeScale}/></div>}
       {snapshot && tab === 'academics' && academicView === 'coursework' && <div style={{ marginTop: '22px' }}><DeadlineTracker key={accountScope} snapshot={snapshot} preview={preview}/></div>}
       {snapshot && (assistantOpened || tab === 'assistant') && <div key="local-assistant" hidden={tab !== 'assistant'}><AssistantView key={accountScope} snapshot={snapshot} preview={preview} initialCourseId={selectedCourseId || initialCourseId} initialAssignmentId={initialAssignmentId} focus={assistantFocus} onAcademicAction={(courseId, assignmentId) => { selectCourse(courseId); setAssignmentId(assignmentId); openAcademic('coursework'); }}/></div>}
-      {snapshot && (automationOpened || tab === 'automation') && <div hidden={tab !== 'automation'} class="g-stack"><div><h1 class="g-title">Automation</h1><p class="g-subtitle">Stage coursework in your local Canvas replica, run a permitted workflow, and review the evidence.</p></div><p class="g-notice info">{preview ? 'Synthetic preview data. Browser runs require the separate local Canvas replica.' : 'Live Canvas remains read-only. Staging creates a local copy only after your approval.'}</p><CanvasMirror key={`mirror:${accountScope}`} snapshot={snapshot}/><AutoWorkflow key={`automation:${accountScope}`} snapshot={snapshot} preview={preview}/></div>}
+      {(snapshot || showingPageRun) && (automationOpened || tab === 'automation') && <div hidden={tab !== 'automation'} class="g-stack"><div><h1 class="g-title">Automation</h1><p class="g-subtitle">Stage coursework in your local Canvas replica, run a permitted workflow, and review the evidence.</p></div><p class="g-notice info">{preview ? 'Synthetic preview data. Open the local Canvas tab to run automation.' : 'Live Canvas remains read-only. Staging creates a local copy only after your approval.'}</p>{snapshot&&<CanvasMirror key={`mirror:${accountScope}`} snapshot={snapshot}/>}<AutoWorkflow key={`automation:${accountScope}`} snapshot={snapshot??undefined} preview={preview}/></div>}
       {snapshot && context && (researchOpened || tab === 'research') && <div hidden={tab !== 'research'}><ReuFinder key={accountScope} snapshot={snapshot} context={context}/></div>}
     </div>
   </aside></>;

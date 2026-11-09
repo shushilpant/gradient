@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { loadCanvasSnapshot, type CanvasSnapshot } from '../liveCanvas.js';
 import { activateAcademicContext } from '../academicContext.js';
 import { Workspace } from './Workspace.js';
+import { getPageAutomation, subscribePageAutomation } from '../pageAutomation.js';
 import { syncTrackedDeadlines } from '../deadlineCalendar.js';
 
 /** Live controller. Canvas failures stay errors; demo data is never imported here. */
@@ -45,8 +46,23 @@ export function CanvasApp({ initialUrl }: { initialUrl: string }) {
   }, []);
 
   useEffect(() => {
-    refresh();
-    return () => { activeRequest.current?.abort(); activateAcademicContext(null); };
+    // The automation driver checks the current account before every action.
+    // Keep a full coursework sync from competing with navigation during a run.
+    const running = getPageAutomation()?.status === 'running';
+    const unsubscribe = running ? subscribePageAutomation(run => {
+      if (run && run.status !== 'running') refresh();
+    }) : undefined;
+    const restore = (event: PageTransitionEvent) => {
+      if (running && event.persisted && getPageAutomation()?.status !== 'running') refresh();
+    };
+    window.addEventListener('pageshow', restore);
+    if (!running) refresh();
+    return () => {
+      unsubscribe?.();
+      window.removeEventListener('pageshow', restore);
+      activeRequest.current?.abort();
+      activateAcademicContext(null);
+    };
   }, [refresh]);
 
   return <Workspace snapshot={snapshot} loading={loading} error={error} progress={progress}

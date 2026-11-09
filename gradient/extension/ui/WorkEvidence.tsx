@@ -2,7 +2,7 @@ import type { StudyPacket, StudyProgress } from '../assistantTypes.js';
 
 const STAGES = [
   { id:'reading',label:'Read'}, {id:'parsing',label:'Plan'}, {id:'researching',label:'Research'},
-  {id:'drafting',label:'Draft'}, {id:'rendering',label:'Render'}, {id:'reviewing',label:'Check'},
+  {id:'drafting',label:'Draft'}, {id:'rendering',label:'Render'}, {id:'reviewing',label:'Check'}, {id:'formatting',label:'LaTeX'},
 ];
 export function AutopilotProgress({progress}:{progress:StudyProgress|null}) {
   const stage = progress?.stage === 'revising' ? 'reviewing' : progress?.stage;

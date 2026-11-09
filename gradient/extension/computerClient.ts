@@ -12,11 +12,11 @@ async function request(settings: AssistantSettings, path: string, method:'GET'|'
 }
 const sessionSchema=z.object({
   id:z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),status:z.enum(['running','complete','cancelled','error']),
-  stage:z.string(),label:z.string(),steps:z.array(z.object({number:z.number().int(),action:z.enum(['observe','open','scroll','read','generate']),url:z.string(),reason:z.string(),screenshot:z.string().max(4000000).regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+=*$/).optional()})).max(100),
+  demo:z.boolean().optional(),stage:z.string(),label:z.string(),steps:z.array(z.object({number:z.number().int(),action:z.enum(['observe','open','scroll','read','generate']),url:z.string(),reason:z.string(),screenshot:z.string().max(4000000).regex(/^data:image\/(jpeg|png);base64,[A-Za-z0-9+/]+=*$/).optional()})).max(100),
   packet:packetSchema.optional(),artifacts:z.array(z.object({name:z.string(),url:z.string()})).optional(),error:z.string().optional(),createdAt:z.string().optional(),
 });
 export async function getComputerConfig(settings:AssistantSettings):Promise<ComputerConfig> {
-  return z.object({sandboxOrigin:z.string(),engine:z.string(),isolation:z.string(),available:z.boolean(),browserAvailable:z.boolean(),message:z.string()}).parse(await request(settings,'config','GET'));
+  return z.object({browserMode:z.literal('window').optional(),sandboxOrigin:z.string(),engine:z.string(),isolation:z.string(),available:z.boolean(),browserAvailable:z.boolean(),message:z.string()}).parse(await request(settings,'config','GET'));
 }
 export async function startComputerSession(settings:AssistantSettings,input:ComputerSessionRequest):Promise<ComputerSession> {
   return sessionSchema.parse(await request(settings,'sessions','POST',input));

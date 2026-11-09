@@ -42,6 +42,7 @@ def test_config_prefers_real_canvas_and_discloses_rehearsal_fallback(monkeypatch
     monkeypatch.setattr(agent, 'sandbox_kind', lambda origin:'canvas-oss' if origin.endswith(':8080') else 'rehearsal-fixture')
     ready=agent.config()
     assert ready['sandboxOrigin']=='http://127.0.0.1:8080'
+    assert ready['browserMode']=='window'
     assert 'Canvas OSS' in ready['message']
     monkeypatch.setattr(agent, 'origin_reachable', lambda origin:origin.endswith(':8086'))
     assert agent.config()['available'] is False
@@ -224,6 +225,53 @@ def test_real_isolated_browser_observes_clicks_reads_and_exports_without_mutatio
         assert sum(step.get('screenshot','').startswith('data:image/jpeg;base64,') for step in state['steps']) >= 2
     finally:
         server.shutdown();server.server_close()
+
+
+def test_rust_cursor_tracks_only_model_pointer_and_preserves_native_cursor():
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as driver:
+        browser = driver.chromium.launch(headless=True, executable_path=agent.browser_executable())
+        try:
+            context = browser.new_context(viewport={'width': 800, 'height': 600})
+            context.add_init_script(agent._AUTOMATION_CURSOR_SCRIPT)
+            context.route('**/*', lambda route: route.fulfill(content_type='text/html', body='''
+                <!doctype html><html><head><title>Cursor fixture</title></head><body>
+                <button style="position:absolute;left:100px;top:100px;width:100px;height:50px"
+                    onclick="this.textContent='Clicked'">Try click</button>
+                <a href="/next" style="position:absolute;left:100px;top:200px">Next page</a>
+                </body></html>'''))
+            page = context.new_page()
+            page.goto('http://127.0.0.1:8086/')
+            cursor = page.locator('#gradient-automation-cursor')
+            assert cursor.get_attribute('aria-hidden') == 'true'
+            assert cursor.locator('path').get_attribute('fill') == '#B7410E'
+            assert cursor.evaluate('(node) => getComputedStyle(node).pointerEvents') == 'none'
+            assert page.evaluate('getComputedStyle(document.body).cursor') == 'auto'
+            assert not cursor.is_visible()
+            page.mouse.click(130, 120)
+            assert not cursor.is_visible()
+            assert cursor.get_attribute('data-clicking') is None
+            with agent._track_model_pointer(page):
+                page.mouse.move(150, 125)
+                assert cursor.is_visible()
+                page.mouse.down()
+                assert cursor.get_attribute('data-clicking') == ''
+                page.mouse.up()
+            assert page.get_by_role('button').inner_text() == 'Clicked'
+            page.mouse.move(500, 400)
+            assert cursor.evaluate('(node) => node.style.transform') == 'translate3d(150px, 125px, 0px)'
+            with agent._track_model_pointer(page):
+                page.get_by_role('link', name='Next page').click()
+            page.wait_for_url('**/next')
+            cursor.wait_for(state='visible')
+            assert cursor.count() == 1
+            assert cursor.locator('path').get_attribute('fill') == '#B7410E'
+            assert page.evaluate('getComputedStyle(document.body).cursor') == 'auto'
+            model_position = cursor.evaluate('(node) => node.style.transform')
+            page.mouse.move(350, 280)
+            assert cursor.evaluate('(node) => node.style.transform') == model_position
+        finally:
+            browser.close()
 
 
 def test_file_only_homework_reads_real_attachment_text_before_generation(monkeypatch):

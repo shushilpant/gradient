@@ -2,6 +2,9 @@ import { h, render } from 'preact';
 import { shouldRunOnPage } from './safetyGuard.js';
 import { loadOptions } from './options/optionsStorage.js';
 import { CanvasApp } from './ui/CanvasApp.js';
+import { resumePageAutopilot } from './pageAutopilot.js';
+import { resumePageDemo } from './pageDemo.js';
+import { getPageAutomation, stopPageAutomation } from './pageAutomation.js';
 import { FONT_STYLES } from './ui/fontStyles.js';
 
 export function matchesCanvasHost(hostname: string, pattern: string): boolean {
@@ -37,12 +40,18 @@ export async function initPanel(): Promise<{ injected: boolean; reason: string }
   return { injected: true, reason: 'Connected Canvas workspace mounted' };
 }
 
+function resumeAutomation() {
+  if (getPageAutomation()?.demo) void resumePageDemo();
+  else void resumePageAutopilot();
+}
+
 let lastUrl = '';
 let mounting = false;
 async function reconcilePage(): Promise<void> {
   if (mounting) return;
   const host = document.getElementById('gradient-panel-host');
   if (!shouldRunOnPage(window.location.href, document)) {
+    if (getPageAutomation()?.status === 'running') stopPageAutomation();
     if (host?.shadowRoot) render(null, host.shadowRoot);
     host?.remove();
     lastUrl = '';
@@ -52,12 +61,13 @@ async function reconcilePage(): Promise<void> {
   if (host?.shadowRoot) {
     render(h(CanvasApp, { initialUrl: window.location.href }), host.shadowRoot);
     lastUrl = window.location.href;
+    resumeAutomation();
     return;
   }
   mounting = true;
   try {
     const result = await initPanel();
-    if (result.injected) {lastUrl = window.location.href;}
+    if (result.injected) {lastUrl = window.location.href;resumeAutomation();}
   } finally { mounting = false; }
 }
 
@@ -67,6 +77,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   // Canvas uses client-side navigation; also remove the panel if an assessment appears.
   window.setInterval(() => void reconcilePage(), 1000);
   window.addEventListener('popstate', () => void reconcilePage());
+  window.addEventListener('pageshow', event => { if (event.persisted) void reconcilePage().then(resumeAutomation); });
   if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
     chrome.runtime.onMessage.addListener((message) => {
       if (message?.type === 'GRADIENT_TOGGLE') window.dispatchEvent(new Event('gradient:toggle'));

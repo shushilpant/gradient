@@ -15,6 +15,7 @@ const settingsSchema = z.object({
   visionModel: z.string().min(1).max(100), detailLevel: z.enum(['a_bit', 'a_bit_more', 'all_in']), webResearch: z.boolean(),
 });
 export const packetSchema = z.object({
+  finalLatex: z.string().max(400000).optional(),
   title: z.string().max(1000), summary: z.string().max(10000), markdown: z.string().max(200000), sampleMarkdown: z.string().max(200000),
   sources: z.array(z.object({ id: z.string(), title: z.string(), url: z.string(), excerpt: z.string().optional(), kind: z.enum(['canvas', 'web']).optional() })).max(80),
   diagrams: z.array(z.object({ title: z.string(), nodes: z.array(z.object({ id: z.string(), label: z.string() })).max(20), edges: z.array(z.object({ from: z.string(), to: z.string(), label: z.string().optional() })).max(40) })).max(10),
@@ -171,8 +172,8 @@ export async function captureBrowserContext(includeScreenshot = true): Promise<{
   return { url: window.location.href, title: document.title, text, ...(screenshot ? { screenshot } : {}) };
 }
 
-export async function planBrowserAction(settings: AssistantSettings, input: BrowserPlanRequest): Promise<BrowserPlan> {
-  return z.object({ summary: z.string(), actions: z.array(z.object({ kind: z.enum(['open', 'find', 'scroll', 'read']), description: z.string(), url: z.string().nullish().transform(value => value ?? undefined), text: z.string().nullish().transform(value => value ?? undefined) })).max(12), warnings: z.array(z.string()) }).parse(await runJob(settings, 'browser', input));
+export async function planBrowserAction(settings: AssistantSettings, input: BrowserPlanRequest, signal?: AbortSignal): Promise<BrowserPlan> {
+  return z.object({ summary: z.string(), actions: z.array(z.object({ kind: z.enum(['open', 'find', 'scroll', 'read']), description: z.string(), url: z.string().nullish().transform(value => value ?? undefined), text: z.string().nullish().transform(value => value ?? undefined) })).max(12), warnings: z.array(z.string()) }).parse(await runJob(settings, 'browser', input, undefined, signal));
 }
 
 export function safeBrowserUrl(value: string): string {

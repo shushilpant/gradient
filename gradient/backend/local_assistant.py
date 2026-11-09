@@ -19,6 +19,8 @@ import json
 import os
 import re
 import socket
+import shutil
+import subprocess
 import ssl
 import threading
 import time
@@ -257,7 +259,25 @@ def complete_sample_sections(payload, output, messages):
     return output
 
 
+def assignment_latex(title: str, sample: str, visuals: list[dict]) -> str:
+    """Convert only the final assignment, preserving math without another model pass."""
+    pandoc = shutil.which('pandoc')
+    if not pandoc:
+        raise HTTPException(503, 'LaTeX export requires Pandoc. Install pandoc and retry homework autopilot.')
+    sample = re.sub(r'<(?:think|analysis|reasoning)\b[^>]*>.*?</(?:think|analysis|reasoning)>', '', sample, flags=re.S | re.I).strip()
+    figures = '\n\n'.join(f'![{visual["caption"]}](figure-{index + 1}.png)' for index, visual in enumerate(visuals))
+    try:
+        result = subprocess.run(
+            [pandoc, '--from=markdown+tex_math_dollars+tex_math_single_backslash', '--to=latex', '--standalone',
+             '--metadata', 'title=' + title, '-V', 'geometry:margin=22mm'],
+            input=sample + '\n\n' + figures, text=True, capture_output=True, timeout=30, check=True)
+        return result.stdout
+    except (subprocess.SubprocessError, OSError) as error:
+        raise HTTPException(502, 'Could not format the final assignment as LaTeX. Retry homework autopilot.') from error
+
+
 class StudyPacket(ModelStudyOutput):
+    finalLatex: str = ""
     sources: list[Source] = Field(default_factory=list)
     images: list[ImageReference] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
@@ -1298,6 +1318,12 @@ def generate_study_packet(payload: StudyRequest):
         "A bit: concise orientation. A bit more: method, worked explanations and pitfalls. All in: comprehensive worked sample, source synthesis, and requirement-aligned final checks. "
         "Markdown contains the study explanation; sampleMarkdown the complete reference sample. JSON schema: " + json.dumps(ModelStudyOutput.model_json_schema(by_alias=True))
     )
+    if payload.autopilot:
+        system += (" For homework autopilot, sampleMarkdown must contain ONLY the final assignment: "
+                   "the answers, requested derivations, calculations, and assignment citations. "
+                   "Do not include thinking, internal analysis, planning, study advice, requirement reviews, "
+                   "checklists, introductions about the assistant, or AI-assistance disclosures. "
+                   "Keep any missing-data statement within the affected answer. Set markdown and summary to empty strings.")
     user_context, context_length, excerpts_limited = bounded_study_context(payload, sources, documents, system, depth["tokens"])
     if brief:
         user_context["homeworkRequirements"] = brief.model_dump()
@@ -1372,8 +1398,12 @@ def generate_study_packet(payload: StudyRequest):
             ollama_request("/api/generate", {"model": payload.model, "keep_alive": 0}, timeout=8)
         except HTTPException:
             pass
-    report_stage("complete", "Homework sample and requirement review ready" if payload.autopilot else "Study packet ready")
-    return StudyPacket(**output.model_dump(by_alias=True), sources=sources, images=images[:depth["visuals"]], warnings=warnings, model=payload.model, level=payload.level, generatedAt=datetime.now(timezone.utc).isoformat(), autopilot=payload.autopilot, brief=brief, review=review, renderedVisuals=rendered_visuals)
+    final_latex = ""
+    if payload.autopilot:
+        report_stage("formatting", "Formatting the final assignment as LaTeX")
+        final_latex = assignment_latex(output.title, output.sampleMarkdown, rendered_visuals)
+    report_stage("complete", "Final LaTeX assignment ready" if payload.autopilot else "Study packet ready")
+    return StudyPacket(**output.model_dump(by_alias=True), finalLatex=final_latex, sources=sources, images=images[:depth["visuals"]], warnings=warnings, model=payload.model, level=payload.level, generatedAt=datetime.now(timezone.utc).isoformat(), autopilot=payload.autopilot, brief=brief, review=review, renderedVisuals=rendered_visuals)
 
 
 def allowed_browser_url(candidate: str, current: str) -> str | None:

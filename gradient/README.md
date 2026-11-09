@@ -15,8 +15,8 @@ npm run build
 In `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `dist`. Sign in to Canvas and refresh. Instructure domains connect automatically; grant other supported Canvas domains explicitly in extension settings. `npm run package` also produces `gradient-extension.zip`.
 
 - **Academics:** synced coursework, rubrics, feedback, announcements and resources; search and status filters; Canvas weighted grades and drop rules; what-if scenarios; Grade Lab; study allocation; change tracking; calendar exports and reminders.
-- **AI Workspace:** course and assignment assistance through installed Ollama models; three explanation depths; source excerpts and citations; optional public research; Homework Autopilot; cancellation; HTML and Markdown exports.
-- **Automation:** approved context staging to the existing isolated local Canvas replica, browser-agent execution, screenshots, logs, artifacts and stop controls. No live assessment completion or submission.
+- **AI Workspace:** course and assignment assistance through installed Ollama models; three explanation depths; source excerpts and citations; optional public research; Homework Autopilot with final-assignment LaTeX output and `.tex` download; cancellation; HTML and Markdown exports for study packets.
+- **Automation:** approved context staging to the existing isolated local Canvas replica, browser automation in the current local Canvas tab with a rust cursor, logs, artifacts and stop controls. **Demo automation** replays the seeded GRADIENT-SIGNALS assignment with a saved result and no model calls. No live assessment completion or submission.
 - **Research:** editable interests derived from courses, syllabi and readable materials; coursework evidence; demonstrated and inferred skill distinctions; explainable REU ranking; programme-source excerpts and links. A match does not establish current availability or eligibility.
 
 Study Studio, audio, Photo Check, QR sharing, focus timers and command-centre utilities are isolated from the primary interface. Their implementations remain available for maintenance.
@@ -29,6 +29,8 @@ Install Python 3.11 or 3.12 and Ollama, then run from this directory:
 make install
 make assistant
 ```
+
+Homework Autopilot requires Pandoc on the backend PATH (`brew install pandoc` on macOS). Download any accompanying figures into the same folder as the `.tex` file before compiling.
 
 Choose an installed completion model in **AI Workspace → Models**. Browser automation also needs a vision model and the separately configured local Canvas replica. See [local AI setup](docs/LOCAL_AI.md) and [local Canvas setup](docs/LOCAL_CANVAS.md). Selected course content goes to the loopback backend and local Ollama. Public research sends editable search keywords to external search services only when enabled.
 

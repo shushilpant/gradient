@@ -571,9 +571,12 @@ def test_autopilot_revises_once_and_reports_actual_pipeline_stages(monkeypatch):
     assert response.status_code == 200, response.text
     result=response.json()
     assert result['autopilot'] and result['level']=='all_in'
+    assert r'\begin{document}' in result['finalLatex']
+    assert 'x = 2' in result['finalLatex']
+    assert 'Study guide' not in result['finalLatex']
     assert result['review']['coverage'][0]['status']=='covered'
     assert calls.count(ai.SampleStudyOutput)==2 and calls.count(ai.AssignmentReview)==2
-    assert stages == ['parsing','researching','drafting','rendering','reviewing','revising','rendering','reviewing','complete']
+    assert stages == ['parsing','researching','drafting','rendering','reviewing','revising','rendering','reviewing','formatting','complete']
     assert result['diagrams']==[] and result['graphs']==[]
 
 
@@ -797,3 +800,20 @@ def test_assessment_generation_cannot_bypass_restrictions_by_disabling_autopilot
 def test_ordinary_homework_retains_non_autopilot_assistance_without_confirmation(mode):
     payload=ai.StudyRequest.model_validate(study_request(autopilot=False, mode=mode))
     ai.homework_eligible(payload)
+
+
+def test_final_assignment_latex_excludes_thinking_and_preserves_math_and_figures():
+    result = ai.assignment_latex('Homework & math',
+        '<think>Private planning that must stay hidden.</think>\n# Problem 1\n\nThe answer is $x = 2$.\n\n' + r'\[\frac{4}{2} = 2\]',
+        [{'caption': 'Computed response', 'data': 'unused'}])
+    assert 'Private planning' not in result
+    assert r'\frac{4}{2}' in result
+    assert r'\begin{document}' in result and r'\end{document}' in result
+    assert 'figure-1.png' in result
+    assert r'Homework \& math' in result
+
+
+def test_final_assignment_latex_reports_missing_converter(monkeypatch):
+    monkeypatch.setattr(ai.shutil, 'which', lambda _: None)
+    with pytest.raises(ai.HTTPException, match='Pandoc'):
+        ai.assignment_latex('Homework', 'Answer', [])

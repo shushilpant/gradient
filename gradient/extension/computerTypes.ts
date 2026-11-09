@@ -1,6 +1,7 @@
 import type { StudyPacket } from './assistantTypes.js';
 
 export interface ComputerConfig {
+  browserMode?: 'window';
   sandboxOrigin: string;
   engine: string;
   isolation: string;
@@ -25,6 +26,7 @@ export interface ComputerStep {
 }
 export interface ComputerSession {
   id: string;
+  demo?: boolean;
   status: 'running' | 'complete' | 'cancelled' | 'error';
   stage: string;
   label: string;

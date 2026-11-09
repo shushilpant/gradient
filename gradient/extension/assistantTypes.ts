@@ -55,6 +55,7 @@ export interface AssignmentReview {
 }
 export interface StudyProgress { stage: string; label: string }
 export interface StudyPacket {
+  finalLatex?: string;
   title: string;
   summary: string;
   markdown: string;

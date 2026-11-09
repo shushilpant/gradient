@@ -176,7 +176,7 @@ describe('Local study assistant browser flow', () => {
       expect(await page.getByRole('region', { name: 'Generated study packet' }).count()).toBe(0);
     } finally { await page.close(); }
   }, 20000);
-  it('runs homework autopilot with evidence, coverage review and computed figures, and blocks assessments', async () => {
+  it('shows only the final LaTeX assignment for autopilot and blocks assessments', async () => {
     const brief = 'Plot f(t) = (t-2)*exp(-(t-2))*u(t-2) and explain the time shift.';
     const { page } = await mockCanvas(browser, {configureData: courses => {
       const course = courses[0]!;
@@ -188,7 +188,7 @@ describe('Local study assistant browser flow', () => {
     const received:Record<string,any>[]=[];
     try {
       await waitForLoaded(page);
-      await mockAssistant(page, received, false, {...packet,autopilot:true,brief:{summary:'Plot and explain the response.',requirements:[{id:'R1',text:'Plot the time-shifted response',evidence:brief}],missingInformation:[]},review:{coverage:[{requirementId:'R1',status:'covered',evidence:'A worked reference answer',notes:'Check the equation against the course convention.'}],limitations:['Model review still needs a human calculation check.']}});
+      await mockAssistant(page, received, false, {...packet,autopilot:true,finalLatex:'\\documentclass{article}\n\\begin{document}\nFinal answer: $x=2$.\n\\end{document}',brief:{summary:'Plot and explain the response.',requirements:[{id:'R1',text:'Plot the time-shifted response',evidence:brief}],missingInformation:[]},review:{coverage:[{requirementId:'R1',status:'covered',evidence:'A worked reference answer',notes:'Check the equation against the course convention.'}],limitations:['Model review still needs a human calculation check.']}});
       await connect(page);
       const assignmentSelect=page.getByLabel('Assistant assignment', {exact:true});
       await assignmentSelect.selectOption({label:'Homework: time-shift response'});
@@ -196,10 +196,17 @@ describe('Local study assistant browser flow', () => {
       expect(await page.getByRole('button',{name:'Run homework autopilot'}).isDisabled()).toBe(true);
       await page.getByLabel('This is homework, not an exam, quiz, or timed assessment.').check();
       await page.getByRole('button',{name:'Run homework autopilot'}).click();
-      await page.getByRole('heading',{name:packet.title,exact:true}).waitFor();
+      const final = page.getByRole('region',{name:'Final LaTeX assignment',exact:true});
+      await final.waitFor();
       expect(received[0]?.request).toMatchObject({autopilot:true,assignmentKind:'homework',mode:'sample',level:'all_in'});
-      expect(await page.getByRole('region',{name:'Assignment requirements and review'}).innerText()).toContain('1/1 covered');
-      expect(await page.locator('.ja-rendered-visual img').evaluate((image:HTMLImageElement)=>image.complete&&image.naturalWidth>1)).toBe(true);
+      expect(await final.innerText()).toContain('Final answer: $x=2$.');
+      expect(await page.getByRole('region',{name:'Assignment requirements and review'}).count()).toBe(0);
+      expect(await final.innerText()).not.toContain(packet.summary);
+      expect(await final.innerText()).not.toContain(packet.markdown);
+      expect(await page.getByRole('button',{name:'Export illustrated HTML',exact:true}).count()).toBe(0);
+      const downloaded = page.waitForEvent('download');
+      await page.getByRole('button',{name:'Download LaTeX',exact:true}).click();
+      expect((await downloaded).suggestedFilename()).toMatch(/\.tex$/);
       await page.locator('.g-body').evaluate(el=>el.scrollTo(0,0));
       await page.screenshot({path:'/private/tmp/gradient-autopilot-workbench.png',fullPage:true});
       await assignmentSelect.selectOption({label:'Exam 2'});
