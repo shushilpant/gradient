@@ -42,21 +42,8 @@ def generate_demo_page(live_mode: bool = False, demo_date: date | None = None) -
     if os.path.exists(bundle_path):
         with open(bundle_path, "r", encoding="utf-8") as f:
             bundle_content = f.read()
-    page = """<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GRADIENT · Extension preview</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#f3f8fd;color:#0f2742;font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-nav{padding:28px 40px;display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.6px;font-size:20px}
-.logo{background:#1a73c9;color:white;border-radius:11px;width:36px;height:36px;display:grid;place-items:center}
-main{max-width:650px;padding:64px 40px}small{color:#b5432a;font-weight:750;letter-spacing:2px;font-size:11px}h1{font-size:clamp(36px,4vw,60px);line-height:1.08;letter-spacing:-2.4px;margin:20px 0 24px}p{color:#5b6e82;max-width:460px}
-.steps{margin:36px 0;padding:26px;background:white;border:1px solid #e2ecf5;border-radius:20px;max-width:460px}h2{font-size:17px;margin:0 0 16px}ol{padding-left:20px;color:#5b6e82;font-size:14px}li{margin-bottom:12px}code{color:#0f2742;font-size:12px;background:#e8f2fd;padding:3px 6px;border-radius:5px}a{color:#1a73c9;font-weight:650;text-decoration:none}.note{font-size:12px}footer{font-size:12px;color:#5b6e82;margin-top:40px}
-@media(min-width:800px){main{max-width:calc(100vw - 500px)}}@media(max-width:700px){main{padding:36px 24px}}
-</style></head><body><nav><span class="logo">G</span>gradient<span style="font-size:10px;letter-spacing:1px;color:#5b6e82;margin-left:12px">DESIGN PREVIEW</span></nav>
-<main><small>SYNTHETIC HACKATHON DEMONSTRATION</small><h1>One academic context.<br>Four useful next steps.</h1>
-<p>Alex has three sample courses and overlapping deadlines. Explore Academics, AI Workspace, Automation, and Research in the workspace beside this page.</p>
-<div class="steps"><h2>Bring it into your actual Canvas</h2><ol><li>Open <code>chrome://extensions</code> in Chrome.</li><li>Enable Developer mode, choose <strong>Load unpacked</strong>, and select <code>gradient/dist</code>.</li><li>Open Canvas, sign in, and refresh. Your workspace connects automatically.</li></ol><a href="https://usm.instructure.com/">Open USM Canvas ↗</a></div>
-<p class="note">This preview uses sample courses. New homework deadlines are set one and two days after the selected demo day. Grades and planning work without AI. Model generation, public research and browser automation require their actual optional services; no completed execution is simulated.</p><footer>The installed extension uses your own Canvas session and never substitutes sample data.</footer></main><script>""" + bundle_content + """</script></body></html>"""
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "preview_landing.html"), encoding="utf-8") as f:
+        page = f.read().replace("<!--BUNDLE-->", bundle_content, 1)
     selected_day = demo_date or datetime.now(timezone.utc).date()
     return page.replace('<html lang="en">', '<html lang="en" data-gradient-demo-date="' + selected_day.isoformat() + '">', 1)
 

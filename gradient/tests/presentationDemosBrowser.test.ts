@@ -41,3 +41,19 @@ it('plays a staged demo for every module, then returns to live coursework',async
   expect(requests.length).toBe(before);
  }finally{await browser.close();}
 },60000);
+
+it('starts module demos and the full tour from page events, and hands control back on a tab click',async()=>{
+ const browser=await launchBrowser();const {page}=await mockCanvas(browser);
+ try{
+  await waitForLoaded(page);
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('gradient:demo',{detail:'research'})));
+  await page.getByRole('region',{name:'Research demo run',exact:true}).waitFor();
+  expect(await page.getByRole('tab',{name:'Research',exact:true}).getAttribute('aria-selected')).toBe('true');
+  await page.evaluate(()=>window.dispatchEvent(new CustomEvent('gradient:tour')));
+  await page.getByRole('status').filter({hasText:'Tour · 1 of 4'}).waitFor();
+  await page.getByRole('region',{name:'Academics demo run',exact:true}).waitFor();
+  await page.getByRole('tab',{name:'Research',exact:true}).click();
+  expect(await page.getByRole('button',{name:'Stop tour',exact:true}).count()).toBe(0);
+  await page.getByRole('button',{name:'Play full tour',exact:true}).waitFor();
+ }finally{await browser.close();}
+},30000);

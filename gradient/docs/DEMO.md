@@ -2,11 +2,18 @@
 
 All commands below run from `gradient/`. The presentation uses **synthetic student data**. The presentation automation plays a fixed Canvas sequence and shows a clearly labeled saved assignment. Live model runs are a separate option.
 
-## Prepared Automation demo
+## Presentation demos and the guided tour
 
-Only **Automation** has a presentation demo button. **Demo Automation** loads the saved workflow sequence, assignment and computed plot immediately, even while Canvas is connecting. **Run saved Canvas demo** performs the same-tab replay when the seeded local course is available, with the gold cursor and 10-second final pause. **Back to my workspace** restores the live module; selecting the demo button again resets the prepared instance.
+Every module has a **Demo** button under the tabs. Each one plays a staged run on the sample courses and then shows a real result:
 
-Academics, AI Workspace and Research use their regular live views.
+- **Academics** rebuilds the grades, ranks the top three priorities and splits eight study hours.
+- **AI Workspace** runs Homework Autopilot on the saved study guide, starting with an integrity check.
+- **Automation** loads the saved workflow sequence, assignment and computed plot.
+- **Research** reads interests from the coursework and lists real programmes, each linking to its website. The match scores are illustrative and labelled as such.
+
+**Play full tour** in the panel, or **Play the one-minute tour** on the preview page, plays all four in order. Each result stays on screen for about four and a half seconds, and the whole tour takes about a minute. Clicking any tab or **Stop tour** hands control back. The **Watch it** buttons on the preview page start a single module.
+
+Demos make no network requests. **Run saved Canvas demo** still performs the same-tab replay when the seeded local course is available, with the highlighted cursor and a 10-second final pause. **Back to my workspace** restores the live module.
 
 ## Reliable core preview
 
@@ -60,7 +67,7 @@ python3 sandbox/canvas_local/setup.py status
 
 Use [the Canvas replica](http://127.0.0.1:8080/login/canvas) and the local student credentials from `sandbox/canvas_local/.runtime/credentials.json`; do not print or place them in pitch slides. The seed provides actual synthetic homework and its guide. Full details and staging/import instructions are in [LOCAL_CANVAS.md](LOCAL_CANVAS.md).
 
-For the presentation, load the rebuilt extension in your signed-in local Canvas tab. In **Automation**, select **Demo automation**, directly below **Start automatic workflow**. It visits the seeded **GRADIENT-SIGNALS** homework on time shifts in that same tab, with about 1.5 seconds between actions and a 10-second pause before showing the saved reference assignment in Gradient. The rust cursor marks the scripted actions. The replay needs no model, local assistant backend, or public web research. Rehearse once before the presentation to verify the local replica and Chrome are ready. The saved result lives in [`backend/demo_automation.json`](../backend/demo_automation.json).
+For the presentation, load the rebuilt extension in your signed-in local Canvas tab. In **Automation**, select **Demo automation**, directly below **Start automatic workflow**. It visits the seeded **GRADIENT-SIGNALS** homework on time shifts in that same tab, with about 1.5 seconds between actions and a 10-second pause before showing the saved reference assignment in Gradient. The highlighted cursor marks the scripted actions. The replay needs no model, local assistant backend, or public web research. Rehearse once before the presentation to verify the local replica and Chrome are ready. The saved result lives in [`backend/demo_automation.json`](../backend/demo_automation.json).
 
 For a live run, inspect the configured origin and its synthetic/replica identity, select reasoning and vision models, configure a read-only homework-reference task, approve the run, and select **Start automatic workflow**. The workflow uses the current signed-in local Canvas tab. It follows observed same-origin coursework links and stops on unsupported assessment pages. Inspect its result and stop controls. No assignment submission, quiz completion or live account control is permitted. For staged coursework, review the snapshot before importing it into the synthetic tenant with the existing import command; never describe copied local data as a live integration write.
 
@@ -85,9 +92,8 @@ Stop the preview with Ctrl+C. The launcher stops a backend it started itself; an
 
 | Time | Screen and message |
 | --- | --- |
-| 0–15 s | **Academics overview:** “GRADIENT turns the Canvas context students already have into academic action. This is a synthetic student.” Show the three courses and overlapping deadlines. |
-| 15–45 s | **Coursework / Grade Lab:** inspect the homework rubric, move a what-if value and show allocation. “Grade rules are deterministic; study-hour scenarios disclose their assumptions.” |
-| 45–85 s | **AI Workspace:** show a real completed or in-progress Autopilot run, requirements, one source excerpt, and coverage gaps. “Reference material supports learning; the student authors the submission.” |
-| 85–110 s | **Automation:** click **Demo automation**. “This is our saved GRADIENT-SIGNALS example. It navigates the local Canvas replica and shows the prepared assignment without waiting for a model.” |
-| 110–140 s | **Research:** show course-derived interests, one ranked sourced opportunity and its course/skill evidence. “The same syllabus context helps students discover a research direction. Deadlines and eligibility come from source pages.” |
-| 140–150 s | Return to the four-section navigation. “One academic context: understand the work, plan the effort, inspect automation, and discover what comes next.” |
+| 0–15 s | **Preview page hero:** “Students already have everything in Canvas, but grades, deadlines, rules and opportunities are scattered. GRADIENT pulls them into one panel.” |
+| 15–40 s | **Academics overview:** show the week chart, course standings and **AI rules by course**. “It quotes each syllabus's AI policy, so students know the rules before they ask for help.” |
+| 40–95 s | Press **Play the one-minute tour** and narrate each result as it lands: rebuilt grades that match Canvas, the cited study guide, the automation sequence and the research matches with real programme links. |
+| 95–125 s | **See it refuse a quiz:** open the assessment page. “On quizzes and timed exams, GRADIENT stays off. It never submits anything.” |
+| 125–150 s | **How it works:** “Canvas session in, local AI on your laptop, nothing leaves the machine by default. Install it with Load unpacked today.” If time allows, show a real Autopilot run with Ollama. |

@@ -6,6 +6,7 @@ import { optimizeEffort, type OptimizerResult } from '../../core/optimiser.js';
 import { importLegacyAcademicPreferences, loadAcademicPreferences, saveAcademicPreferences } from '../academicPreferences.js';
 import { getAcademicContext } from '../academicContext.js';
 import { ChangeRadar } from './ChangeRadar.js';
+import { AiRules } from './AiRules.js';
 import { WORKSPACE_STYLES } from './workspaceStyles.js';
 import { Icon } from './Icons.js';
 import { MaterialAccess } from './MaterialAccess.js';
@@ -35,6 +36,8 @@ export interface WorkspaceProps {
 type Tab = 'academics' | 'assistant' | 'automation' | 'research';
 type AcademicView = 'overview' | 'coursework' | 'resources' | 'grades' | 'settings';
 type Task = { course: CanvasCourseSnapshot; assignment: CanvasLiveAssignment };
+const TOUR: Tab[] = ['academics', 'assistant', 'automation', 'research'];
+const TOUR_HOLD_MS = 4500;
 const colors = [
   { tint: 'var(--g-accent-soft)', ink: 'var(--g-accent)' },
   { tint: 'var(--g-coral-soft)', ink: 'var(--g-coral-ink)' },
@@ -157,7 +160,28 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const [demoTab,setDemoTab] = useState<Tab | null>(null);
   const presentationDemo = demoTab===tab;
   const [demoVersion,setDemoVersion] = useState(0);
-  const leaveDemo = () => setDemoTab(null);
+  const [tour,setTour] = useState<Tab[] | null>(null);
+  const [tourStep,setTourStep] = useState(0);
+  const tourRef = useRef<{ order: Tab[] | null; step: number }>({ order: null, step: 0 });
+  tourRef.current = { order: tour, step: tourStep };
+  const tourTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const startDemo = (next: Tab) => { setMinimized(false); setTab(next); setDemoTab(next); setDemoVersion(version=>version+1); };
+  const stopTour = () => { clearTimeout(tourTimer.current); setTour(null); };
+  const startTour = (hasSnapshot: boolean) => {
+    const order = TOUR.filter(item => hasSnapshot || (item !== 'academics' && item !== 'research'));
+    clearTimeout(tourTimer.current); setTour(order); setTourStep(0); startDemo(order[0]!);
+  };
+  const demoDone = () => {
+    const { order, step } = tourRef.current;
+    if (!order) return;
+    clearTimeout(tourTimer.current);
+    tourTimer.current = setTimeout(() => {
+      if (step >= order.length - 1) { setTour(null); return; }
+      setTourStep(step + 1); startDemo(order[step + 1]!);
+    }, TOUR_HOLD_MS);
+  };
+  useEffect(() => () => clearTimeout(tourTimer.current), []);
+  const leaveDemo = () => { stopTour(); setDemoTab(null); };
   const [pageRun,setPageRun] = useState(getPageAutomation);
   useEffect(() => preview ? undefined : subscribePageAutomation(setPageRun), [preview]);
   const showingPageRun = !preview && tab==='automation' && !!pageRun;
@@ -184,6 +208,13 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     window.addEventListener('gradient:show-automation', showAutomation);
     return () => { window.removeEventListener('gradient:toggle', toggle); window.removeEventListener('gradient:show-automation', showAutomation); };
   }, []);
+  useEffect(() => {
+    const demo = (event: Event) => { const next = (event as CustomEvent<Tab>).detail; if (TOUR.includes(next) && (snapshot || next === 'assistant' || next === 'automation')) { stopTour(); startDemo(next); } };
+    const playTour = () => startTour(!!snapshot);
+    window.addEventListener('gradient:demo', demo);
+    window.addEventListener('gradient:tour', playTour);
+    return () => { window.removeEventListener('gradient:demo', demo); window.removeEventListener('gradient:tour', playTour); };
+  }, [snapshot]);
   const [selectedCourseId, setSelectedCourseId] = useState(initialCourseId ?? '');
   const [query, setQuery] = useState('');
   const [resourceQuery, setResourceQuery] = useState('');
@@ -229,7 +260,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   }, [active, simAssignment, whatIf]);
   const computed = useMemo(() => active ? currentGrade(active.input).percentage : null, [active]);
   const allIssues = [...(snapshot?.issues ?? []), ...courses.flatMap(c => c.issues)];
-  const changeTab = (next: Tab) => { setTab(next); };
+  const changeTab = (next: Tab) => { if (tourRef.current.order) stopTour(); setTab(next); };
   const openAcademic = (view: AcademicView) => { setTab('academics'); setAcademicView(view); };
   const explainAssignment = (courseId: string, assignmentId: string, autopilot = false) => { setAssistantFocus({ courseId, assignmentId, autopilot, nonce: Date.now() }); setTab('assistant'); };
   const selectCourse = (id: string) => { setSelectedCourseId(id); setAssignmentId(''); setPlan(null); };
@@ -264,8 +295,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
   const coursePicker = active ? <div class="g-course-menu"><select class="g-select" aria-label="Choose a course" value={active.id} onChange={e => selectCourse(e.currentTarget.value)}>{courses.map(c => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}</select><a class="g-icon-btn" href={safeLink(active.url)} title="Open course in Canvas" aria-label="Open course in Canvas"><Icon name="external" size={18}/></a></div> : null;
   const tabs = [{ id: 'academics', label: 'Academics', icon: 'book' }, { id: 'assistant', label: 'AI Workspace', icon: 'spark' }, { id: 'automation', label: 'Automation', icon: 'bolt' }, { id: 'research', label: 'Research', icon: 'search' }] as const;
 
-  return <><style>{WORKSPACE_STYLES + WORKFLOW_STYLES + COMMAND_STYLES + GradeLabStyles}</style>{minimized && <button id="gradient-launcher" class="g-launcher" aria-label="Open GRADIENT" onClick={() => setMinimized(false)}><Icon name="chart" size={22}/>gradient</button>}<aside hidden={minimized} id="gradient-workspace" class={`gw consolidated ${wide ? 'wide' : ''}`} aria-label="GRADIENT Canvas workspace" onPointerMove={event => { event.currentTarget.style.setProperty('--mx', `${event.clientX}px`); event.currentTarget.style.setProperty('--my', `${event.clientY}px`); }}>
-    <div class="g-boot" aria-hidden="true"><div class="g-boot-core"><span class="g-boot-ring r1"/><span class="g-boot-ring r2"/><span class="g-boot-ring r3"/><span class="g-boot-logo"><Icon name="chart" size={26}/></span></div><div class="g-boot-text"><strong>gradient<span>.</span></strong><small>Bringing your coursework online</small></div></div>
+  return <><style>{WORKSPACE_STYLES + WORKFLOW_STYLES + COMMAND_STYLES + GradeLabStyles}</style>{minimized && <button id="gradient-launcher" class="g-launcher" aria-label="Open GRADIENT" onClick={() => setMinimized(false)}><Icon name="chart" size={22}/>gradient</button>}<aside hidden={minimized} id="gradient-workspace" class={`gw consolidated ${wide ? 'wide' : ''}`} aria-label="GRADIENT Canvas workspace">
     <header class="g-header"><div class="g-brand"><div class="g-logo"><Icon name="chart" size={22}/></div><div class="g-wordmark">gradient<span>.</span></div></div><button class="g-icon-btn g-hide-mobile" aria-label={wide ? 'Compact workspace' : 'Expand workspace'} title={wide ? 'Compact workspace' : 'Expand workspace'} onClick={() => setWide(!wide)}><Icon name="expand" size={17}/></button><button class="g-icon-btn" aria-label="Refresh Canvas data" title="Refresh Canvas data" disabled={loading} onClick={onRefresh}><Icon name="refresh" size={17} className={loading ? 'g-spinner' : ''}/></button><button class="g-icon-btn" aria-label="Minimize GRADIENT" title="Minimize GRADIENT" onClick={() => setMinimized(true)}><Icon name="collapse" size={18}/></button></header>
     <div class="g-context-bar"><span class={preview||presentationDemo ? 'g-demo-label' : ''}>{presentationDemo ? 'Presentation demo' : preview ? 'Synthetic demo' : 'Read-only Canvas'}</span><span>{presentationDemo ? `${activeDemoLabel} guided run` : snapshot ? `${courses.length} courses · ${snapshot.user.shortName || snapshot.user.name}` : 'Academic workspace'}</span></div>
     <nav class="g-nav" role="tablist" aria-label="Workspace views" onKeyDown={event => {
@@ -278,14 +308,16 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
     }}>{tabs.map(item => <button key={item.id} id={`g-tab-${item.id}`} class={`g-tab ${tab === item.id ? 'active' : ''}`} role="tab" tabIndex={tab === item.id ? 0 : -1} aria-selected={tab === item.id} aria-controls="gradient-tab-content" onClick={() => changeTab(item.id)}><Icon name={item.icon} size={19}/>{item.label}</button>)}</nav>
     {<div class="g-presentation-controls" aria-label="Presentation demo controls">
       <button class="g-secondary g-demo-btn" disabled={pageRun?.status==='running'||(!snapshot&&(tab==='academics'||tab==='research'))} onClick={()=>{setDemoTab(tab);setDemoVersion(version=>version+1);}} aria-label={`Demo ${activeDemoLabel}`}><Icon name="bolt" size={15}/>Demo {activeDemoLabel}</button>
-      {presentationDemo&&<button class="g-link-btn" onClick={leaveDemo}>Back to my workspace</button>}
+      {tour ? <><span class="g-tour-chip" role="status"><span class="g-tour-dots" aria-hidden="true">{tour.map((item, i) => <i key={item} class={i < tourStep ? 'done' : i === tourStep ? 'on' : ''}/>)}</span>Tour · {tourStep + 1} of {tour.length}</span><button class="g-link-btn" onClick={leaveDemo}>Stop tour</button></>
+        : <button class="g-link-btn g-tour-btn" disabled={pageRun?.status==='running'} onClick={() => startTour(!!snapshot)}><Icon name="spark" size={14}/>Play full tour</button>}
+      {presentationDemo&&!tour&&<button class="g-link-btn" onClick={leaveDemo}>Back to my workspace</button>}
       <p class="g-small">{presentationDemo?'Guided presentation run · sample data':'Play a guided run of this module for your audience.'}</p>
     </div>}
     {presentationDemo&&<div key={`${tab}:${demoVersion}`} class="g-body g-stack" role="tabpanel" aria-labelledby={`g-tab-${tab}`} aria-label={`${activeDemoLabel} saved demo`}>
-      {tab==='academics'&&snapshot&&<AcademicsDemo snapshot={snapshot}/>}
-      {tab==='assistant'&&<AssistantDemo/>}
-      {tab==='automation'&&<AutomationDemo snapshot={snapshot??undefined} onReplay={leaveDemo}/>}
-      {tab==='research'&&snapshot&&<ResearchDemo snapshot={snapshot}/>}
+      {tab==='academics'&&snapshot&&<AcademicsDemo snapshot={snapshot} onDone={demoDone}/>}
+      {tab==='assistant'&&<AssistantDemo onDone={demoDone}/>}
+      {tab==='automation'&&<AutomationDemo snapshot={snapshot??undefined} onReplay={leaveDemo} onDone={demoDone}/>}
+      {tab==='research'&&snapshot&&<ResearchDemo snapshot={snapshot} onDone={demoDone}/>}
     </div>}
     {!presentationDemo&&<div id="gradient-tab-content" ref={bodyRef} class="g-body" role="tabpanel" aria-labelledby={`g-tab-${tab}`}>
       {error && <div class="g-notice" role="alert" style={{ marginBottom: '16px' }}><Icon name="alert" size={18}/><div>{error}<button class="g-link-btn" onClick={onRefresh} disabled={loading}>Try again <Icon name="arrow" size={14}/></button></div></div>}
@@ -296,7 +328,7 @@ export function Workspace({ snapshot, loading, error, onRefresh, initialCourseId
         <button class="g-hero-cta" onClick={doNext}><span class="g-hero-icon"><Icon name="bolt" size={28}/></span><span><strong>Prepare my next assignment</strong><small>{next ? next.assignment.name : 'Open the assistant'}</small></span><span class="g-hero-go"><Icon name="arrow" size={22}/></span></button>
         <div class="g-metrics"><div class="g-metric peach"><span class="g-metric-icon"><Icon name="layers" size={16}/></span><strong>{courses.length}</strong><small>Courses</small></div><div class="g-metric pink"><span class="g-metric-icon"><Icon name="calendar" size={16}/></span><strong>{upcoming.length}</strong><small>To do</small></div><div class="g-metric mint"><span class="g-metric-icon"><Icon name="check" size={16}/></span><strong>{submittedCount}</strong><small>Awaiting grades</small></div></div>
         <WeekChart tasks={upcoming}/>
-        <ChangeRadar key={accountScope} snapshot={snapshot} onPlan={id => { selectCourse(id); openAcademic('coursework'); }}/><div class="g-overview-grid"><section><div class="g-section-head"><h2>Courses</h2></div><div class="g-course-list">{courses.map((course, i) => { const color = colors[i % colors.length]!; return <button key={course.id} class="g-course" style={{ '--tint': color.tint, '--ink': color.ink }} onClick={() => { selectCourse(course.id); setTab('academics'); setAcademicView('coursework'); }}><div class="g-course-symbol">{course.code.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()}</div><div class="g-course-info"><strong>{course.name}</strong><small>{course.assignments.filter(pending).length} to do{standing(course.currentScore) ? ` · ${standing(course.currentScore)}` : ''}</small><span class="g-course-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, course.currentScore ?? 0))}%` }}/></span></div><div class="g-course-score">{score(course.currentScore)}</div></button>; })}{!courses.length && <Empty title="No courses yet">Your active courses will show up here.</Empty>}</div></section>
+        <ChangeRadar key={accountScope} snapshot={snapshot} onPlan={id => { selectCourse(id); openAcademic('coursework'); }}/><AiRules courses={courses}/><div class="g-overview-grid"><section><div class="g-section-head"><h2>Courses</h2></div><div class="g-course-list">{courses.map((course, i) => { const color = colors[i % colors.length]!; return <button key={course.id} class="g-course" style={{ '--tint': color.tint, '--ink': color.ink }} onClick={() => { selectCourse(course.id); setTab('academics'); setAcademicView('coursework'); }}><div class="g-course-symbol">{course.code.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase()}</div><div class="g-course-info"><strong>{course.name}</strong><small>{course.assignments.filter(pending).length} to do{standing(course.currentScore) ? ` · ${standing(course.currentScore)}` : ''}</small><span class="g-course-bar" aria-hidden="true"><i style={{ width: `${Math.min(100, Math.max(0, course.currentScore ?? 0))}%` }}/></span></div><div class="g-course-score">{score(course.currentScore)}</div></button>; })}{!courses.length && <Empty title="No courses yet">Your active courses will show up here.</Empty>}</div></section>
         <section class="g-card"><div class="g-section-head"><h2>Up next</h2><button class="g-link-btn" onClick={() => openAcademic('coursework')}>All <Icon name="arrow" size={15}/></button></div>{upcoming.length ? upcoming.slice(0, 4).map(task => <TaskRow key={`${task.course.id}-${task.assignment.id}`} task={task} onSelect={() => { selectCourse(task.course.id); setAssignmentId(task.assignment.id); setTab('academics'); setAcademicView('coursework'); }}/>) : <Empty title="Nothing due">Enjoy the breathing room.</Empty>}</section></div>
         <section class="g-card"><div class="g-section-head"><h2>Plan your next move</h2></div><p class="g-small">Compare grade scenarios, allocate study time, and keep deadlines on your calendar.</p><div class="g-row-actions"><button class="g-secondary" onClick={() => openAcademic('grades')}>Open Grade Lab</button><button class="g-secondary" onClick={() => openAcademic('coursework')}>Plan study time</button></div></section>
       </div>}

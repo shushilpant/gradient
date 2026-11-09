@@ -1,18 +1,18 @@
 /** Shared light palette for the workspace, standalone exports, and settings. */
 export const PALETTE_TOKENS = `
---g-ink:#0f2742;--g-ink-2:#34495f;--g-muted:#5b6e82;
---g-line:#e2ecf5;--g-line-2:#d2e0ee;--g-surface:#ffffff;--g-canvas:#f3f8fd;
---g-accent:#1a73c9;--g-accent-hover:#155fa8;--g-accent-soft:#e8f2fd;--g-accent-mid:#a8cff5;
---g-focus:#1a73c966;--g-on-accent:#ffffff;
---g-coral:#e8603f;--g-coral-ink:#b5432a;--g-coral-soft:#fff0ea;
---g-sun:#f2b43a;--g-sun-ink:#8a5b0c;--g-sun-soft:#fff6df;
---g-mint-ink:#17805a;--g-mint-soft:#e4f6ee;
---g-success:#1d7a52;--g-success-soft:#e4f6ee;--g-warning:#8a5b0c;--g-warning-soft:#fff6df;
+--g-ink:#2a1f1a;--g-ink-2:#4a3f38;--g-muted:#6b6058;
+--g-line:#ebe5df;--g-line-2:#ddd3ca;--g-surface:#ffffff;--g-canvas:#f8f6f3;
+--g-accent:#b4512a;--g-accent-hover:#933f1f;--g-accent-soft:#fbf0ea;--g-accent-mid:#ecc6b2;
+--g-focus:#b4512a66;--g-on-accent:#ffffff;
+--g-coral:#c2343d;--g-coral-ink:#a3262f;--g-coral-soft:#fcecec;
+--g-sun:#d99a1e;--g-sun-ink:#7f5509;--g-sun-soft:#fbf3e1;
+--g-mint-ink:#1a7550;--g-mint-soft:#e8f4ee;
+--g-success:#1a7550;--g-success-soft:#e8f4ee;--g-warning:#7f5509;--g-warning-soft:#fbf3e1;
 --g-error:#b42318;--g-error-soft:#fdecea;--g-highlight:#fff1c2;
 --g-mango:var(--g-warning);--g-pink:var(--g-coral);--g-berry:var(--g-accent);
 --g-mint:var(--g-success);--g-sky:var(--g-accent);
---g-grad:linear-gradient(135deg,#2b8ef0 0%,#1a6fc4 100%);--g-grad-soft:linear-gradient(135deg,#edf5fe 0%,#fff3ee 100%);
---g-shadow:0 1px 2px rgba(15,39,66,.04),0 6px 18px -10px rgba(15,39,66,.14);--g-shadow-pop:0 10px 28px -12px rgba(26,115,201,.45);
---g-display:"Bricolage Grotesque",Figtree,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+--g-grad:linear-gradient(var(--g-accent),var(--g-accent));--g-grad-soft:linear-gradient(var(--g-accent-soft),var(--g-accent-soft));
+--g-shadow:0 1px 2px rgba(42,31,26,.05);--g-shadow-pop:0 1px 2px rgba(42,31,26,.08),0 4px 12px -6px rgba(42,31,26,.18);
+--g-display:Newsreader,Georgia,"Times New Roman",serif;
 --g-body:Figtree,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
 `;

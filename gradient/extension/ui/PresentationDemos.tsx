@@ -34,7 +34,7 @@ function clock(ms: number): string { return `${Math.floor(ms / 60000)}:${String(
 function clamp(n: number | null | undefined): number { return Math.min(100, Math.max(0, n ?? 0)); }
 
 /** Plays a scripted sequence of steps with varied timings, then reveals the prepared result. */
-export function StagedRun({ label, steps, children }: { label: string; steps: DemoStep[]; children: ComponentChildren }) {
+export function StagedRun({ label, steps, children, onDone }: { label: string; steps: DemoStep[]; children: ComponentChildren; onDone?: () => void }) {
   const [run, setRun] = useState(0);
   const [index, setIndex] = useState(0);
   const [tick, setTick] = useState(0);
@@ -43,6 +43,14 @@ export function StagedRun({ label, steps, children }: { label: string; steps: De
   const started = useRef(Date.now());
   const stepStarted = useRef(Date.now());
   const done = index >= steps.length;
+  const resultRef = useRef<HTMLDivElement>(null);
+  const doneRef = useRef(onDone); doneRef.current = onDone;
+  useEffect(() => {
+    if (!done) return;
+    const timer = setTimeout(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
+    doneRef.current?.();
+    return () => clearTimeout(timer);
+  }, [done, run]);
 
   useEffect(() => { started.current = stepStarted.current = Date.now(); setIndex(0); setTick(0); setTimes([]); setElapsed(0); }, [run]);
   useEffect(() => {
@@ -84,11 +92,11 @@ export function StagedRun({ label, steps, children }: { label: string; steps: De
         </li>;
       })}</ol>
     </section>
-    {done && <div class="g-run-result g-stack">{children}</div>}
+    {done && <div ref={resultRef} class="g-run-result g-stack">{children}</div>}
   </>;
 }
 
-export function AcademicsDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
+export function AcademicsDemo({ snapshot, onDone }: { snapshot: CanvasSnapshot; onDone?: () => void }) {
   const courses = snapshot.courses;
   const assignments = courses.flatMap(course => course.assignments.map(assignment => ({ course, assignment })));
   const materials = courses.reduce((n, course) => n + course.resources.length, 0);
@@ -111,7 +119,7 @@ export function AcademicsDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
     { title: 'Ranking what to do next', detail: 'Deadlines weighed against points and grade impact', ms: 1300, ticks: ['Sorting by deadline…', 'Weighing grade impact…'] },
     { title: 'Planning your study time', detail: `100 grade scenarios for ${PLAN_HOURS} hours`, ms: 1800, ticks: ['Running scenarios 1–40…', 'Running scenarios 41–80…', 'Running scenarios 81–100…', 'Choosing the steadiest split…'] },
   ];
-  return <StagedRun label="Academics" steps={steps}>
+  return <StagedRun label="Academics" steps={steps} onDone={onDone}>
     <section class="g-card" aria-label="Rebuilt grades">
       <div class="g-section-head"><h2>Grades rebuilt</h2><span class="g-label-count">{result.grades.length} courses</span></div>
       {result.grades.map(({ course, rebuilt }) => {
@@ -142,14 +150,15 @@ export function AcademicsDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
   </StagedRun>;
 }
 
-export function AssistantDemo() {
+export function AssistantDemo({ onDone }: { onDone?: () => void }) {
   const steps: DemoStep[] = [
+    { title: 'Integrity check', detail: 'Homework, not a quiz or timed assessment', ms: 900, ticks: ['Checking the assignment type…', 'Clear: reference guide only, never submitted'] },
     { title: 'Reading the assignment', detail: `${savedDemo.courseCode} · ${savedDemo.assignmentName}`, ms: 1300, ticks: ['Opening the instructions…', 'Pulling out what is being asked…'] },
     { title: 'Gathering course materials', detail: `${packet.sources.length} matching sources found`, ms: 1700, ticks: ['Searching the study guide…', 'Matching lecture notes…', `${packet.sources.length} sources matched`] },
     { title: 'Drafting with the local model', detail: 'A step-by-step worked guide', ms: 3200, ticks: ['Outlining the approach…', 'Working through part 1…', 'Working through part 2…', 'Plotting the response…'] },
     { title: 'Checking every step', detail: 'Each claim tied to a course source', ms: 1500, ticks: ['Verifying citations…', 'Rendering the graph…'] },
   ];
-  return <StagedRun label="Homework Autopilot" steps={steps}>
+  return <StagedRun label="Homework Autopilot" steps={steps} onDone={onDone}>
     <div class="ja"><style>{ASSISTANT_STYLES}</style>
       <section class="ja-result" aria-label="Prepared study guide">
         <header class="ja-result-header"><h2>{packet.title}</h2><p>{packet.summary}</p></header>
@@ -197,7 +206,7 @@ function matchProgrammes(topics: string[], limit = 5): { programme: Programme; t
   return picked;
 }
 
-export function ResearchDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
+export function ResearchDemo({ snapshot, onDone }: { snapshot: CanvasSnapshot; onDone?: () => void }) {
   const context = useMemo(() => getAcademicContext(snapshot), [snapshot]);
   const topics = context.research.interests.map(item => item.topic);
   const shown = (topics.length ? topics : FALLBACK_TOPICS).slice(0, 3);
@@ -209,7 +218,7 @@ export function ResearchDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
     { title: 'Searching programme listings', detail: 'Public REU directories and university pages', ms: 2600, ticks: ['Querying public REU listings…', 'Reading 14 programme pages…', 'Checking eligibility and funding…'] },
     { title: 'Matching to your profile', detail: 'Ranked by topic and skill overlap', ms: 1300, ticks: ['Scoring overlap…', 'Ranking matches…'] },
   ];
-  return <StagedRun label="Research" steps={steps}>
+  return <StagedRun label="Research" steps={steps} onDone={onDone}>
     <section class="g-card" aria-label="Research profile">
       <div class="g-section-head"><h2>Your research profile</h2></div>
       <div class="g-demo-chips">{shown.map(topic => <span key={topic} class="g-demo-chip topic">{topic}</span>)}{skills.map(skill => <span key={skill} class="g-demo-chip">{skill}</span>)}</div>
@@ -227,7 +236,7 @@ export function ResearchDemo({ snapshot }: { snapshot: CanvasSnapshot }) {
   </StagedRun>;
 }
 
-export function AutomationDemo({ snapshot, onReplay }: { snapshot?: CanvasSnapshot; onReplay?: () => void }) {
+export function AutomationDemo({ snapshot, onReplay, onDone }: { snapshot?: CanvasSnapshot; onReplay?: () => void; onDone?: () => void }) {
   const steps: DemoStep[] = [
     { title: 'Starting a sandboxed browser', detail: 'Read-only · local Canvas copy', ms: 1200, ticks: ['Launching the sandbox…', 'Sandbox ready · read-only'] },
     { title: 'Opening the course', detail: 'GRADIENT-SIGNALS · Signals and Systems', ms: 1300, ticks: ['Loading the dashboard…', 'Opening GRADIENT-SIGNALS…'] },
@@ -235,5 +244,5 @@ export function AutomationDemo({ snapshot, onReplay }: { snapshot?: CanvasSnapsh
     { title: 'Reading the instructions', detail: 'Delayed response and the requested graph', ms: 1600, ticks: ['Reading the prompt…', 'Noting the graph requirements…'] },
     { title: 'Preparing the assignment', detail: 'Worked solution and plot', ms: 1900, ticks: ['Working the solution…', 'Rendering the plot…', 'Packaging the evidence…'] },
   ];
-  return <StagedRun label="Automation" steps={steps}><AutomationPresentationDemo snapshot={snapshot} onReplay={onReplay}/></StagedRun>;
+  return <StagedRun label="Automation" steps={steps} onDone={onDone}><AutomationPresentationDemo snapshot={snapshot} onReplay={onReplay}/></StagedRun>;
 }
